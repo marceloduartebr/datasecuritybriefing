@@ -31,12 +31,12 @@ const fmt = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short
       <div class="grid">
         {rest.map((post) => (
           <a class="card" href={`/briefings/${post.id}`} style="text-decoration:none;color:inherit">
-            {post.data.cover && <img src={post.data.cover} alt="" />}
             <div class="card-copy">
               <p class="faint">{fmt(post.data.pubDate)}</p>
               <h2 style="font-size:22px;margin:8px 0">{post.data.title}</h2>
               <p class="muted">{post.data.description}</p>
             </div>
+            {post.data.cover && <img src={post.data.cover} alt="" />}
           </a>
         ))}
       </div>
