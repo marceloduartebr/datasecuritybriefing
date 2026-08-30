@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('briefings');
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const fmt = post.data.pubDate.toLocaleDateString('pt-BR', {
+  day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo',
+});
+---
+<Base title={post.data.title} description={post.data.description}>
+  <article class="prose">
+    <p class="eyebrow">Briefing · {fmt}</p>
+    <h1>{post.data.title}</h1>
+    <p class="muted">{post.data.description}</p>
+    <div class="tags">
+      {post.data.tags.map((t) => <span class="tag">{t}</span>)}
+    </div>
+    {post.data.cover && <p><img src={post.data.cover} alt="" style="border-radius:14px;border:1px solid var(--border)" /></p>}
+    <Content />
+    <p class="faint">Fonte: <a href={post.data.sourceUrl}>{post.data.sourceName}</a></p>
+  </article>
+</Base>

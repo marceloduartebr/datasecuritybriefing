@@ -1,0 +1,45 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('briefings')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+const [featured, ...rest] = posts;
+const fmt = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+---
+<Base description="Briefings de vazamentos, DSPM, governança e regulação LGPD/ANPD na América Latina.">
+  {featured ? (
+    <a class="hero" href={`/briefings/${featured.id}`} style="text-decoration:none;color:inherit">
+      <div class="hero-copy">
+        <p class="eyebrow">Briefing · {fmt(featured.data.pubDate)}</p>
+        <h1>{featured.data.title}</h1>
+        <p class="muted">{featured.data.description}</p>
+        <div class="tags">
+          {featured.data.tags.map((t) => <span class="tag">{t}</span>)}
+        </div>
+      </div>
+      {featured.data.cover && <img src={featured.data.cover} alt="" />}
+    </a>
+  ) : (
+    <p class="muted">Nenhum briefing publicado ainda.</p>
+  )}
+
+  {rest.length > 0 && (
+    <section style="margin-top:36px">
+      <p class="eyebrow">Últimos briefings</p>
+      <div class="grid">
+        {rest.map((post) => (
+          <a class="card" href={`/briefings/${post.id}`} style="text-decoration:none;color:inherit">
+            {post.data.cover && <img src={post.data.cover} alt="" />}
+            <div class="card-copy">
+              <p class="faint">{fmt(post.data.pubDate)}</p>
+              <h2 style="font-size:22px;margin:8px 0">{post.data.title}</h2>
+              <p class="muted">{post.data.description}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+</Base>
