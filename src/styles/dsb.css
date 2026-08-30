@@ -89,4 +89,26 @@ article.prose th, article.prose td {
   border: 1px solid var(--border);
   margin: 28px 0 16px;
 }
+.search { max-width: 720px; margin: 8px 0 16px; }
+.search label { display: block; margin-bottom: 8px; }
+.search input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.search input:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+.search-results {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  max-width: 720px;
+}
 footer.site { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--faint); font-size: 13px; }
