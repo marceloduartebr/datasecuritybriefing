@@ -1,0 +1,100 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('briefings')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const index = posts.map((post) => {
+  const body = String(post.body ?? '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[#>*_`|\[\]]/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return {
+    id: post.id,
+    title: post.data.title,
+    description: post.data.description,
+    tags: post.data.tags,
+    href: `/briefings/${post.id}`,
+    date: post.data.pubDate.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo',
+    }),
+    text: `${post.data.title} ${post.data.description} ${post.data.tags.join(' ')} ${body}`,
+  };
+});
+---
+<Base title="Busca" description="Busca nos briefings publicados.">
+  <p class="eyebrow">Busca</p>
+  <h1>Encontrar briefing</h1>
+  <form class="search" id="search-form" action="/busca" method="get" role="search">
+    <label class="faint" for="q">Título e conteúdo</label>
+    <input id="q" name="q" type="search" placeholder="ANPD, ransomware, menor…" autocomplete="off" />
+  </form>
+  <p class="faint" id="search-status"></p>
+  <div id="search-results" class="search-results"></div>
+</Base>
+
+<script define:vars={{ index }}>
+  const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  const input = document.getElementById('q');
+  const status = document.getElementById('search-status');
+  const results = document.getElementById('search-results');
+  const form = document.getElementById('search-form');
+
+  function run(raw) {
+    const q = fold(raw || '').trim();
+    const terms = q.split(/\s+/).filter(Boolean);
+    const hits = !terms.length
+      ? []
+      : index.filter((post) => {
+          const hay = fold(post.text);
+          return terms.every((t) => hay.includes(t));
+        });
+
+    if (!q) {
+      status.textContent = 'Digite um termo. A busca cobre título, tags e o texto do briefing.';
+      results.innerHTML = '';
+      return;
+    }
+
+    status.textContent = hits.length
+      ? `${hits.length} briefing${hits.length === 1 ? '' : 's'}`
+      : 'Nenhum briefing com esse termo.';
+
+    results.innerHTML = hits
+      .map(
+        (post) => `
+        <a class="card" href="${post.href}" style="text-decoration:none;color:inherit">
+          <div class="card-copy">
+            <p class="faint">${post.date}</p>
+            <h2 style="font-size:22px;margin:8px 0">${post.title}</h2>
+            <p class="muted">${post.description}</p>
+          </div>
+        </a>`
+      )
+      .join('');
+  }
+
+  const initial = new URLSearchParams(location.search).get('q') || '';
+  input.value = initial;
+  run(initial);
+  input.addEventListener('input', () => {
+    const q = input.value;
+    const url = new URL(location.href);
+    if (q) url.searchParams.set('q', q);
+    else url.searchParams.delete('q');
+    history.replaceState(null, '', url);
+    run(q);
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    run(input.value);
+  });
+  input.focus();
+</script>
