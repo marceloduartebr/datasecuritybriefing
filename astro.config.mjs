@@ -1,6 +1,6 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://datasecuritybriefing.pages.dev',
+  site: 'https://datasecuritybriefing.marceloduarte-mail.workers.dev',
   trailingSlash: 'never',
 });
