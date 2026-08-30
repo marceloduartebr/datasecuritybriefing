@@ -1,7 +1,7 @@
 ---
 title: "Ransomware na ICN: sistemas cifrados não são a mesma coisa que dados roubados"
 description: "A estatal que constrói os submarinos da Marinha teve e-mail, arquivos e bancos cifrados em 9 de agosto. Mais de duas semanas depois, o público ainda não sabe se houve exfiltração."
-pubDate: 2026-08-29
+pubDate: 2026-08-29T16:47:00-03:00
 sourceName: "Jornal Atual"
 sourceUrl: "https://jornalatual.com.br/ataque-cibernetico-icn"
 cover: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Submarino_Riachuelo_%28S40%29_%2852816921064%29_%28cropped%29.jpg/1280px-Submarino_Riachuelo_%28S40%29_%2852816921064%29_%28cropped%29.jpg"
