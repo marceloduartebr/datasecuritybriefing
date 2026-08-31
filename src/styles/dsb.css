@@ -63,9 +63,58 @@ header.site {
   color: var(--faint);
   margin-right: 3px;
 }
-nav.site { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+nav.site { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 13px; }
 nav.site a { color: var(--muted); text-decoration: none; }
 nav.site a:hover { color: var(--text); }
+.rss { position: relative; }
+.rss-toggle {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.rss-toggle:hover,
+.rss-toggle[aria-expanded="true"] { color: var(--text); }
+.rss-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  z-index: 20;
+  min-width: 220px;
+  padding: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.35);
+}
+.rss-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.rss-copy,
+.rss-download {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.rss-copy:hover,
+.rss-download:hover { background: #1f2632; text-decoration: none; }
 .hero, .card {
   display: flex;
   flex-direction: column;
