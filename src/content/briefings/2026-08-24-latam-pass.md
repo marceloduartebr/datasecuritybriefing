@@ -3,6 +3,7 @@ title: "LATAM Pass: 21 dias entre detectar o vazamento e falar em público"
 description: "A LATAM identificou o incidente do programa de fidelidade em 29/07 e só comunicou em 19/08. Nomes, endereços e dados parciais de cartão de parte dos 54 milhões de membros."
 pubDate: 2026-08-24T12:00:00-03:00
 sourceName: "Rio Times"
+cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260824-latam-pass.jpg"
 sourceUrl: "https://www.riotimesonline.com/latam-data-breach-exposed-names-addresses-and-card-details/"
 tags: ["vazamento", "lgpd", "anpd", "latam"]
 notionUrl: "https://www.notion.so/3c7174117473819fa228f6028da8a7e8"
