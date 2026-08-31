@@ -9,7 +9,7 @@ const briefings = defineCollection({
     pubDate: z.coerce.date(),
     sourceName: z.string(),
     sourceUrl: z.string().url(),
-    cover: z.string().url().optional(),
+    cover: z.string().url(),
     tags: z.array(z.string()),
     notionUrl: z.string().url().optional(),
   }),
