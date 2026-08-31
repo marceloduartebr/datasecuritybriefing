@@ -141,6 +141,13 @@ nav.site a:hover { color: var(--text); }
 article.prose { max-width: 720px; }
 article.prose p { line-height: 1.65; color: #d7dce6; }
 article.prose h2 { margin-top: 1.6em; }
+article.prose ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.25em;
+  color: #d7dce6;
+  line-height: 1.65;
+}
+article.prose li { margin: 0.35em 0; }
 article.prose table { width: 100%; border-collapse: collapse; font-size: 14px; }
 article.prose th, article.prose td {
   border: 1px solid var(--border); padding: 8px 10px; text-align: left;
@@ -177,3 +184,5 @@ article.prose th, article.prose td {
   max-width: 720px;
 }
 footer.site { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--faint); font-size: 13px; }
+footer.site a { color: var(--muted); }
+footer.site a:hover { color: var(--text); }

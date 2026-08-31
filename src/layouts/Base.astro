@@ -45,6 +45,7 @@ const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://datasecuritybriefing.
           <a href="/">Briefings</a>
           <a href="/busca">Busca</a>
           <a href="/sobre">Sobre</a>
+          <a href="/instalar">Instalar</a>
           <div class="rss">
             <button type="button" class="rss-toggle" aria-expanded="false" aria-controls="rss-panel">RSS</button>
             <div id="rss-panel" class="rss-panel" hidden>
@@ -56,7 +57,7 @@ const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://datasecuritybriefing.
         </nav>
       </header>
       <slot />
-      <footer class="site">Marcelo Duarte · DSPM, governança e LGPD na América Latina</footer>
+      <footer class="site">Marcelo Duarte · DSPM, governança e LGPD na América Latina · <a href="/instalar">Instalar o app</a></footer>
     </div>
     <script is:inline define:vars={{ feedUrl }}>
       const root = document.querySelector('.rss');

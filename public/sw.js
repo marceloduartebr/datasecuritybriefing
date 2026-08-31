@@ -1,8 +1,9 @@
-const CACHE = "dsb-pwa-v2";
+const CACHE = "dsb-pwa-v3";
 const PRECACHE = [
   "/",
   "/sobre",
   "/busca",
+  "/instalar",
   "/manifest.webmanifest",
   "/favicon.svg",
   "/icon-180.png",
