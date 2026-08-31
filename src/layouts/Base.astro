@@ -57,7 +57,10 @@ const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://datasecuritybriefing.
         </nav>
       </header>
       <slot />
-      <footer class="site">Marcelo Duarte · DSPM, governança e LGPD na América Latina · <a href="/instalar">Instalar o app</a></footer>
+      <footer class="site">
+        <p>Marcelo Duarte · DSPM, governança e LGPD na América Latina · <a href="/instalar">Instalar o app</a></p>
+        <p class="copy">© 2026 Marcelo Duarte. Texto e análise deste site. Fontes jornalísticas e capas de terceiros permanecem de seus autores. Reprodução com atribuição e link para o briefing.</p>
+      </footer>
     </div>
     <script is:inline define:vars={{ feedUrl }}>
       const root = document.querySelector('.rss');
