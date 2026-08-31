@@ -4,7 +4,7 @@ description: "Intel 471 e SOCRadar apontam alta de 78% nos ataques de ransomware
 pubDate: 2026-08-24T17:53:00-03:00
 sourceName: "Kiteworks (relatório Intel 471)"
 sourceUrl: "https://www.kiteworks.com/cybersecurity-risk-management/latin-america-cyber-threat-landscape-2026-intel-471-report/"
-cover: "https://www.kiteworks.com/wp-content/uploads/2026/03/latin-america-cyber-threat-landscape-2026-intel-471-report.jpg"
+cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260824-latam-ameacas-intel471.jpg"
 tags: ["ransomware", "latam", "risco"]
 notionUrl: "https://www.notion.so/3c717411747381baa144fc343156b74a"
 ---
