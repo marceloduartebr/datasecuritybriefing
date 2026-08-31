@@ -3,7 +3,6 @@ title: "ANPD: 362 incidentes em 2025 — quase um por dia"
 description: "Maior volume anual desde o canal formal de notificação. Em um ciclo com 56 agentes, só 27 atenderam o pedido por completo."
 pubDate: 2026-08-31T10:04:00-03:00
 sourceName: "Bem Paraná / ANPD"
-cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260831-anpd-362-incidentes.jpg"
 sourceUrl: "https://www.bemparana.com.br/noticias/economia/associacao-recebeu-quase-uma-comunicacao-de-incidente-por-dia-em-2025-e-amplia-pressao-por-protecao-de-dados/"
 tags: ["anpd", "lgpd", "incidente", "governanca"]
 notionUrl: "https://www.notion.so/3cc17411747381969d35d1246a9b69bf"
