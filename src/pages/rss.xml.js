@@ -14,6 +14,7 @@ export async function GET(context) {
       pubDate: post.data.pubDate,
       description: post.data.description,
       link: `/briefings/${post.id}`,
+      customData: `<enclosure url="${post.data.cover}" type="image/jpeg" />`,
     })),
   });
 }
