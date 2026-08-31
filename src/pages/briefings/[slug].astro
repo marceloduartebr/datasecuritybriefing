@@ -21,7 +21,7 @@ const fmt = post.data.pubDate.toLocaleDateString('pt-BR', {
     <div class="tags">
       {post.data.tags.map((t) => <span class="tag">{t}</span>)}
     </div>
-    {post.data.cover && <img class="cover" src={post.data.cover} alt="" />}
+    <img class="cover" src={post.data.cover} alt="" />
     <Content />
     <p class="faint">Fonte: <a href={post.data.sourceUrl}>{post.data.sourceName}</a></p>
   </article>
