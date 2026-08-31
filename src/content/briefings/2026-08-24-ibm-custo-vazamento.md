@@ -3,6 +3,7 @@ title: "US$ 4,99 milhões: o custo médio global de um vazamento, segundo a IBM"
 description: "Cost of a Data Breach Report 2026. Nos EUA a média sobe a US$ 11,5 milhões. Phishing segue como vetor nº 1 pelo quarto ano."
 pubDate: 2026-08-24T19:05:00-03:00
 sourceName: "IBM"
+cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260824-ibm-custo-vazamento.jpg"
 sourceUrl: "https://www.ibm.com/reports/data-breach"
 tags: ["vazamento", "custo", "phishing"]
 notionUrl: "https://www.notion.so/3c717411747381069513fca6ff091b43"
