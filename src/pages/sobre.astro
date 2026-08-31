@@ -1,5 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
+const mailHref =
+  'mailto:dsb@duarte.top?subject=' +
+  encodeURIComponent('Data Security Briefing') +
+  '&body=' +
+  encodeURIComponent('Olá Marcelo,\n\nEscrevo sobre: (crítica, sugestão, contribuição ou outro)\n\n');
 ---
 <Base title="Sobre" description="Marcelo Duarte e o Data Security Briefing.">
   <article class="prose">
@@ -8,6 +13,7 @@ import Base from '../layouts/Base.astro';
     <p>Mais de duas décadas trabalhando com dados na América Latina. Hoje é Senior Customer Success Architect na BigID, no Rio de Janeiro. Conhecer onde o dado sensível está, classificá-lo, criar políticas de uso e proativamente gerenciar os processos é a fundação para uma governança de segurança preparada para os desafios da inteligência artificial.</p>
     <p>O Data Security Briefing é o arquivo dessa leitura. Vazamento, DSPM, governança e regulação LGPD/ANPD, com ênfase na região. Artigos resumidos no LinkedIn e, aqui, a versão completa com todas as referências e sugestões de ações relacionadas ao tema de cada artigo.</p>
     <p>Para abrir o site como aplicativo na tela inicial, o passo a passo está em <a href="/instalar">Instalar</a>.</p>
+    <p>Crítica, sugestão ou contribuição: <a href={mailHref}>dsb@duarte.top</a>.</p>
     <p><a href="https://www.linkedin.com/in/marceloduartebr" rel="me noopener noreferrer" target="_blank">LinkedIn — marceloduartebr</a></p>
   </article>
 </Base>
