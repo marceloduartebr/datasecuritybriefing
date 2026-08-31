@@ -3,6 +3,7 @@ title: "TheHatman: 3,64 milhões de registros Azure sem zero-day"
 description: "Password spray e fadiga de MFA. Empresas Fortune 500 citadas; parte delas classifica os dados como antigos ou pouco sensíveis."
 pubDate: 2026-08-26T08:42:00-03:00
 sourceName: "BleepingComputer"
+cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260826-azure-thehatman.jpg"
 sourceUrl: "https://www.bleepingcomputer.com/news/security/hacker-claims-36-million-azure-account-records-stolen-from-major-companies/"
 tags: ["vazamento", "azure", "identidade"]
 notionUrl: "https://www.notion.so/3c717411747381379cabce5730d4212e"
