@@ -184,5 +184,8 @@ article.prose th, article.prose td {
   max-width: 720px;
 }
 footer.site { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--faint); font-size: 13px; }
+footer.site p { margin: 0 0 8px; }
+footer.site p:last-child { margin: 0; }
+footer.site .copy { max-width: 46em; line-height: 1.5; }
 footer.site a { color: var(--muted); }
 footer.site a:hover { color: var(--text); }
