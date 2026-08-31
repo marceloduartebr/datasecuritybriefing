@@ -4,7 +4,7 @@ description: "A estatal que constrói os submarinos da Marinha teve e-mail, arqu
 pubDate: 2026-08-29T16:47:00-03:00
 sourceName: "Jornal Atual"
 sourceUrl: "https://jornalatual.com.br/ataque-cibernetico-icn"
-cover: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Submarino_Riachuelo_%28S40%29_%2852816921064%29_%28cropped%29.jpg/1280px-Submarino_Riachuelo_%28S40%29_%2852816921064%29_%28cropped%29.jpg"
+cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260829-icn-ransomware.jpg"
 tags: ["vazamento", "ransomware", "brasil", "infraestrutura-critica"]
 notionUrl: "https://www.notion.so/3c81741174738152a21be80d0628ec3d"
 ---
