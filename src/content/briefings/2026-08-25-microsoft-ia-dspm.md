@@ -3,6 +3,7 @@ title: "32% dos incidentes de dado em 2026 já envolvem IA generativa"
 description: "Microsoft Data Security Index: mais de 80% das organizações pesquisadas implementam ou desenham DSPM. A IA herda a permissão de quem a usa."
 pubDate: 2026-08-25T07:46:00-03:00
 sourceName: "Microsoft Security Blog"
+cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260825-microsoft-ia-dspm.jpg"
 sourceUrl: "https://www.microsoft.com/en-us/security/blog/2026/01/29/new-microsoft-data-security-index-report-explores-secure-ai-adoption-to-protect-sensitive-data/"
 tags: ["ia-regulacao", "dspm", "governanca"]
 notionUrl: "https://www.notion.so/3c717411747381b18dd5fecc9ca16564"
