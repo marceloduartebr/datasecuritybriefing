@@ -14,7 +14,6 @@ const pageTitle = title ? `${title} · Data Security Briefing` : 'Data Security 
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/favicon.svg" sizes="any" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,7 +24,13 @@ const pageTitle = title ? `${title} · Data Security Briefing` : 'Data Security 
     <div class="wrap">
       <header class="site">
         <a class="brand" href="/">
-          <img src="/favicon.svg" width="52" height="52" alt="" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="52" height="52" aria-hidden="true">
+            <rect width="32" height="32" rx="7" fill="#0b0e13"/>
+            <path d="M16 4.2L25.8 8v7.9c0 6.05-4.15 10.85-9.8 13.15C10.35 26.75 6.2 21.95 6.2 15.9V8Z" fill="none" stroke="#d4a054" stroke-width="1.65" stroke-linejoin="round"/>
+            <path d="M12.45 15.2v-2.55a3.55 3.55 0 0 1 7.1 0v2.55" fill="none" stroke="#d4a054" stroke-width="1.7" stroke-linecap="round"/>
+            <rect x="11.05" y="15.05" width="9.9" height="7.25" rx="1.4" fill="#d4a054"/>
+            <circle cx="16" cy="18.45" r="1.2" fill="#0b0e13"/>
+          </svg>
           <span>
             <strong class="brand-title">Data Security Briefing</strong>
             <small><em>por</em> Marcelo Duarte</small>
