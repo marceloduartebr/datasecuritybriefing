@@ -3,6 +3,7 @@ title: "ANPD monitora 22 plataformas — e pôs a IA na mesma lista das redes"
 description: "13 redes e apps de mensagem + 9 lojas e ferramentas de IA generativa. Dez dias úteis para responder. Marco Civil (decretos 12.975 e 12.976/2026) e ECA Digital."
 pubDate: 2026-08-28T10:00:00-03:00
 sourceName: "ANPD (gov.br)"
+cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260828-anpd-22-plataformas.jpg"
 sourceUrl: "https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-avalia-como-plataformas-digitais-atuam-para-prevenir-conteudos-criminosos-e-proteger-criancas-e-mulheres-na-internet"
 tags: ["anpd", "eca-digital", "ia-regulacao"]
 notionUrl: "https://www.notion.so/3c9174117473811dbc39d2ad5ab5335d"
