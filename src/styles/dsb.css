@@ -138,6 +138,18 @@ nav.site a:hover { color: var(--text); }
   color: var(--gold); border: 1px solid #3a2e1a; background: #3a2e1a;
   border-radius: 999px; padding: 3px 8px;
 }
+.tipo-pill {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 10px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.tipo-pill.incidente { background: #2a1818; color: #e0a3a3; }
+.tipo-pill.noticia { background: #3a2e1a; color: var(--gold); }
 article.prose { max-width: 720px; }
 article.prose p { line-height: 1.65; color: #d7dce6; }
 article.prose h2 { margin-top: 1.6em; }
