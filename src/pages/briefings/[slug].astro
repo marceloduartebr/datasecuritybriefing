@@ -12,10 +12,13 @@ const { Content } = await render(post);
 const fmt = post.data.pubDate.toLocaleDateString('pt-BR', {
   day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo',
 });
+const tipo = post.data.tipo === 'noticia' ? 'noticia' : 'incidente';
+const tipoLabel = tipo === 'noticia' ? 'Notícia' : 'Incidente';
 ---
 <Base title={post.data.title} description={post.data.description}>
   <article class="prose">
     <p class="eyebrow">Briefing · {fmt}</p>
+    <span class={`tipo-pill ${tipo}`}>{tipoLabel}</span>
     <h1>{post.data.title}</h1>
     <p class="muted">{post.data.description}</p>
     <div class="tags">

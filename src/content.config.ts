@@ -11,6 +11,7 @@ const briefings = defineCollection({
     sourceUrl: z.string().url(),
     cover: z.string().url(),
     tags: z.array(z.string()),
+    tipo: z.enum(['incidente', 'noticia']).default('incidente'),
     notionUrl: z.string().url().optional(),
   }),
 });
