@@ -13,7 +13,7 @@ notionUrl: "https://www.notion.so/3ca174117473815babfbc90f619db86d"
 
 ## O que aconteceu
 
-Em 25 de agosto de 2026 a Kaspersky publicou o raio-x de cibersegurança na educação: de janeiro de 2025 a junho de 2026, ransomware respondeu por 60% dos ciberataques a escolas e universidades privadas no Brasil. São Paulo concentrou 60% dos incidentes do levantamento; Rio de Janeiro e Pernambuco, 20% cada. Vetores mais citados: conta legítima com senha reutilizada ou compartilhada, sistema desatualizado exposto na internet, acesso interno indevido e programa de remoto mal usado. Contencão inicial em minutos ou poucas horas; investigação, forense e recuperação, em média, 9,6 horas. No recorte da empresa, rede pública aparece mais em escalada de privilégio e acesso interno; a privada, no ransomware com motivação financeira.
+Em 25 de agosto de 2026 a Kaspersky publicou o raio-x de cibersegurança na educação: de janeiro de 2025 a junho de 2026, ransomware respondeu por 60% dos ciberataques a escolas e universidades privadas no Brasil. São Paulo concentrou 60% dos incidentes do levantamento; Rio de Janeiro e Pernambuco, 20% cada. Vetores mais citados: conta legítima com senha reutilizada ou compartilhada, sistema desatualizado exposto na internet, acesso interno indevido e programa de remoto mal usado. Contenção inicial em minutos ou poucas horas; investigação, forense e recuperação, em média, 9,6 horas. No recorte da empresa, rede pública aparece mais em escalada de privilégio e acesso interno; a privada, no ransomware com motivação financeira.
 
 ## Por que importa
 
