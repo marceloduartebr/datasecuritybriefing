@@ -13,11 +13,14 @@ const index = posts.map((post) => {
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  const tipo = post.data.tipo === 'noticia' ? 'noticia' : 'incidente';
   return {
     id: post.id,
     title: post.data.title,
     description: post.data.description,
     tags: post.data.tags,
+    tipo,
+    tipoLabel: tipo === 'noticia' ? 'Notícia' : 'Incidente',
     href: `/briefings/${post.id}`,
     date: post.data.pubDate.toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -25,7 +28,7 @@ const index = posts.map((post) => {
       year: 'numeric',
       timeZone: 'America/Sao_Paulo',
     }),
-    text: `${post.data.title} ${post.data.description} ${post.data.tags.join(' ')} ${body}`,
+    text: `${post.data.title} ${post.data.description} ${tipo} ${post.data.tags.join(' ')} ${body}`,
   };
 });
 ---
@@ -73,6 +76,7 @@ const index = posts.map((post) => {
         <a class="card" href="${post.href}" style="text-decoration:none;color:inherit">
           <div class="card-copy">
             <p class="faint">${post.date}</p>
+            <span class="tipo-pill ${post.tipo}">${post.tipoLabel}</span>
             <h2 style="font-size:22px;margin:8px 0">${post.title}</h2>
             <p class="muted">${post.description}</p>
           </div>
