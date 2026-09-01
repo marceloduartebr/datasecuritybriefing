@@ -2,7 +2,7 @@
 import '../styles/dsb.css';
 const { title, description } = Astro.props;
 const pageTitle = title ? `${title} · Data Security Briefing` : 'Data Security Briefing';
-const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://datasecuritybriefing.marceloduarte-mail.workers.dev').href;
+const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://datasecuritybriefing.marceloduarte.workers.dev').href;
 ---
 <html lang="pt-BR">
   <head>
