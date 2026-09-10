@@ -3,7 +3,7 @@ title: "Ransomware em 60% dos ataques a escolas e universidades privadas"
 description: "Kaspersky, jan/2025–jun/2026. São Paulo concentra 60% dos casos; contenção em horas, forense em 9,6. O dado que mora na rede é de menor."
 pubDate: 2026-09-01T10:19:00-03:00
 sourceName: "Kaspersky"
-cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260828-kaspersky-educacao.jpg"
+cover: "https://covers.duarte.top/covers/20260828-kaspersky-educacao.jpg"
 sourceUrl: "https://www.kaspersky.com.br/about/press-releases/raio-x-da-ciberseguranca-na-educacao-ransomware-e-a-principal-ameaca-e-representa-60-dos-ataques-ao-setor"
 tags: ["ransomware", "educacao", "lgpd", "brasil"]
 notionUrl: "https://www.notion.so/3ca174117473815babfbc90f619db86d"
