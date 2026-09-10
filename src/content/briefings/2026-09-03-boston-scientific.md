@@ -4,7 +4,7 @@ description: "Fabricante de dispositivos médicos sofreu incidente que derrubou 
 pubDate: 2026-09-03T10:21:00-03:00
 sourceName: "Cybersecurity Dive / TechCrunch"
 sourceUrl: "https://www.cybersecuritydive.com/news/boston-scientific-cyberattack-disrupted-order-processing-shipping/828816/"
-cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260902-boston-scientific.jpg"
+cover: "https://covers.duarte.top/covers/20260902-boston-scientific.jpg"
 tipo: incidente
 tags: ["ataque", "saude", "dispositivos-medicos", "resposta-a-incidente", "visibilidade"]
 notionUrl: "https://www.notion.so/3c917411747381708609cc0f639364fd"

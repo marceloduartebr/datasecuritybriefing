@@ -4,7 +4,7 @@ description: "Na terceira edição da pesquisa de privacidade, a fatia de empres
 pubDate: 2026-09-02T18:24:00-03:00
 sourceName: "DCD / Cetic.br / CGI.br"
 sourceUrl: "https://www.datacenterdynamics.com/br/notícias/cgibr-lança-3ª-edição-da-pesquisa-sobre-privacidade-e-proteção-de-dados-pessoais-no-brasil/"
-cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260901-cetic-privacidade.jpg"
+cover: "https://covers.duarte.top/covers/20260901-cetic-privacidade.jpg"
 tipo: noticia
 tags: ["lgpd", "privacidade", "dpo", "cetic", "governanca"]
 notionUrl: "https://www.notion.so/3ce174117473812cb1b5ec541391ad8f"
