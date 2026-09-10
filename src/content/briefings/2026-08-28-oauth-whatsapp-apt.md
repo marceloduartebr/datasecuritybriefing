@@ -4,7 +4,7 @@ description: "GTIG aponta UNC6293 (ligado ao APT29), UNC7005 e UNC5976 usando lo
 pubDate: 2026-08-28T18:10:00-03:00
 sourceName: "The Hacker News / Google Threat Intelligence Group"
 sourceUrl: "https://thehackernews.com/2026/08/suspected-russian-hackers-abuse-google.html"
-cover: "https://raw.githubusercontent.com/marceloduartebr/dsb-covers/main/covers/20260828-oauth-whatsapp-apt.jpg"
+cover: "https://covers.duarte.top/covers/20260828-oauth-whatsapp-apt.jpg"
 tags: ["identidade", "oauth", "espionagem"]
 notionUrl: "https://www.notion.so/3c717411747381cfbde6e58e7b80cf55"
 ---
