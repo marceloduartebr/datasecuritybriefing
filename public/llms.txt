@@ -2,6 +2,6 @@
 
 > Briefings de vazamento, DSPM, governança de dados e regulação LGPD/ANPD na América Latina.
 
-Site: https://datasecuritybriefing.marceloduarte.workers.dev
+Site: https://dsb.duarte.top
 Autor: Marcelo Duarte (Rio de Janeiro)
-RSS: https://datasecuritybriefing.marceloduarte.workers.dev/rss.xml
+RSS: https://dsb.duarte.top/rss.xml
