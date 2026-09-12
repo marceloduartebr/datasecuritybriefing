@@ -150,15 +150,20 @@ nav.site a:hover { color: var(--text); }
 }
 .tipo-pill.incidente { background: #2a1818; color: #e0a3a3; }
 .tipo-pill.noticia { background: #3a2e1a; color: var(--gold); }
+/* Padrão da visão de briefing: Compartilhar à esquerda, pílula Incidente/Notícia à direita da coluna. */
 .meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
+  width: 100%;
   gap: 12px;
   margin: 0 0 10px;
 }
+.meta-row .share-copy { flex: 0 0 auto; }
 .meta-row .tipo-pill {
   margin: 0 0 0 auto;
+  flex: 0 0 auto;
 }
 article.prose { max-width: 720px; }
 article.prose p { line-height: 1.65; color: #d7dce6; }
