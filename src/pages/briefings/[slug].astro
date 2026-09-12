@@ -14,6 +14,7 @@ const fmt = post.data.pubDate.toLocaleDateString('pt-BR', {
 });
 const tipo = post.data.tipo === 'noticia' ? 'noticia' : 'incidente';
 const tipoLabel = tipo === 'noticia' ? 'Notícia' : 'Incidente';
+const shareUrl = new URL(`/briefings/${post.id}`, Astro.site ?? 'https://dsb.duarte.top').href;
 ---
 <Base title={post.data.title} description={post.data.description}>
   <article class="prose">
@@ -24,8 +25,38 @@ const tipoLabel = tipo === 'noticia' ? 'Notícia' : 'Incidente';
     <div class="tags">
       {post.data.tags.map((t) => <span class="tag">{t}</span>)}
     </div>
+    <div class="share-bar">
+      <button type="button" class="share-copy" data-share-url={shareUrl}>Compartilhar</button>
+    </div>
     <img class="cover" src={post.data.cover} alt="" />
     <Content />
     <p class="faint">Fonte: <a href={post.data.sourceUrl}>{post.data.sourceName}</a></p>
   </article>
+  <script is:inline>
+    document.querySelectorAll('.share-copy').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-share-url') || window.location.href;
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          const field = document.createElement('textarea');
+          field.value = url;
+          field.setAttribute('readonly', '');
+          field.style.position = 'fixed';
+          field.style.left = '-9999px';
+          document.body.appendChild(field);
+          field.select();
+          document.execCommand('copy');
+          field.remove();
+        }
+        const previous = btn.textContent;
+        btn.textContent = 'Link copiado';
+        btn.classList.add('is-copied');
+        window.setTimeout(() => {
+          btn.textContent = previous;
+          btn.classList.remove('is-copied');
+        }, 1800);
+      });
+    });
+  </script>
 </Base>

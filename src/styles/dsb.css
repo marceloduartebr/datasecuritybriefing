@@ -164,6 +164,25 @@ article.prose table { width: 100%; border-collapse: collapse; font-size: 14px; }
 article.prose th, article.prose td {
   border: 1px solid var(--border); padding: 8px 10px; text-align: left;
 }
+.share-bar { margin: 4px 0 16px; }
+.share-copy {
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--gold);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+.share-copy:hover { border-color: var(--gold); }
+.share-copy.is-copied {
+  color: var(--text);
+  border-color: #3a2e1a;
+}
 .cover {
   display: block;
   width: 100%;
