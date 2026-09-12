@@ -38,6 +38,14 @@ const index = posts.map((post) => {
   <form class="search" id="search-form" action="/busca" method="get" role="search">
     <label class="faint" for="q">Título e conteúdo</label>
     <input id="q" name="q" type="search" placeholder="ANPD, ransomware, menor…" autocomplete="off" />
+    <fieldset class="scope-filter" id="scope-filter">
+      <legend class="faint">Escopo</legend>
+      <div class="scope-options" role="radiogroup" aria-label="Escopo">
+        <button type="button" class="scope-btn is-active" data-scope="todos" aria-pressed="true">Todos</button>
+        <button type="button" class="scope-btn" data-scope="incidente" aria-pressed="false">Incidentes</button>
+        <button type="button" class="scope-btn" data-scope="noticia" aria-pressed="false">Notícias</button>
+      </div>
+    </fieldset>
   </form>
   <p class="faint" id="search-status"></p>
   <div id="search-results" class="search-results"></div>
@@ -49,27 +57,58 @@ const index = posts.map((post) => {
   const status = document.getElementById('search-status');
   const results = document.getElementById('search-results');
   const form = document.getElementById('search-form');
+  const scopeBtns = [...document.querySelectorAll('.scope-btn')];
+  const allowed = new Set(['todos', 'incidente', 'noticia']);
 
-  function run(raw) {
-    const q = fold(raw || '').trim();
-    const terms = q.split(/\s+/).filter(Boolean);
-    const hits = !terms.length
-      ? []
-      : index.filter((post) => {
-          const hay = fold(post.text);
-          return terms.every((t) => hay.includes(t));
-        });
+  const readScope = () => {
+    const raw = new URLSearchParams(location.search).get('tipo') || 'todos';
+    return allowed.has(raw) ? raw : 'todos';
+  };
 
-    if (!q) {
-      status.textContent = 'Digite um termo. A busca cobre título, tags e o texto do briefing.';
-      results.innerHTML = '';
-      return;
+  let scope = readScope();
+
+  const syncScopeUi = () => {
+    scopeBtns.forEach((btn) => {
+      const on = btn.getAttribute('data-scope') === scope;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+  };
+
+  const writeUrl = (q, tipo) => {
+    const url = new URL(location.href);
+    if (q) url.searchParams.set('q', q);
+    else url.searchParams.delete('q');
+    if (tipo && tipo !== 'todos') url.searchParams.set('tipo', tipo);
+    else url.searchParams.delete('tipo');
+    history.replaceState(null, '', url);
+  };
+
+  const labelHits = (n, tipo, hasQuery) => {
+    if (!n) {
+      if (hasQuery && tipo === 'incidente') return 'Nenhum incidente com esse termo.';
+      if (hasQuery && tipo === 'noticia') return 'Nenhuma notícia com esse termo.';
+      if (hasQuery) return 'Nenhum briefing com esse termo.';
+      if (tipo === 'incidente') return 'Nenhum incidente publicado.';
+      if (tipo === 'noticia') return 'Nenhuma notícia publicada.';
+      return 'Nenhum briefing publicado.';
     }
+    if (tipo === 'incidente') return `${n} incidente${n === 1 ? '' : 's'}`;
+    if (tipo === 'noticia') return `${n} notícia${n === 1 ? '' : 's'}`;
+    return `${n} briefing${n === 1 ? '' : 's'}`;
+  };
 
-    status.textContent = hits.length
-      ? `${hits.length} briefing${hits.length === 1 ? '' : 's'}`
-      : 'Nenhum briefing com esse termo.';
+  function run() {
+    const q = fold(input.value || '').trim();
+    const terms = q.split(/\s+/).filter(Boolean);
+    const hits = index.filter((post) => {
+      if (scope !== 'todos' && post.tipo !== scope) return false;
+      if (!terms.length) return true;
+      const hay = fold(post.text);
+      return terms.every((t) => hay.includes(t));
+    });
 
+    status.textContent = labelHits(hits.length, scope, Boolean(terms.length));
     results.innerHTML = hits
       .map(
         (post) => `
@@ -87,20 +126,28 @@ const index = posts.map((post) => {
       .join('');
   }
 
-  const initial = new URLSearchParams(location.search).get('q') || '';
-  input.value = initial;
-  run(initial);
+  const params = new URLSearchParams(location.search);
+  input.value = params.get('q') || '';
+  scope = readScope();
+  syncScopeUi();
+  run();
+
   input.addEventListener('input', () => {
-    const q = input.value;
-    const url = new URL(location.href);
-    if (q) url.searchParams.set('q', q);
-    else url.searchParams.delete('q');
-    history.replaceState(null, '', url);
-    run(q);
+    writeUrl(input.value, scope);
+    run();
   });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    run(input.value);
+    writeUrl(input.value, scope);
+    run();
+  });
+  scopeBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      scope = btn.getAttribute('data-scope') || 'todos';
+      syncScopeUi();
+      writeUrl(input.value, scope);
+      run();
+    });
   });
   input.focus();
 </script>
