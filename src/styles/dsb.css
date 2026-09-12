@@ -141,7 +141,7 @@ nav.site a:hover { color: var(--text); }
 .tipo-pill {
   display: inline-flex;
   align-items: center;
-  margin: 0 0 10px;
+  margin: 0;
   border-radius: 999px;
   padding: 3px 9px;
   font-size: 11px;
@@ -150,7 +150,7 @@ nav.site a:hover { color: var(--text); }
 }
 .tipo-pill.incidente { background: #2a1818; color: #e0a3a3; }
 .tipo-pill.noticia { background: #3a2e1a; color: var(--gold); }
-/* Padrão da visão de briefing: Compartilhar à esquerda, pílula Incidente/Notícia à direita da coluna. */
+/* Identidade: pílula Incidente/Notícia sempre à direita (home, cards, busca, briefing). */
 .meta-row {
   display: flex;
   align-items: center;
@@ -159,6 +159,11 @@ nav.site a:hover { color: var(--text); }
   width: 100%;
   gap: 12px;
   margin: 0 0 10px;
+}
+.meta-row > p,
+.meta-row > .eyebrow,
+.meta-row > .faint {
+  margin: 0;
 }
 .meta-row .share-copy { flex: 0 0 auto; }
 .meta-row .tipo-pill {
