@@ -153,11 +153,13 @@ nav.site a:hover { color: var(--text); }
 .meta-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 10px;
 }
-.meta-row .tipo-pill { margin: 0; }
+.meta-row .tipo-pill {
+  margin: 0 0 0 auto;
+}
 article.prose { max-width: 720px; }
 article.prose p { line-height: 1.65; color: #d7dce6; }
 article.prose h2 { margin-top: 1.6em; }
@@ -174,13 +176,13 @@ article.prose th, article.prose td {
 }
 .share-copy {
   margin: 0;
-  padding: 3px 9px;
+  padding: 8px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--card);
   color: var(--gold);
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: .04em;
   line-height: 1.2;
