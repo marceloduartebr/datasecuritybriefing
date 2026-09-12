@@ -19,14 +19,14 @@ const shareUrl = new URL(`/briefings/${post.id}`, Astro.site ?? 'https://dsb.dua
 <Base title={post.data.title} description={post.data.description}>
   <article class="prose">
     <p class="eyebrow">Briefing · {fmt}</p>
-    <span class={`tipo-pill ${tipo}`}>{tipoLabel}</span>
+    <div class="meta-row">
+      <span class={`tipo-pill ${tipo}`}>{tipoLabel}</span>
+      <button type="button" class="share-copy" data-share-url={shareUrl}>Compartilhar</button>
+    </div>
     <h1>{post.data.title}</h1>
     <p class="muted">{post.data.description}</p>
     <div class="tags">
       {post.data.tags.map((t) => <span class="tag">{t}</span>)}
-    </div>
-    <div class="share-bar">
-      <button type="button" class="share-copy" data-share-url={shareUrl}>Compartilhar</button>
     </div>
     <img class="cover" src={post.data.cover} alt="" />
     <Content />
