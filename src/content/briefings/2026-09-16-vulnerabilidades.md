@@ -31,7 +31,7 @@ Vulnerabilidade sem nexo com dado, identidade, terceiro ou obrigação regulató
 
 | Mesa | Entra quando | Não entra |
 |---|---|---|
-| Incidente | Há vítima, vetor ou dado em aberto, com fonte verificável | Rumor de leak site sem fato além da alegacao |
+| Incidente | Há vítima, vetor ou dado em aberto, com fonte verificável | Rumor de leak site sem fato além da alegação |
 | Notícia | Regulação, pesquisa ou governança com número ou obrigação nova | Relatório evergreen já usado no arquivo |
 | Vulnerabilidades | Falha pública, produto identificável, janela de remediação ainda aberta | CVE genérico sem nexo com dado, stack ou LATAM |
 
