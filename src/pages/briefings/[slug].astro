@@ -12,8 +12,10 @@ const { Content } = await render(post);
 const fmt = post.data.pubDate.toLocaleDateString('pt-BR', {
   day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo',
 });
-const tipo = post.data.tipo === 'noticia' ? 'noticia' : 'incidente';
-const tipoLabel = tipo === 'noticia' ? 'Notícia' : 'Incidente';
+const tipo = ['noticia', 'incidente', 'vulnerabilidades'].includes(post.data.tipo)
+  ? post.data.tipo
+  : 'incidente';
+const tipoLabel = ({ noticia: 'Notícia', incidente: 'Incidente', vulnerabilidades: 'Vulnerabilidades' })[tipo] || 'Incidente';
 const shareUrl = new URL(`/briefings/${post.id}`, Astro.site ?? 'https://dsb.duarte.top').href;
 ---
 <Base title={post.data.title} description={post.data.description}>

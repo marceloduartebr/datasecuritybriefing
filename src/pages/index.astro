@@ -7,7 +7,7 @@ const posts = (await getCollection('briefings')).sort(
 );
 const [featured, ...rest] = posts;
 const fmt = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Sao_Paulo' });
-const tipoLabel = (t) => t === 'noticia' ? 'Notícia' : 'Incidente';
+const tipoLabel = (t) => ({ noticia: 'Notícia', incidente: 'Incidente', vulnerabilidades: 'Vulnerabilidades' }[t] || 'Incidente');
 ---
 <Base description="Briefings de vazamentos, DSPM, governança e regulação LGPD/ANPD na América Latina.">
   {featured ? (
@@ -15,7 +15,7 @@ const tipoLabel = (t) => t === 'noticia' ? 'Notícia' : 'Incidente';
       <div class="hero-copy">
         <div class="meta-row">
           <p class="eyebrow">Briefing · {fmt(featured.data.pubDate)}</p>
-          <span class={`tipo-pill ${featured.data.tipo === 'noticia' ? 'noticia' : 'incidente'}`}>{tipoLabel(featured.data.tipo)}</span>
+          <span class={`tipo-pill ${featured.data.tipo}`}>{tipoLabel(featured.data.tipo)}</span>
         </div>
         <h1>{featured.data.title}</h1>
         <p class="muted">{featured.data.description}</p>
@@ -38,7 +38,7 @@ const tipoLabel = (t) => t === 'noticia' ? 'Notícia' : 'Incidente';
             <div class="card-copy">
               <div class="meta-row">
                 <p class="faint">{fmt(post.data.pubDate)}</p>
-                <span class={`tipo-pill ${post.data.tipo === 'noticia' ? 'noticia' : 'incidente'}`}>{tipoLabel(post.data.tipo)}</span>
+                <span class={`tipo-pill ${post.data.tipo}`}>{tipoLabel(post.data.tipo)}</span>
               </div>
               <h2 style="font-size:22px;margin:8px 0">{post.data.title}</h2>
               <p class="muted">{post.data.description}</p>
