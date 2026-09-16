@@ -13,14 +13,17 @@ const index = posts.map((post) => {
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const tipo = post.data.tipo === 'noticia' ? 'noticia' : 'incidente';
+  const tipo = ['noticia', 'incidente', 'vulnerabilidades'].includes(post.data.tipo)
+    ? post.data.tipo
+    : 'incidente';
+  const labels = { noticia: 'Notícia', incidente: 'Incidente', vulnerabilidades: 'Vulnerabilidades' };
   return {
     id: post.id,
     title: post.data.title,
     description: post.data.description,
     tags: post.data.tags,
     tipo,
-    tipoLabel: tipo === 'noticia' ? 'Notícia' : 'Incidente',
+    tipoLabel: labels[tipo] || 'Incidente',
     href: `/briefings/${post.id}`,
     date: post.data.pubDate.toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -44,6 +47,7 @@ const index = posts.map((post) => {
         <button type="button" class="scope-btn is-active" data-scope="todos" aria-pressed="true">Todos</button>
         <button type="button" class="scope-btn" data-scope="incidente" aria-pressed="false">Incidentes</button>
         <button type="button" class="scope-btn" data-scope="noticia" aria-pressed="false">Notícias</button>
+        <button type="button" class="scope-btn" data-scope="vulnerabilidades" aria-pressed="false">Vulnerabilidades</button>
       </div>
     </fieldset>
   </form>
@@ -58,7 +62,7 @@ const index = posts.map((post) => {
   const results = document.getElementById('search-results');
   const form = document.getElementById('search-form');
   const scopeBtns = [...document.querySelectorAll('.scope-btn')];
-  const allowed = new Set(['todos', 'incidente', 'noticia']);
+  const allowed = new Set(['todos', 'incidente', 'noticia', 'vulnerabilidades']);
 
   const readScope = () => {
     const raw = new URLSearchParams(location.search).get('tipo') || 'todos';
@@ -88,13 +92,16 @@ const index = posts.map((post) => {
     if (!n) {
       if (hasQuery && tipo === 'incidente') return 'Nenhum incidente com esse termo.';
       if (hasQuery && tipo === 'noticia') return 'Nenhuma notícia com esse termo.';
+      if (hasQuery && tipo === 'vulnerabilidades') return 'Nenhuma vulnerabilidade com esse termo.';
       if (hasQuery) return 'Nenhum briefing com esse termo.';
       if (tipo === 'incidente') return 'Nenhum incidente publicado.';
       if (tipo === 'noticia') return 'Nenhuma notícia publicada.';
+      if (tipo === 'vulnerabilidades') return 'Nenhuma vulnerabilidade publicada.';
       return 'Nenhum briefing publicado.';
     }
     if (tipo === 'incidente') return `${n} incidente${n === 1 ? '' : 's'}`;
     if (tipo === 'noticia') return `${n} notícia${n === 1 ? '' : 's'}`;
+    if (tipo === 'vulnerabilidades') return `${n} vulnerabilidade${n === 1 ? '' : 's'}`;
     return `${n} briefing${n === 1 ? '' : 's'}`;
   };
 
