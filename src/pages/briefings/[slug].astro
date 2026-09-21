@@ -1,63 +1,12 @@
 ---
-import Base from '../../layouts/Base.astro';
-import { getCollection, render } from 'astro:content';
-import { localeDate, t, tipoLabel } from '../../i18n/ui';
-import { briefingPath } from '../../i18n/urls';
+import BriefingArticle from '../../components/BriefingArticle.astro';
+import { listBriefings } from '../../i18n/posts';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('briefings');
-  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+  const posts = await listBriefings('pt');
+  return posts.map((view) => ({ params: { slug: view.id }, props: { view } }));
 }
 
-const locale = 'pt';
-const copy = t(locale);
-const { post } = Astro.props;
-const { Content } = await render(post);
-const fmt = post.data.pubDate.toLocaleDateString(localeDate[locale], {
-  day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo',
-});
-const shareUrl = new URL(briefingPath(locale, post.id), Astro.site ?? 'https://dsb.duarte.top').href;
+const { view } = Astro.props;
 ---
-<Base title={post.data.title} description={post.data.description} locale={locale} path={`/briefings/${post.id}`}>
-  <article class="prose">
-    <p class="eyebrow">Briefing · {fmt}</p>
-    <div class="meta-row">
-      <button type="button" class="share-copy" data-share-url={shareUrl}>{copy.share}</button>
-      <span class={`tipo-pill ${post.data.tipo}`}>{tipoLabel(locale, post.data.tipo)}</span>
-    </div>
-    <h1>{post.data.title}</h1>
-    <p class="muted">{post.data.description}</p>
-    <div class="tags">
-      {post.data.tags.map((tag) => <span class="tag">{tag}</span>)}
-    </div>
-    <img class="cover" src={post.data.cover} alt="" />
-    <Content />
-    <p class="faint">{copy.source}: <a href={post.data.sourceUrl}>{post.data.sourceName}</a></p>
-  </article>
-  <script is:inline define:vars={{ copied: copy.shareCopied, share: copy.share }}>
-    document.querySelectorAll('.share-copy').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const url = btn.getAttribute('data-share-url') || window.location.href;
-        try {
-          await navigator.clipboard.writeText(url);
-        } catch {
-          const field = document.createElement('textarea');
-          field.value = url;
-          field.setAttribute('readonly', '');
-          field.style.position = 'fixed';
-          field.style.left = '-9999px';
-          document.body.appendChild(field);
-          field.select();
-          document.execCommand('copy');
-          field.remove();
-        }
-        btn.textContent = copied;
-        btn.classList.add('is-copied');
-        window.setTimeout(() => {
-          btn.textContent = share;
-          btn.classList.remove('is-copied');
-        }, 1800);
-      });
-    });
-  </script>
-</Base>
+<BriefingArticle locale="pt" view={view} />
