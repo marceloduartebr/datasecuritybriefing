@@ -138,7 +138,8 @@ nav.site a:hover { color: var(--text); }
   color: var(--gold); border: 1px solid #3a2e1a; background: #3a2e1a;
   border-radius: 999px; padding: 3px 8px;
 }
-.tipo-pill {
+.tipo-pill,
+.pais-pill {
   display: inline-flex;
   align-items: center;
   margin: 0;
@@ -151,6 +152,19 @@ nav.site a:hover { color: var(--text); }
 .tipo-pill.incidente { background: #2a1818; color: #e0a3a3; }
 .tipo-pill.noticia { background: #3a2e1a; color: var(--gold); }
 .tipo-pill.vulnerabilidades { background: #2a2218; color: #e8a86a; }
+.pais-pill {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  letter-spacing: .08em;
+}
+.pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  flex: 0 0 auto;
+}
 .meta-row {
   display: flex;
   align-items: center;
@@ -166,6 +180,7 @@ nav.site a:hover { color: var(--text); }
   margin: 0;
 }
 .meta-row .share-copy { flex: 0 0 auto; }
+.meta-row .pills,
 .meta-row .tipo-pill {
   margin: 0 0 0 auto;
   flex: 0 0 auto;
