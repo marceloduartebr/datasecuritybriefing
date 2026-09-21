@@ -5,6 +5,7 @@ pubDate: 2026-09-04T10:02:00-03:00
 sourceName: "Cybernews"
 sourceUrl: "https://cybernews.com/privacy/claritycheck-leak-are-you-indexed/"
 cover: "https://covers.duarte.top/covers/20260902-claritycheck-biometricos.jpg"
+pais: us
 tipo: incidente
 tags: ["vazamento", "biometricos", "privacidade", "dspm", "criancas"]
 notionUrl: "https://www.notion.so/3c717411747381fa8667c20124b12d57"

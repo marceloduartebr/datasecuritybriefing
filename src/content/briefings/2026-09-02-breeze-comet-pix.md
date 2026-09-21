@@ -5,6 +5,7 @@ pubDate: 2026-09-02T10:12:00-03:00
 sourceName: "Google Cloud / GTIG / Mandiant"
 sourceUrl: "https://cloud.google.com/blog/topics/threat-intelligence/financially-motivated-threat-actor-breeze-comet-targets-brazil/"
 cover: "https://covers.duarte.top/covers/20260901-breeze-comet-pix.jpg"
+pais: br
 tipo: incidente
 tags: ["fraude", "pix", "brasil", "identidade", "dspm"]
 notionUrl: "https://www.notion.so/3ce17411747381db8b17d6e852ed4972"

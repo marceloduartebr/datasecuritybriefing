@@ -5,6 +5,7 @@ pubDate: 2026-09-03T10:45:00-03:00
 sourceName: "Agência Brasil / ANPD"
 sourceUrl: "https://agenciabrasil.ebc.com.br/geral/noticia/2026-09/anpd-recebe-contribuicoes-para-agenda-regulatoria-2027-2028"
 cover: "https://covers.duarte.top/covers/20260903-anpd-agenda-regulatoria.jpg"
+pais: br
 tipo: noticia
 tags: ["anpd", "lgpd", "regulacao", "eca-digital", "ia"]
 notionUrl: "https://www.notion.so/3d0174117473816197d9c7d3ef07cf28"

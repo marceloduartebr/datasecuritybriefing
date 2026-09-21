@@ -5,6 +5,7 @@ pubDate: 2026-09-10T10:30:00-03:00
 sourceName: "O Tempo / O Globo"
 sourceUrl: "https://www.otempo.com.br/tecnologia-e-games/2026/9/8/trend-dos-anos-80-veja-como-criar-as-fotos-com-inteligencia-artificial"
 cover: "https://covers.duarte.top/covers/20260908-trend-anos-80-ia.jpg"
+pais: br
 tipo: noticia
 tags: ["ia-generativa", "lgpd", "privacidade", "anpd"]
 notionUrl: "https://www.notion.so/3d517411747381708fa8f79630f136a3"
