@@ -18,7 +18,7 @@ El martes (1/09/2026), Google Threat Intelligence Group y Mandiant describieron 
 
 El recorte no es el padrón del titular. Son organizaciones con permiso de transaccionar: Pix, STR y boleto. En al menos un caso el grupo llegó a la Red Nacional del Sistema Financiero y, en 24 a 48 horas, disparó dos oleadas con cientos de órdenes fraudulentas. Google confirma al menos un golpe en la casa de las decenas de miles de dólares.
 
-El camino público rara vez empieza en el malware. Empieza en ingeniería social (llamada haciéndose pasar por soporte de TI), sitio comprometido sirviendo instalador o acceso remoto “para resolver un ticket”. Solo después entra el kit propio y la búsqueda en el directorio por términos de remesa, CNAB y webhook de Pix. Un modelo de lenguaje acelera el guion; no inventa el golpe.
+El camino público rara vez empieza en el malware. Empieza en ingeniería social (llamada haciéndose pasar por soporte de TI), sitio comprometido sirviendo instalador o acceso remoto “para resolver un ticket”. Solo después entra el kit propio y la búsqueda en el directorio por términos de remesa, CNAB y webhook de Pix. Un modelo de lenguaje acelera el guión; no inventa el golpe.
 
 ## Por qué importa
 
@@ -32,7 +32,7 @@ El inventario de titular no sustituye el inventario de quién — humano o máqu
 |---|---|---|
 | Acceso inicial por ingeniería social / remoto | Descrito por GTIG/Mandiant | Alta |
 | Emisión de Pix/STR/boleto desde identidad interna | Confirmado en al menos un caso (RNSF, dos oleadas) | Alta |
-| Uso de LLM en el guion del golpe | Citado como acelerador, no como origen | Media |
+| Uso de LLM en el guión del golpe | Citado como acelerador, no como origen | Media |
 
 ## Qué hacer esta semana
 
