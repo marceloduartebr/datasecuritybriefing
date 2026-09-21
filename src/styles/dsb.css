@@ -151,7 +151,6 @@ nav.site a:hover { color: var(--text); }
 .tipo-pill.incidente { background: #2a1818; color: #e0a3a3; }
 .tipo-pill.noticia { background: #3a2e1a; color: var(--gold); }
 .tipo-pill.vulnerabilidades { background: #2a2218; color: #e8a86a; }
-/* Identidade: pílula Incidente/Notícia/Vulnerabilidades sempre à direita (home, cards, busca, briefing). */
 .meta-row {
   display: flex;
   align-items: center;
@@ -273,3 +272,26 @@ footer.site p:last-child { margin: 0; }
 footer.site .copy { max-width: 46em; line-height: 1.5; }
 footer.site a { color: var(--muted); }
 footer.site a:hover { color: var(--text); }
+.lang {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+.lang a { color: var(--muted); text-decoration: none; }
+.lang a:hover { color: var(--text); text-decoration: none; }
+.lang a.is-active { color: var(--gold); }
+.lang .sep { color: var(--faint); font-weight: 400; }
+.fallback-note {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #151a22;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
