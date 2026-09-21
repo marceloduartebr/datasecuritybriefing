@@ -1,7 +1,8 @@
 ---
 import { render } from 'astro:content';
 import Base from '../layouts/Base.astro';
-import { localeDate, t, tipoLabel, type Locale } from '../i18n/ui';
+import Pills from './Pills.astro';
+import { localeDate, t, type Locale } from '../i18n/ui';
 import { briefingPath } from '../i18n/urls';
 import type { BriefingView } from '../i18n/posts';
 
@@ -23,7 +24,7 @@ const shareUrl = new URL(briefingPath(locale, view.id), Astro.site ?? 'https://d
     <p class="eyebrow">Briefing · {fmt}</p>
     <div class="meta-row">
       <button type="button" class="share-copy" data-share-url={shareUrl}>{copy.share}</button>
-      <span class={`tipo-pill ${view.data.tipo}`}>{tipoLabel(locale, view.data.tipo)}</span>
+      <Pills locale={locale} tipo={view.data.tipo} pais={view.data.pais} />
     </div>
     <h1>{view.data.title}</h1>
     <p class="muted">{view.data.description}</p>
