@@ -5,6 +5,7 @@ pubDate: 2026-09-21T10:54:00-03:00
 sourceName: "CISA KEV"
 sourceUrl: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
 cover: "https://covers.duarte.top/covers/20260916-vuln-voip.jpg"
+pais: br
 tipo: vulnerabilidades
 tags: ["kev", "issabel", "sangoma", "voip", "brasil", "jwt"]
 notionUrl: "https://www.notion.so/3dd174117473814a9e3efc17a3cc4fe4"

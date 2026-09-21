@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260831-anpd-362-incidentes.jpg"
 sourceUrl: "https://www.bemparana.com.br/noticias/economia/associacao-recebeu-quase-uma-comunicacao-de-incidente-por-dia-em-2025-e-amplia-pressao-por-protecao-de-dados/"
 tags: ["anpd", "lgpd", "incidente", "governanca"]
 notionUrl: "https://www.notion.so/3cc17411747381969d35d1246a9b69bf"
+pais: br
 ---
 
 **Em uma linha:** o número que sobe é o de comunicações; o que falta é inventário.

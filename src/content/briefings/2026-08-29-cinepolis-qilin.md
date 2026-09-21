@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260829-cinepolis-qilin.jpg"
 sourceUrl: "https://ransomware.live/id/Q2luw6lwb2xpc0BxaWxpbg=="
 tags: ["vazamento", "ransomware", "terceiros", "latam"]
 notionUrl: "https://www.notion.so/3c8174117473815bb187ea78e4ca27d6"
+pais: mx
 ---
 
 **Em uma linha:** o número que pesa é o de terceiro, não o de funcionário.

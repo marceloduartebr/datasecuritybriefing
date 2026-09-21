@@ -5,6 +5,7 @@ pubDate: 2026-09-16T10:21:00-03:00
 sourceName: "Oracle CPU / FIRST EPSS"
 sourceUrl: "https://www.oracle.com/security-alerts/"
 cover: "https://covers.duarte.top/covers/20260916-vuln-patch.jpg"
+pais: us
 tipo: vulnerabilidades
 tags: ["oracle", "cpu", "starlette", "epss", "cvss", "priorizacao"]
 notionUrl: "https://www.notion.so/3dd17411747381f98cd5f5c14dc0f4a9"

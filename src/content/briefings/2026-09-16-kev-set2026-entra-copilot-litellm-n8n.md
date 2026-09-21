@@ -5,6 +5,7 @@ pubDate: 2026-09-16T10:22:00-03:00
 sourceName: "CISA KEV"
 sourceUrl: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
 cover: "https://covers.duarte.top/covers/20260916-vuln-identidade-ia.jpg"
+pais: us
 tipo: vulnerabilidades
 tags: ["kev", "entra", "copilot", "litellm", "n8n", "identidade", "ia"]
 notionUrl: "https://www.notion.so/3dd17411747381e8ad03fde557d7eed6"

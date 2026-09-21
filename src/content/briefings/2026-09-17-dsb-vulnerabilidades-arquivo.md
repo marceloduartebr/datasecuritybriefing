@@ -5,6 +5,7 @@ pubDate: 2026-09-17T10:17:00-03:00
 sourceName: "Data Security Briefing"
 sourceUrl: "https://dsb.duarte.top/sobre"
 cover: "https://covers.duarte.top/covers/20260908-dsb-blog-convite.jpg"
+pais: latam
 tipo: noticia
 tags: ["vulnerabilidades", "governanca", "dspm", "seguranca"]
 notionUrl: "https://www.notion.so/3dd17411747381099005fe4d664c02c0"
