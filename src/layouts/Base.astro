@@ -1,10 +1,24 @@
 ---
 import '../styles/dsb.css';
-const { title, description } = Astro.props;
+import { defaultLocale, localeHtml, localeLabel, locales, t, type Locale } from '../i18n/ui';
+import { alternates, localizePath } from '../i18n/urls';
+
+type Props = {
+  title?: string;
+  description?: string;
+  locale?: Locale;
+  path?: string;
+};
+
+const { title, description, locale = defaultLocale, path = '/' } = Astro.props;
+const copy = t(locale);
 const pageTitle = title ? `${title} · Data Security Briefing` : 'Data Security Briefing';
-const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://dsb.duarte.top').href;
+const feedPath = localizePath(locale, '/rss.xml');
+const feedUrl = new URL(feedPath, Astro.site ?? 'https://dsb.duarte.top').href;
+const hrefLang = alternates(path);
+const htmlLang = localeHtml[locale];
 ---
-<html lang="pt-BR">
+<html lang={htmlLang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -24,11 +38,15 @@ const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://dsb.duarte.top').href
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet" />
     <link rel="alternate" type="application/rss+xml" title="Data Security Briefing" href={feedUrl} />
+    <link rel="alternate" hreflang="pt-BR" href={hrefLang.pt} />
+    <link rel="alternate" hreflang="es" href={hrefLang.es} />
+    <link rel="alternate" hreflang="en" href={hrefLang.en} />
+    <link rel="alternate" hreflang="x-default" href={hrefLang.pt} />
   </head>
   <body>
     <div class="wrap">
       <header class="site">
-        <a class="brand" href="/">
+        <a class="brand" href={localizePath(locale, '/')}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="52" height="52" aria-hidden="true">
             <rect width="32" height="32" rx="7" fill="#0b0e13"/>
             <path d="M16 4.2L25.8 8v7.9c0 6.05-4.15 10.85-9.8 13.15C10.35 26.75 6.2 21.95 6.2 15.9V8Z" fill="none" stroke="#d4a054" stroke-width="1.65" stroke-linejoin="round"/>
@@ -38,31 +56,44 @@ const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://dsb.duarte.top').href
           </svg>
           <span>
             <strong class="brand-title">Data Security Briefing</strong>
-            <small><em>por</em> Marcelo Duarte</small>
+            <small><em>{copy.brandBy}</em> Marcelo Duarte</small>
           </span>
         </a>
         <nav class="site">
-          <a href="/">Briefings</a>
-          <a href="/busca">Busca</a>
-          <a href="/sobre">Sobre</a>
-          <a href="/instalar">Instalar</a>
+          <a href={localizePath(locale, '/')}>{copy.navBriefings}</a>
+          <a href={localizePath(locale, '/busca')}>{copy.navSearch}</a>
+          <a href={localizePath(locale, '/sobre')}>{copy.navAbout}</a>
+          <a href={localizePath(locale, '/instalar')}>{copy.navInstall}</a>
           <div class="rss">
-            <button type="button" class="rss-toggle" aria-expanded="false" aria-controls="rss-panel">RSS</button>
+            <button type="button" class="rss-toggle" aria-expanded="false" aria-controls="rss-panel">{copy.rss}</button>
             <div id="rss-panel" class="rss-panel" hidden>
-              <p class="rss-hint">Para o agregador</p>
-              <button type="button" class="rss-copy" data-feed={feedUrl}>Copiar endereço do feed</button>
-              <a class="rss-download" href="/rss.xml" download="datasecuritybriefing.xml">Baixar arquivo RSS</a>
+              <p class="rss-hint">{copy.rssHint}</p>
+              <button type="button" class="rss-copy" data-feed={feedUrl}>{copy.rssCopy}</button>
+              <a class="rss-download" href={feedPath} download="datasecuritybriefing.xml">{copy.rssDownload}</a>
             </div>
           </div>
+          <nav class="lang" aria-label="Language">
+            {locales.map((item, i) => (
+              <>
+                {i > 0 && <span class="sep" aria-hidden="true">·</span>}
+                <a
+                  href={item === 'pt' ? (path === '/' ? '/' : path) : `/${item}${path === '/' ? '' : path}`}
+                  class={item === locale ? 'is-active' : undefined}
+                  aria-current={item === locale ? 'true' : undefined}
+                  data-locale={item}
+                >{localeLabel[item]}</a>
+              </>
+            ))}
+          </nav>
         </nav>
       </header>
       <slot />
       <footer class="site">
-        <p>Marcelo Duarte · DSPM, governança e LGPD na América Latina · <a href="/instalar">Instalar o app</a></p>
-        <p class="copy">© 2026 Marcelo Duarte. Texto e análise deste site. Fontes jornalísticas e capas de terceiros permanecem de seus autores. Reprodução com atribuição e link para o briefing.</p>
+        <p>{copy.footerLine} <a href={localizePath(locale, '/instalar')}>{copy.footerInstall}</a></p>
+        <p class="copy">{copy.copy}</p>
       </footer>
     </div>
-    <script is:inline define:vars={{ feedUrl }}>
+    <script is:inline define:vars={{ feedUrl, copiedLabel: copy.rssCopied, defaultCopy: copy.rssCopy }}>
       const root = document.querySelector('.rss');
       if (root) {
         const toggle = root.querySelector('.rss-toggle');
@@ -99,11 +130,15 @@ const feedUrl = new URL('/rss.xml', Astro.site ?? 'https://dsb.duarte.top').href
             document.execCommand('copy');
             field.remove();
           }
-          const previous = copyBtn.textContent;
-          copyBtn.textContent = 'Endereço copiado';
-          window.setTimeout(() => { copyBtn.textContent = previous; }, 1800);
+          copyBtn.textContent = copiedLabel;
+          window.setTimeout(() => { copyBtn.textContent = defaultCopy; }, 1800);
         });
       }
+      document.querySelectorAll('.lang a[data-locale]').forEach((link) => {
+        link.addEventListener('click', () => {
+          try { localStorage.setItem('dsb-lang', link.getAttribute('data-locale') || 'pt'); } catch {}
+        });
+      });
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').catch(() => {});

@@ -1,15 +1,15 @@
 ---
-import Base from '../../layouts/Base.astro';
+import Base from '../../../layouts/Base.astro';
 import { getCollection, render } from 'astro:content';
-import { localeDate, t, tipoLabel } from '../../i18n/ui';
-import { briefingPath } from '../../i18n/urls';
+import { localeDate, t, tipoLabel } from '../../../i18n/ui';
+import { briefingPath } from '../../../i18n/urls';
 
 export async function getStaticPaths() {
   const posts = await getCollection('briefings');
   return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
 }
 
-const locale = 'pt';
+const locale = 'es';
 const copy = t(locale);
 const { post } = Astro.props;
 const { Content } = await render(post);
@@ -20,6 +20,7 @@ const shareUrl = new URL(briefingPath(locale, post.id), Astro.site ?? 'https://d
 ---
 <Base title={post.data.title} description={post.data.description} locale={locale} path={`/briefings/${post.id}`}>
   <article class="prose">
+    <p class="fallback-note">{copy.fallbackNotice}</p>
     <p class="eyebrow">Briefing · {fmt}</p>
     <div class="meta-row">
       <button type="button" class="share-copy" data-share-url={shareUrl}>{copy.share}</button>
