@@ -180,8 +180,7 @@ nav.site a:hover { color: var(--text); }
   margin: 0;
 }
 .meta-row .share-copy { flex: 0 0 auto; }
-.meta-row .pills,
-.meta-row .tipo-pill {
+.meta-row .pills {
   margin: 0 0 0 auto;
   flex: 0 0 auto;
 }
