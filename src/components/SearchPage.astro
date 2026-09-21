@@ -1,0 +1,169 @@
+---
+import Base from '../layouts/Base.astro';
+import { localeDate, t, tipoLabel, type Locale } from '../i18n/ui';
+import { briefingPath } from '../i18n/urls';
+import { listBriefings } from '../i18n/posts';
+
+type Props = { locale: Locale };
+const { locale } = Astro.props;
+const copy = t(locale);
+const posts = await listBriefings(locale);
+const formAction = locale === 'pt' ? '/busca' : `/${locale}/busca`;
+
+const index = posts.map((post) => {
+  const body = String(post.entry.body ?? '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[#>*_`|\[\]]/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const tipo = ['noticia', 'incidente', 'vulnerabilidades'].includes(post.data.tipo)
+    ? post.data.tipo
+    : 'incidente';
+  return {
+    id: post.id,
+    title: post.data.title,
+    description: post.data.description,
+    tipo,
+    tipoLabel: tipoLabel(locale, tipo),
+    href: briefingPath(locale, post.id),
+    date: post.data.pubDate.toLocaleDateString(localeDate[locale], {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo',
+    }),
+    text: `${post.data.title} ${post.data.description} ${tipo} ${post.data.tags.join(' ')} ${body}`,
+  };
+});
+
+const hits = copy.searchHits;
+---
+<Base title={copy.searchTitle} description={copy.searchDesc} locale={locale} path="/busca">
+  <p class="eyebrow">{copy.searchTitle}</p>
+  <h1>{copy.searchH1}</h1>
+  <form class="search" id="search-form" action={formAction} method="get" role="search">
+    <label class="faint" for="q">{copy.searchLabel}</label>
+    <input id="q" name="q" type="search" placeholder={copy.searchPlaceholder} autocomplete="off" />
+    <fieldset class="scope-filter" id="scope-filter">
+      <legend class="faint">{copy.searchScope}</legend>
+      <div class="scope-options" role="radiogroup" aria-label={copy.searchScope}>
+        <button type="button" class="scope-btn is-active" data-scope="todos" aria-pressed="true">{copy.searchAll}</button>
+        <button type="button" class="scope-btn" data-scope="incidente" aria-pressed="false">{copy.searchIncidents}</button>
+        <button type="button" class="scope-btn" data-scope="noticia" aria-pressed="false">{copy.searchNews}</button>
+        <button type="button" class="scope-btn" data-scope="vulnerabilidades" aria-pressed="false">{copy.searchVulns}</button>
+      </div>
+    </fieldset>
+  </form>
+  <p class="faint" id="search-status"></p>
+  <div id="search-results" class="search-results"></div>
+</Base>
+
+<script define:vars={{ index, hits }}>
+  const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  const input = document.getElementById('q');
+  const status = document.getElementById('search-status');
+  const results = document.getElementById('search-results');
+  const form = document.getElementById('search-form');
+  const scopeBtns = [...document.querySelectorAll('.scope-btn')];
+  const allowed = new Set(['todos', 'incidente', 'noticia', 'vulnerabilidades']);
+
+  const readScope = () => {
+    const raw = new URLSearchParams(location.search).get('tipo') || 'todos';
+    return allowed.has(raw) ? raw : 'todos';
+  };
+
+  let scope = readScope();
+
+  const syncScopeUi = () => {
+    scopeBtns.forEach((btn) => {
+      const on = btn.getAttribute('data-scope') === scope;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+  };
+
+  const writeUrl = (q, tipo) => {
+    const url = new URL(location.href);
+    if (q) url.searchParams.set('q', q);
+    else url.searchParams.delete('q');
+    if (tipo && tipo !== 'todos') url.searchParams.set('tipo', tipo);
+    else url.searchParams.delete('tipo');
+    history.replaceState(null, '', url);
+  };
+
+  const pick = (pair, n) => {
+    const [one, many] = String(pair).split('|');
+    return (n === 1 ? one : many).replace('{n}', String(n));
+  };
+
+  const labelHits = (n, tipo, hasQuery) => {
+    if (!n) {
+      if (hasQuery && tipo === 'incidente') return hits.noneTermIncidente;
+      if (hasQuery && tipo === 'noticia') return hits.noneTermNoticia;
+      if (hasQuery && tipo === 'vulnerabilidades') return hits.noneTermVuln;
+      if (hasQuery) return hits.noneTermAll;
+      if (tipo === 'incidente') return hits.noneIncidente;
+      if (tipo === 'noticia') return hits.noneNoticia;
+      if (tipo === 'vulnerabilidades') return hits.noneVuln;
+      return hits.noneAll;
+    }
+    if (tipo === 'incidente') return pick(hits.incidente, n);
+    if (tipo === 'noticia') return pick(hits.noticia, n);
+    if (tipo === 'vulnerabilidades') return pick(hits.vulnerabilidades, n);
+    return pick(hits.all, n);
+  };
+
+  function run() {
+    const q = fold(input.value || '').trim();
+    const terms = q.split(/\s+/).filter(Boolean);
+    const found = index.filter((post) => {
+      if (scope !== 'todos' && post.tipo !== scope) return false;
+      if (!terms.length) return true;
+      const hay = fold(post.text);
+      return terms.every((term) => hay.includes(term));
+    });
+
+    status.textContent = labelHits(found.length, scope, Boolean(terms.length));
+    results.innerHTML = found
+      .map(
+        (post) => `
+        <a class="card" href="${post.href}" style="text-decoration:none;color:inherit">
+          <div class="card-copy">
+            <div class="meta-row">
+              <p class="faint">${post.date}</p>
+              <span class="tipo-pill ${post.tipo}">${post.tipoLabel}</span>
+            </div>
+            <h2 style="font-size:22px;margin:8px 0">${post.title}</h2>
+            <p class="muted">${post.description}</p>
+          </div>
+        </a>`
+      )
+      .join('');
+  }
+
+  const params = new URLSearchParams(location.search);
+  input.value = params.get('q') || '';
+  scope = readScope();
+  syncScopeUi();
+  run();
+
+  input.addEventListener('input', () => {
+    writeUrl(input.value, scope);
+    run();
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    writeUrl(input.value, scope);
+    run();
+  });
+  scopeBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      scope = btn.getAttribute('data-scope') || 'todos';
+      syncScopeUi();
+      writeUrl(input.value, scope);
+      run();
+    });
+  });
+  input.focus();
+</script>
