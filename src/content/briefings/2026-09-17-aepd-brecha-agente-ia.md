@@ -3,8 +3,9 @@ title: "AEPD: primeira brecha notificada com ataque executado por agente de IA"
 description: "A AEPD registrou a primeira notificação de violação de dados pessoais em que o ataque teria sido executado por um agente de IA; caso em análise e nexo LATAM via RIPD e adequação Brasil–UE."
 pubDate: 2026-09-17T10:16:00-03:00
 sourceName: "AEPD / Reuters"
-sourceUrl: "https://www.aepd.es/prensa-y-comunicacion/blog/primera-notiviacion-brecha-datos-personales-causada-por-ataque-ejecutado-mediante-agente-ia"
+sourceUrl: "https://www.aepd.es/prensa-y-comunicacion/blog/primera-notiviacion-brecha-dados-personales-causada-por-ataque-ejecutado-mediante-agente-ia"
 cover: "https://covers.duarte.top/covers/20260916-aepd-brecha-agente-ia.jpg"
+pais: eu
 tipo: incidente
 tags: ["aepd", "gdpr", "ia", "brecha", "lgpd"]
 notionUrl: "https://www.notion.so/3dd17411747381b3b276e1b266f0db26"

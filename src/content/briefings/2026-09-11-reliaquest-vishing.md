@@ -5,6 +5,7 @@ pubDate: 2026-09-11T10:36:00-03:00
 sourceName: "The Register"
 sourceUrl: "https://www.theregister.com/cyber-crime/2026/08/24/shinyhunters-and-reliaquest-trade-blows-over-claimed-breach/529170"
 cover: "https://covers.duarte.top/covers/20260830-reliaquest-vishing.jpg"
+pais: us
 tipo: incidente
 tags: ["vishing", "identidade", "mfa", "shinyhunters", "device-trust"]
 notionUrl: "https://www.notion.so/3c71741174738130aa29eb888ea2d403"

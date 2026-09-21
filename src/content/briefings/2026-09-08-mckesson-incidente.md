@@ -5,6 +5,7 @@ pubDate: 2026-09-08T10:35:00-03:00
 sourceName: "BleepingComputer / McKesson"
 sourceUrl: "https://www.bleepingcomputer.com/news/security/mckesson-discloses-breach-after-shinyhunters-claims-patient-data-theft/"
 cover: "https://covers.duarte.top/covers/20260830-mckesson-incidente.jpg"
+pais: us
 tipo: incidente
 tags: ["vazamento", "saude", "terceiros", "dspm", "lgpd"]
 notionUrl: "https://www.notion.so/3cc17411747381da9750c43849ca10be"
@@ -27,7 +28,7 @@ O ponto não é o tamanho do número alegado. É o intervalo entre detectar o ac
 | Vetor | Evidência pública | Gravidade |
 |---|---|---|
 | Acesso a apps de terceiros | Confirmado pela McKesson (8-K) | Alta |
-| Volume ~284 milhões de linhas | Alegacão ShinyHunters; empresa não confirma | Indeterminada |
+| Volume ~284 milhões de linhas | Alegação ShinyHunters; empresa não confirma | Indeterminada |
 | Dados clínicos em Salesforce/Snowflake | Alegacão do grupo; não confirmada | Indeterminada |
 
 ## O que fazer nesta semana
