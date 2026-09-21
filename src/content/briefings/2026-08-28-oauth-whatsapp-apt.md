@@ -7,6 +7,7 @@ sourceUrl: "https://thehackernews.com/2026/08/suspected-russian-hackers-abuse-go
 cover: "https://covers.duarte.top/covers/20260828-oauth-whatsapp-apt.jpg"
 tags: ["identidade", "oauth", "espionagem"]
 notionUrl: "https://www.notion.so/3c717411747381cfbde6e58e7b80cf55"
+pais: us
 ---
 
 **Em uma linha:** a tela de login era genuína; o token é que mudou de dono.

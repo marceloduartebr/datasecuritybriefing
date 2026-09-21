@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260826-azure-thehatman.jpg"
 sourceUrl: "https://www.bleepingcomputer.com/news/security/hacker-claims-36-million-azure-account-records-stolen-from-major-companies/"
 tags: ["vazamento", "azure", "identidade"]
 notionUrl: "https://www.notion.so/3c717411747381379cabce5730d4212e"
+pais: us
 ---
 
 **Em uma linha:** o método não é sofisticado; o alcance do token é que é.

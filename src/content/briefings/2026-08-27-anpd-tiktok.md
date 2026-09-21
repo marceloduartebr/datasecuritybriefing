@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260827-anpd-tiktok.jpg"
 sourceUrl: "https://www.gazetadopovo.com.br/vida-e-cidadania/anpd-multa-tiktok-153-7-milhoes-falhas-menores/"
 tags: ["anpd", "lgpd", "menor", "sancao"]
 notionUrl: "https://www.notion.so/3c817411747381919f60e9901a374ef4"
+pais: br
 ---
 
 **Em uma linha:** política de idade mínima não substitui evidência técnica.

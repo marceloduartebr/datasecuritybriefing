@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260828-anpd-22-plataformas.jpg"
 sourceUrl: "https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-avalia-como-plataformas-digitais-atuam-para-prevenir-conteudos-criminosos-e-proteger-criancas-e-mulheres-na-internet"
 tags: ["anpd", "eca-digital", "ia-regulacao"]
 notionUrl: "https://www.notion.so/3c9174117473811dbc39d2ad5ab5335d"
+pais: br
 ---
 
 **Em uma linha:** dez dias úteis para provar, não para declarar.
