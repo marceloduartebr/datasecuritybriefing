@@ -1,15 +1,14 @@
 import rss from '@astrojs/rss';
-import { getCollection } from 'astro:content';
 import { t } from '../../i18n/ui';
+import { listBriefings } from '../../i18n/posts';
+import { briefingPath } from '../../i18n/urls';
 
 const SITE = 'https://dsb.duarte.top';
 const locale = 'en';
 const copy = t(locale);
 
 export async function GET() {
-  const posts = (await getCollection('briefings')).sort(
-    (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-  );
+  const posts = await listBriefings(locale);
   return rss({
     title: copy.rssTitle,
     description: copy.rssDesc,
@@ -18,7 +17,7 @@ export async function GET() {
       title: post.data.title,
       pubDate: post.data.pubDate,
       description: post.data.description,
-      link: `/en/briefings/${post.id}`,
+      link: briefingPath(locale, post.id),
       customData: `<enclosure url="${post.data.cover}" type="image/jpeg" />`,
     })),
   });

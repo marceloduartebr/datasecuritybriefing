@@ -1,0 +1,63 @@
+---
+import { render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { localeDate, t, tipoLabel, type Locale } from '../i18n/ui';
+import { briefingPath } from '../i18n/urls';
+import type { BriefingView } from '../i18n/posts';
+
+type Props = { locale: Locale; view: BriefingView };
+const { locale, view } = Astro.props;
+const copy = t(locale);
+const { Content } = await render(view.entry);
+const fmt = view.data.pubDate.toLocaleDateString(localeDate[locale], {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'America/Sao_Paulo',
+});
+const shareUrl = new URL(briefingPath(locale, view.id), Astro.site ?? 'https://dsb.duarte.top').href;
+---
+<Base title={view.data.title} description={view.data.description} locale={locale} path={`/briefings/${view.id}`}>
+  <article class="prose">
+    {locale !== 'pt' && !view.translated && <p class="fallback-note">{copy.fallbackNotice}</p>}
+    <p class="eyebrow">Briefing · {fmt}</p>
+    <div class="meta-row">
+      <button type="button" class="share-copy" data-share-url={shareUrl}>{copy.share}</button>
+      <span class={`tipo-pill ${view.data.tipo}`}>{tipoLabel(locale, view.data.tipo)}</span>
+    </div>
+    <h1>{view.data.title}</h1>
+    <p class="muted">{view.data.description}</p>
+    <div class="tags">
+      {view.data.tags.map((tag) => <span class="tag">{tag}</span>)}
+    </div>
+    <img class="cover" src={view.data.cover} alt="" />
+    <Content />
+    <p class="faint">{copy.source}: <a href={view.data.sourceUrl}>{view.data.sourceName}</a></p>
+  </article>
+  <script is:inline define:vars={{ copied: copy.shareCopied, share: copy.share }}>
+    document.querySelectorAll('.share-copy').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-share-url') || window.location.href;
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          const field = document.createElement('textarea');
+          field.value = url;
+          field.setAttribute('readonly', '');
+          field.style.position = 'fixed';
+          field.style.left = '-9999px';
+          document.body.appendChild(field);
+          field.select();
+          document.execCommand('copy');
+          field.remove();
+        }
+        btn.textContent = copied;
+        btn.classList.add('is-copied');
+        window.setTimeout(() => {
+          btn.textContent = share;
+          btn.classList.remove('is-copied');
+        }, 1800);
+      });
+    });
+  </script>
+</Base>
