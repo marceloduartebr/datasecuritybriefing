@@ -31,9 +31,10 @@ export async function listBriefings(locale: Locale): Promise<BriefingView[]> {
   const extra = await translatedMap(locale);
   return pt.map((post) => {
     const hit = extra.get(post.id);
+    const data = hit ? { ...hit.data, pais: post.data.pais ?? hit.data.pais } : post.data;
     return {
       id: post.id,
-      data: hit ? hit.data : post.data,
+      data,
       entry: hit ?? post,
       translated: Boolean(hit),
     };

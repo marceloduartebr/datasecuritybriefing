@@ -10,6 +10,7 @@ const briefingSchema = z.object({
   cover: z.string().url(),
   tags: z.array(z.string()),
   tipo: z.enum(['incidente', 'noticia', 'vulnerabilidades']).default('incidente'),
+  pais: z.enum(['br', 'mx', 'ar', 'cl', 'pe', 'py', 'uy', 'co', 'us', 'eu', 'latam']).optional(),
   notionUrl: z.string().url().optional(),
 });
 

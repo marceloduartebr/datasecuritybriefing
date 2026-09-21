@@ -1,0 +1,11 @@
+---
+import { paisLabel, tipoLabel, type Locale } from '../i18n/ui';
+
+type Props = { locale: Locale; tipo: string; pais?: string };
+const { locale, tipo, pais } = Astro.props;
+const country = paisLabel(pais);
+---
+<div class="pills">
+  {country && <span class="pais-pill">{country}</span>}
+  <span class={`tipo-pill ${tipo}`}>{tipoLabel(locale, tipo)}</span>
+</div>

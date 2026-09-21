@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
-import { localeDate, t, tipoLabel, type Locale } from '../i18n/ui';
+import Pills from './Pills.astro';
+import { localeDate, t, type Locale } from '../i18n/ui';
 import { briefingPath } from '../i18n/urls';
 import { listBriefings } from '../i18n/posts';
 
@@ -23,7 +24,7 @@ const fmt = (d: Date) =>
       <div class="hero-copy">
         <div class="meta-row">
           <p class="eyebrow">Briefing · {fmt(featured.data.pubDate)}</p>
-          <span class={`tipo-pill ${featured.data.tipo}`}>{tipoLabel(locale, featured.data.tipo)}</span>
+          <Pills locale={locale} tipo={featured.data.tipo} pais={featured.data.pais} />
         </div>
         <h1>{featured.data.title}</h1>
         <p class="muted">{featured.data.description}</p>
@@ -46,7 +47,7 @@ const fmt = (d: Date) =>
             <div class="card-copy">
               <div class="meta-row">
                 <p class="faint">{fmt(post.data.pubDate)}</p>
-                <span class={`tipo-pill ${post.data.tipo}`}>{tipoLabel(locale, post.data.tipo)}</span>
+                <Pills locale={locale} tipo={post.data.tipo} pais={post.data.pais} />
               </div>
               <h2 style="font-size:22px;margin:8px 0">{post.data.title}</h2>
               <p class="muted">{post.data.description}</p>
