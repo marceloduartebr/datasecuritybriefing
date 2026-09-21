@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260825-microsoft-ia-dspm.jpg"
 sourceUrl: "https://www.microsoft.com/en-us/security/blog/2026/01/29/new-microsoft-data-security-index-report-explores-secure-ai-adoption-to-protect-sensitive-data/"
 tags: ["ia-regulacao", "dspm", "governanca"]
 notionUrl: "https://www.notion.so/3c717411747381b18dd5fecc9ca16564"
+pais: us
 ---
 
 **Em uma linha:** a pergunta deixou de ser “vamos adotar IA?”.

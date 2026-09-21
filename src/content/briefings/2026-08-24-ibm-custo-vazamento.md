@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260824-ibm-custo-vazamento.jpg"
 sourceUrl: "https://www.ibm.com/reports/data-breach"
 tags: ["vazamento", "custo", "phishing"]
 notionUrl: "https://www.notion.so/3c717411747381069513fca6ff091b43"
+pais: latam
 ---
 
 **Em uma linha:** multa regulatória é só uma fatia do preço.

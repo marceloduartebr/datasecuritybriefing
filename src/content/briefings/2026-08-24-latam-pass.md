@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260824-latam-pass.jpg"
 sourceUrl: "https://www.riotimesonline.com/latam-data-breach-exposed-names-addresses-and-card-details/"
 tags: ["vazamento", "lgpd", "anpd", "latam"]
 notionUrl: "https://www.notion.so/3c7174117473819fa228f6028da8a7e8"
+pais: latam
 ---
 
 **Em uma linha:** o intervalo que importa não é o vazamento — é o tempo até saber o que saiu.

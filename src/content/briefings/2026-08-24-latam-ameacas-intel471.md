@@ -7,6 +7,7 @@ sourceUrl: "https://www.kiteworks.com/cybersecurity-risk-management/latin-americ
 cover: "https://covers.duarte.top/covers/20260824-latam-ameacas-intel471.jpg"
 tags: ["ransomware", "latam", "risco"]
 notionUrl: "https://www.notion.so/3c717411747381baa144fc343156b74a"
+pais: latam
 ---
 
 **Em uma linha:** o número é de ameaça; o padrão do incidente noticiado continua sendo falta de visibilidade do dado.
