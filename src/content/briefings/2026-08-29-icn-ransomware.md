@@ -7,6 +7,7 @@ sourceUrl: "https://jornalatual.com.br/ataque-cibernetico-icn"
 cover: "https://covers.duarte.top/covers/20260829-icn-ransomware.jpg"
 tags: ["vazamento", "ransomware", "brasil", "infraestrutura-critica"]
 notionUrl: "https://www.notion.so/3c81741174738152a21be80d0628ec3d"
+pais: br
 ---
 
 **Em uma linha:** a ICN confirmou sistemas cifrados; não confirmou se algum dado saiu.

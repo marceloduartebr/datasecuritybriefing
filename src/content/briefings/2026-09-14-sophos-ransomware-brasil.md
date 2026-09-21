@@ -5,6 +5,7 @@ pubDate: 2026-09-14T10:20:00-03:00
 sourceName: "Estadão / Sophos"
 sourceUrl: "https://www.estadao.com.br/tecmundo/ciberseguranca/resgates-ransomware-sobem-no-brasil/"
 cover: "https://covers.duarte.top/covers/20260909-sophos-ransomware-brasil.jpg"
+pais: br
 tipo: noticia
 tags: ["ransomware", "identidade", "brasil", "backup"]
 notionUrl: "https://www.notion.so/3d617411747381ce9c4dca448de9d24a"

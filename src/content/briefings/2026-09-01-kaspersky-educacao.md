@@ -7,6 +7,7 @@ cover: "https://covers.duarte.top/covers/20260828-kaspersky-educacao.jpg"
 sourceUrl: "https://www.kaspersky.com.br/about/press-releases/raio-x-da-ciberseguranca-na-educacao-ransomware-e-a-principal-ameaca-e-representa-60-dos-ataques-ao-setor"
 tags: ["ransomware", "educacao", "lgpd", "brasil"]
 notionUrl: "https://www.notion.so/3ca174117473815babfbc90f619db86d"
+pais: br
 ---
 
 **Em uma linha:** escola caiu não é a mesma coisa que saber qual cadastro de aluno saiu.
