@@ -5,6 +5,7 @@ pubDate: 2026-09-05T13:14:00-03:00
 sourceName: "El Economista / SCILabs"
 sourceUrl: "https://www.eleconomista.com.mx/tecnologia/ransomware-crece-25-5-america-latina-mexico-concentra-17-93-ataques-20260904-831950.html"
 cover: "https://covers.duarte.top/covers/20260905-scilabs-ransomware.jpg"
+pais: latam
 tipo: noticia
 tags: ["ransomware", "america-latina", "scilabs", "governanca"]
 notionUrl: "https://www.notion.so/3d2174117473817eb269c7a2dfea4e82"

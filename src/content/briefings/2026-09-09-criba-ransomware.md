@@ -5,6 +5,7 @@ pubDate: 2026-09-09T10:30:00-03:00
 sourceName: "Ransomware.live / HudsonRock"
 sourceUrl: "https://ransomware.live/id/Q3JpYmFAZHJhZ29uZm9yY2U="
 cover: "https://covers.duarte.top/covers/20260830-criba-ransomware.jpg"
+pais: ar
 tipo: incidente
 tags: ["vazamento", "ransomware", "argentina", "uruguai", "infostealer"]
 notionUrl: "https://www.notion.so/3c8174117473817fac62f2605910a63a"

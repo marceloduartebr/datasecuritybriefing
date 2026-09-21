@@ -5,6 +5,7 @@ pubDate: 2026-09-21T10:53:00-03:00
 sourceName: "Estadão / TecMundo"
 sourceUrl: "https://www.estadao.com.br/tecmundo/ciberseguranca/viacao-aguia-branca-sofre-ataque-cibernetico-que-afetou-quase-8-mil-clientes/"
 cover: "https://covers.duarte.top/covers/20260921-aguia-branca-incidente.jpg"
+pais: br
 tipo: incidente
 tags: ["vazamento", "lgpd", "anpd", "brasil", "transporte"]
 notionUrl: "https://www.notion.so/3e2174117473815ab2a7cbdefe85f655"

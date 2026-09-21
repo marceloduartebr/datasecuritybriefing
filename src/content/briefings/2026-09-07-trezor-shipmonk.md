@@ -5,6 +5,7 @@ pubDate: 2026-09-07T10:20:00-03:00
 sourceName: "The Hacker News / Trezor"
 sourceUrl: "https://thehackernews.com/2026/09/trezor-says-shipmonk-breach-exposed.html"
 cover: "https://covers.duarte.top/covers/20260905-trezor-shipmonk.jpg"
+pais: us
 tipo: incidente
 tags: ["terceiros", "vazamento", "retencao", "lgpd"]
 notionUrl: "https://www.notion.so/3d217411747381389197fc11639edb4a"
