@@ -195,3 +195,29 @@ export function tipoLabel(locale: Locale, tipo: string) {
   const key = tipo === 'noticia' || tipo === 'vulnerabilidades' ? tipo : 'incidente';
   return ui[locale].tipo[key];
 }
+
+export const paises = ['br', 'mx', 'ar', 'cl', 'pe', 'py', 'uy', 'co', 'us', 'eu', 'latam'] as const;
+export type Pais = (typeof paises)[number];
+
+const paisIso: Record<Pais, string> = {
+  br: 'BR',
+  mx: 'MX',
+  ar: 'AR',
+  cl: 'CL',
+  pe: 'PE',
+  py: 'PY',
+  uy: 'UY',
+  co: 'CO',
+  us: 'US',
+  eu: 'EU',
+  latam: 'LATAM',
+};
+
+export function isPais(value: string | undefined): value is Pais {
+  return Boolean(value && (paises as readonly string[]).includes(value));
+}
+
+export function paisLabel(pais: string | undefined) {
+  if (!isPais(pais)) return '';
+  return paisIso[pais];
+}
