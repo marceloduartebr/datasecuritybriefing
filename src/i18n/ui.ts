@@ -1,0 +1,155 @@
+export const locales = ['pt', 'es', 'en'] as const;
+export type Locale = (typeof locales)[number];
+
+export const defaultLocale: Locale = 'pt';
+
+export const localeHtml: Record<Locale, string> = {
+  pt: 'pt-BR',
+  es: 'es',
+  en: 'en',
+};
+
+export const localeDate: Record<Locale, string> = {
+  pt: 'pt-BR',
+  es: 'es-MX',
+  en: 'en-US',
+};
+
+export const localeLabel: Record<Locale, string> = {
+  pt: 'PT',
+  es: 'ES',
+  en: 'EN',
+};
+
+export function isLocale(value: string): value is Locale {
+  return value === 'pt' || value === 'es' || value === 'en';
+}
+
+const ui = {
+  pt: {
+    brandBy: 'por',
+    navBriefings: 'Briefings',
+    navSearch: 'Busca',
+    navAbout: 'Sobre',
+    navInstall: 'Instalar',
+    rss: 'RSS',
+    rssHint: 'Para o agregador',
+    rssCopy: 'Copiar endereço do feed',
+    rssCopied: 'Endereço copiado',
+    rssDownload: 'Baixar arquivo RSS',
+    footerLine: 'Marcelo Duarte · DSPM, governança e LGPD na América Latina ·',
+    footerInstall: 'Instalar o app',
+    copy: '© 2026 Marcelo Duarte. Texto e análise deste site. Fontes jornalísticas e capas de terceiros permanecem de seus autores. Reprodução com atribuição e link para o briefing.',
+    homeDescription: 'Briefings de vazamentos, DSPM, governança e regulação LGPD/ANPD na América Latina.',
+    latest: 'Últimos briefings',
+    empty: 'Nenhum briefing publicado ainda.',
+    share: 'Compartilhar',
+    shareCopied: 'Link copiado',
+    source: 'Fonte',
+    fallbackNotice: 'Este briefing ainda não tem versão neste idioma. Segue o original em português.',
+    tipo: { incidente: 'Incidente', noticia: 'Notícia', vulnerabilidades: 'Vulnerabilidades' },
+    searchTitle: 'Busca',
+    searchH1: 'Encontrar briefing',
+    searchDesc: 'Busca nos briefings publicados.',
+    searchLabel: 'Título e conteúdo',
+    searchPlaceholder: 'ANPD, ransomware, menor…',
+    searchScope: 'Escopo',
+    searchAll: 'Todos',
+    searchIncidents: 'Incidentes',
+    searchNews: 'Notícias',
+    searchVulns: 'Vulnerabilidades',
+    aboutTitle: 'Sobre',
+    aboutDesc: 'Marcelo Duarte e o Data Security Briefing.',
+    installTitle: 'Instalar',
+    installDesc: 'Como adicionar o Data Security Briefing à tela inicial ou à lista de aplicativos.',
+    rssTitle: 'Data Security Briefing',
+    rssDesc: 'Vazamentos, DSPM e regulação LGPD/ANPD na América Latina.',
+  },
+  es: {
+    brandBy: 'por',
+    navBriefings: 'Briefings',
+    navSearch: 'Buscar',
+    navAbout: 'Acerca',
+    navInstall: 'Instalar',
+    rss: 'RSS',
+    rssHint: 'Para el agregador',
+    rssCopy: 'Copiar dirección del feed',
+    rssCopied: 'Dirección copiada',
+    rssDownload: 'Descargar archivo RSS',
+    footerLine: 'Marcelo Duarte · DSPM, gobernanza y protección de datos en América Latina ·',
+    footerInstall: 'Instalar la app',
+    copy: '© 2026 Marcelo Duarte. Texto y análisis de este sitio. Las fuentes periodísticas y las portadas de terceros siguen siendo de sus autores. Reproducción con atribución y enlace al briefing.',
+    homeDescription: 'Briefings de filtraciones, DSPM, gobernanza y regulación de datos en América Latina.',
+    latest: 'Últimos briefings',
+    empty: 'Aún no hay briefings publicados.',
+    share: 'Compartir',
+    shareCopied: 'Enlace copiado',
+    source: 'Fuente',
+    fallbackNotice: 'Este briefing todavía no tiene versión en español. Se muestra el original en portugués.',
+    tipo: { incidente: 'Incidente', noticia: 'Noticia', vulnerabilidades: 'Vulnerabilidades' },
+    searchTitle: 'Buscar',
+    searchH1: 'Encontrar briefing',
+    searchDesc: 'Busca en los briefings publicados.',
+    searchLabel: 'Título y contenido',
+    searchPlaceholder: 'ANPD, ransomware, menor…',
+    searchScope: 'Alcance',
+    searchAll: 'Todos',
+    searchIncidents: 'Incidentes',
+    searchNews: 'Noticias',
+    searchVulns: 'Vulnerabilidades',
+    aboutTitle: 'Acerca',
+    aboutDesc: 'Marcelo Duarte y Data Security Briefing.',
+    installTitle: 'Instalar',
+    installDesc: 'Cómo añadir Data Security Briefing a la pantalla de inicio o a la lista de aplicaciones.',
+    rssTitle: 'Data Security Briefing',
+    rssDesc: 'Filtraciones, DSPM y regulación de datos en América Latina.',
+  },
+  en: {
+    brandBy: 'by',
+    navBriefings: 'Briefings',
+    navSearch: 'Search',
+    navAbout: 'About',
+    navInstall: 'Install',
+    rss: 'RSS',
+    rssHint: 'For your reader',
+    rssCopy: 'Copy feed URL',
+    rssCopied: 'Address copied',
+    rssDownload: 'Download RSS file',
+    footerLine: 'Marcelo Duarte · DSPM, governance and data protection in Latin America ·',
+    footerInstall: 'Install the app',
+    copy: '© 2026 Marcelo Duarte. Text and analysis on this site. Third-party news sources and covers remain with their authors. Reuse with attribution and a link to the briefing.',
+    homeDescription: 'Briefings on breaches, DSPM, governance and data-protection rules in Latin America.',
+    latest: 'Latest briefings',
+    empty: 'No briefings published yet.',
+    share: 'Share',
+    shareCopied: 'Link copied',
+    source: 'Source',
+    fallbackNotice: 'This briefing is not available in English yet. Showing the Portuguese original.',
+    tipo: { incidente: 'Incident', noticia: 'News', vulnerabilidades: 'Vulnerabilities' },
+    searchTitle: 'Search',
+    searchH1: 'Find a briefing',
+    searchDesc: 'Search published briefings.',
+    searchLabel: 'Title and body',
+    searchPlaceholder: 'ANPD, ransomware, minor…',
+    searchScope: 'Scope',
+    searchAll: 'All',
+    searchIncidents: 'Incidents',
+    searchNews: 'News',
+    searchVulns: 'Vulnerabilities',
+    aboutTitle: 'About',
+    aboutDesc: 'Marcelo Duarte and Data Security Briefing.',
+    installTitle: 'Install',
+    installDesc: 'How to add Data Security Briefing to the home screen or the apps list.',
+    rssTitle: 'Data Security Briefing',
+    rssDesc: 'Breaches, DSPM and data-protection rules in Latin America.',
+  },
+} as const;
+
+export function t(locale: Locale) {
+  return ui[locale];
+}
+
+export function tipoLabel(locale: Locale, tipo: string) {
+  const key = tipo === 'noticia' || tipo === 'vulnerabilidades' ? tipo : 'incidente';
+  return ui[locale].tipo[key];
+}

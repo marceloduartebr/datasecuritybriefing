@@ -1,10 +1,10 @@
 ---
-import Base from '../layouts/Base.astro';
+import Base from '../../layouts/Base.astro';
 import { getCollection } from 'astro:content';
-import { localeDate, t, tipoLabel } from '../i18n/ui';
-import { briefingPath } from '../i18n/urls';
+import { localeDate, t, tipoLabel } from '../../i18n/ui';
+import { briefingPath } from '../../i18n/urls';
 
-const locale = 'pt';
+const locale = 'en';
 const copy = t(locale);
 const posts = (await getCollection('briefings')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
