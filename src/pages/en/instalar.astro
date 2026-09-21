@@ -1,0 +1,41 @@
+---
+import Base from '../../layouts/Base.astro';
+const siteUrl = 'https://dsb.duarte.top';
+---
+<Base locale="en" path="/instalar" title="Install" description="How to add Data Security Briefing to the home screen or the apps list.">
+  <article class="prose">
+    <p class="eyebrow">App</p>
+    <h1>Install Data Security Briefing</h1>
+    <p>The site works as an app: it opens in its own window, with the shield icon, without going through a store. Always use <a href={siteUrl}>{siteUrl}</a>. The path changes with the system and the browser.</p>
+    <h2>iPhone and iPad</h2>
+    <p>Use Safari. Chrome, Firefox and the in-app browsers in LinkedIn or WhatsApp do not offer the full shortcut.</p>
+    <ol>
+      <li>Open the site in Safari.</li>
+      <li>Tap Share (the square with the arrow pointing up).</li>
+      <li>Choose Add to Home Screen.</li>
+      <li>Confirm the name <em>DSB</em> and tap Add.</li>
+    </ol>
+    <p>The home-screen icon is the one iOS keeps. If the shield looks cropped or outdated, remove the icon, close Safari in the app switcher and add it again.</p>
+    <h2>Android</h2>
+    <p>The most stable path is Chrome.</p>
+    <ol>
+      <li>Open the site in Chrome.</li>
+      <li>Tap the three-dot menu.</li>
+      <li>Choose Install app or Add to Home screen.</li>
+      <li>Confirm Install.</li>
+    </ol>
+    <p>In Samsung Internet the item is usually Add page to Home screen.</p>
+    <h2>Windows and Linux</h2>
+    <p>Chrome or Edge.</p>
+    <ol>
+      <li>Open the site in the browser.</li>
+      <li>In the address bar, use the install icon (monitor with an arrow or a puzzle piece).</li>
+      <li>If the icon is missing: menu → Save and share → Install Data Security Briefing (Chrome) or Apps → Install this site as an app (Edge).</li>
+    </ol>
+    <p>The shortcut lands in the system app list and opens without the browser chrome.</p>
+    <h2>Mac</h2>
+    <p>In Chrome, use the same address-bar install flow. In recent Safari (Sonoma onward): File → Add to Dock, with the site open.</p>
+    <h2>Firefox</h2>
+    <p>Firefox does not install a PWA the same way. You can pin the tab or create a shortcut, but the standalone icon and window stay with Chrome, Edge or Safari.</p>
+  </article>
+</Base>

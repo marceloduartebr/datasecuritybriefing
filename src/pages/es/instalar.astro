@@ -1,0 +1,41 @@
+---
+import Base from '../../layouts/Base.astro';
+const siteUrl = 'https://dsb.duarte.top';
+---
+<Base locale="es" path="/instalar" title="Instalar" description="Cómo añadir Data Security Briefing a la pantalla de inicio o a la lista de aplicaciones.">
+  <article class="prose">
+    <p class="eyebrow">App</p>
+    <h1>Instalar Data Security Briefing</h1>
+    <p>El sitio funciona como aplicación: abre en una ventana propia, con el icono del escudo, sin pasar por la tienda. Use siempre <a href={siteUrl}>{siteUrl}</a>. El camino cambia según el sistema y el navegador.</p>
+    <h2>iPhone y iPad</h2>
+    <p>Use Safari. Chrome, Firefox y el navegador interno de LinkedIn o WhatsApp no ofrecen el atajo completo.</p>
+    <ol>
+      <li>Abra el sitio en Safari.</li>
+      <li>Toque Compartir (el cuadrado con la flecha hacia arriba).</li>
+      <li>Elija Añadir a pantalla de inicio.</li>
+      <li>Confirme el nombre <em>DSB</em> y toque Añadir.</li>
+    </ol>
+    <p>El icono de la pantalla de inicio es el que iOS guarda. Si el escudo aparece recortado o antiguo, quite el icono, cierre Safari en el selector de apps y añádalo de nuevo.</p>
+    <h2>Android</h2>
+    <p>El camino más estable es Chrome.</p>
+    <ol>
+      <li>Abra el sitio en Chrome.</li>
+      <li>Toque el menú de tres puntos.</li>
+      <li>Elija Instalar aplicación o Añadir a la pantalla de inicio.</li>
+      <li>Confirme Instalar.</li>
+    </ol>
+    <p>En Samsung Internet el ítem suele aparecer como Añadir página a la pantalla de inicio.</p>
+    <h2>Windows y Linux</h2>
+    <p>Chrome o Edge.</p>
+    <ol>
+      <li>Abra el sitio en el navegador.</li>
+      <li>En la barra de direcciones, use el icono de instalar (monitor con flecha o pieza de rompecabezas).</li>
+      <li>Si el icono no aparece: menú → Guardar y compartir → Instalar Data Security Briefing (Chrome) o Aplicaciones → Instalar este sitio como una aplicación (Edge).</li>
+    </ol>
+    <p>El atajo entra en la lista de aplicaciones del sistema y abre sin la barra del navegador.</p>
+    <h2>Mac</h2>
+    <p>En Chrome, el mismo flujo de instalar desde la barra de direcciones. En Safari reciente (Sonoma en adelante): Archivo → Añadir al Dock, con el sitio abierto.</p>
+    <h2>Firefox</h2>
+    <p>Firefox no instala PWA del mismo modo. Se puede fijar la pestaña o crear un atajo, pero el icono y la ventana independiente quedan a cargo de Chrome, Edge o Safari.</p>
+  </article>
+</Base>
