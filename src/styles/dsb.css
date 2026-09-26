@@ -124,11 +124,12 @@ nav.site a:hover { color: var(--text); }
   overflow: hidden;
 }
 .hero-copy, .card-copy { padding: 24px; }
-/* Hero: faixa no topo para o escudo (72,56) entrar inteiro. */
+/* Hero: 2:1 alinhado no topo. Faixa fixa 210px colava o pico do escudo (y≈60) na borda. */
 .hero img {
   display: block;
   width: 100%;
-  height: 210px;
+  height: auto;
+  aspect-ratio: 2 / 1;
   object-fit: cover;
   object-position: 8% 0;
   flex-shrink: 0;
@@ -140,7 +141,7 @@ nav.site a:hover { color: var(--text); }
   width: 100%;
   height: 148px;
   object-fit: cover;
-  object-position: 8% 0;
+  object-position: 8% 12%;
   flex-shrink: 0;
   order: -1;
 }
@@ -242,7 +243,7 @@ article.prose th, article.prose td {
   height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  object-position: 50% 50%;
+  object-position: 8% 12%;
   border-radius: 14px;
   border: 1px solid var(--border);
   margin: 8px 0 28px;
