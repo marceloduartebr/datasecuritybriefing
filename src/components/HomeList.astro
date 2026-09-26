@@ -13,7 +13,7 @@ const [featured, ...rest] = posts;
 const fmt = (d: Date) =>
   d.toLocaleDateString(localeDate[locale], {
     day: '2-digit',
-    month: 'short',
+    month: '2-digit',
     year: 'numeric',
     timeZone: 'America/Sao_Paulo',
   });
