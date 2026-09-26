@@ -124,12 +124,12 @@ nav.site a:hover { color: var(--text); }
   overflow: hidden;
 }
 .hero-copy, .card-copy { padding: 24px; }
-/* Hero: 2:1 no topo. Faixa 210px colava o pico do escudo (y≈60) na borda. */
+/* Hero: metade superior do 16:9 (32/9). object-position no topo para o escudo (y≈60) entrar inteiro. */
 .hero img {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 32 / 9;
   object-fit: cover;
   object-position: 8% 0;
   flex-shrink: 0;
