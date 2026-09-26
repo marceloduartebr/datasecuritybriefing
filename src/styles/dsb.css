@@ -124,13 +124,13 @@ nav.site a:hover { color: var(--text); }
   overflow: hidden;
 }
 .hero-copy, .card-copy { padding: 24px; }
-/* Hero: faixa que mostra o escudo, sem a capa 16:9 inteira. */
+/* Hero: faixa no topo-esquerda (marca 72,56). */
 .hero img {
   display: block;
   width: 100%;
   height: 210px;
   object-fit: cover;
-  object-position: 62% 56%;
+  object-position: 8% 12%;
   flex-shrink: 0;
   order: -1;
 }
@@ -140,7 +140,7 @@ nav.site a:hover { color: var(--text); }
   width: 100%;
   height: 148px;
   object-fit: cover;
-  object-position: 62% 56%;
+  object-position: 8% 12%;
   flex-shrink: 0;
   order: -1;
 }
