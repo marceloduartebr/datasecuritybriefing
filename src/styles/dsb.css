@@ -124,14 +124,25 @@ nav.site a:hover { color: var(--text); }
   overflow: hidden;
 }
 .hero-copy, .card-copy { padding: 24px; }
-.hero img, .card img {
+/* Hero: faixa que mostra o escudo, sem a capa 16:9 inteira. */
+.hero img {
   display: block;
   width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
+  height: 210px;
   object-fit: cover;
-  object-position: 50% 50%;
+  object-position: 62% 56%;
   flex-shrink: 0;
+  order: -1;
+}
+/* Cards: mesma altura e mesmo recorte. */
+.card img {
+  display: block;
+  width: 100%;
+  height: 148px;
+  object-fit: cover;
+  object-position: 62% 56%;
+  flex-shrink: 0;
+  order: -1;
 }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
 .tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
@@ -146,10 +157,11 @@ nav.site a:hover { color: var(--text); }
   align-items: center;
   margin: 0;
   border-radius: 999px;
-  padding: 3px 9px;
-  font-size: 11px;
+  padding: 2px 7px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: .04em;
+  white-space: nowrap;
 }
 .tipo-pill.incidente { background: #2a1818; color: #e0a3a3; }
 .tipo-pill.noticia { background: #3a2e1a; color: var(--gold); }
@@ -180,6 +192,11 @@ nav.site a:hover { color: var(--text); }
 .meta-row > .eyebrow,
 .meta-row > .faint {
   margin: 0;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .meta-row .share-copy { flex: 0 0 auto; }
 .meta-row .pills {
