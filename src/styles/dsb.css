@@ -19,6 +19,7 @@ html, body {
     linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
   color: var(--text);
   font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  overscroll-behavior-y: contain;
 }
 a { color: var(--gold); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -331,3 +332,37 @@ footer.site a:hover { color: var(--text); }
   font-size: 13px;
   line-height: 1.45;
 }
+.ptr {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  transform: translate(-50%, -8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease;
+}
+.ptr.is-visible { opacity: 1; }
+.ptr-ring {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #3a2e1a;
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ptr.is-refreshing .ptr-ring { animation: ptr-spin .7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
