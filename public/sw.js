@@ -1,4 +1,4 @@
-const CACHE = "dsb-pwa-v7";
+const CACHE = "dsb-pwa-v8";
 const PRECACHE = [
   "/",
   "/sobre",
@@ -27,7 +27,20 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
+  const data = event.data || {};
+  if (data.type === "SKIP_WAITING") self.skipWaiting();
+  if (data.type === "REFRESH") {
+    const target = data.url || self.location.origin + "/";
+    event.waitUntil(
+      caches.open(CACHE).then((cache) =>
+        Promise.all([
+          cache.delete(target),
+          cache.delete(new URL("/", self.location.origin).href),
+          cache.delete(new URL(self.location.origin + new URL(target).pathname).href)
+        ])
+      )
+    );
+  }
 });
 
 self.addEventListener("fetch", (event) => {
