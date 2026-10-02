@@ -22,6 +22,34 @@ const htmlLang = localeHtml[locale];
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script is:inline>
+      (function () {
+        try {
+          var ua = navigator.userAgent || '';
+          if (/bot|crawl|spider|slurp|facebookexternalhit|preview|headless/i.test(ua)) return;
+          var path = location.pathname;
+          var prefix = path === '/es' || path.indexOf('/es/') === 0 ? 'es' : (path === '/en' || path.indexOf('/en/') === 0 ? 'en' : 'pt');
+          var stored = localStorage.getItem('dsb-lang');
+          var want = stored;
+          if (want !== 'pt' && want !== 'es' && want !== 'en') {
+            want = 'pt';
+            var list = navigator.languages || [navigator.language || ''];
+            for (var i = 0; i < list.length; i++) {
+              var tag = String(list[i] || '').toLowerCase();
+              if (tag.indexOf('pt') === 0) { want = 'pt'; break; }
+              if (tag.indexOf('es') === 0) { want = 'es'; break; }
+              if (tag.indexOf('en') === 0) { want = 'en'; break; }
+            }
+            localStorage.setItem('dsb-lang', want);
+          }
+          if (want === prefix) return;
+          var rest = prefix === 'pt' ? path : (path.replace(/^\/(es|en)/, '') || '/');
+          if (!rest) rest = '/';
+          var next = want === 'pt' ? rest : ('/' + want + (rest === '/' ? '' : rest));
+          location.replace(next + location.search + location.hash);
+        } catch (e) {}
+      })();
+    </script>
     <meta name="theme-color" content="#0b0e13" />
     <meta name="color-scheme" content="dark" />
     <meta name="application-name" content="Data Security Briefing" />
