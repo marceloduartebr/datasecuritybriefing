@@ -1,4 +1,4 @@
-const CACHE = "dsb-pwa-v8";
+const CACHE = "dsb-pwa-v9";
 const PRECACHE = [
   "/",
   "/sobre",
