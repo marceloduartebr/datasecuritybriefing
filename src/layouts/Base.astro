@@ -26,7 +26,7 @@ const htmlLang = localeHtml[locale];
     <meta name="color-scheme" content="dark" />
     <meta name="application-name" content="Data Security Briefing" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="DSB" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>{pageTitle}</title>
@@ -153,18 +153,18 @@ const htmlLang = localeHtml[locale];
         const labelEl = bar && bar.querySelector('.ptr-label');
         if (!bar || !labelEl) return;
         if (!window.matchMedia('(pointer: coarse)').matches) return;
-        const THRESH = 72;
+        const THRESH = 36;
         let startY = 0;
         let pulling = false;
         let lastPull = 0;
         let busy = false;
-        const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 1;
+        const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 2;
         const show = (px, refreshing) => {
           lastPull = px;
           bar.hidden = false;
-          bar.classList.toggle('is-visible', px > 8 || refreshing);
+          bar.classList.toggle('is-visible', px > 4 || refreshing);
           bar.classList.toggle('is-refreshing', refreshing);
-          bar.style.transform = 'translate(-50%, ' + Math.min(px, 88) + 'px)';
+          bar.style.transform = 'translate(-50%, ' + Math.min(px, 64) + 'px)';
           labelEl.textContent = refreshing || px >= THRESH ? refreshingLabel : refreshLabel;
         };
         const hide = () => {
@@ -184,7 +184,7 @@ const htmlLang = localeHtml[locale];
         window.addEventListener('touchstart', (event) => {
           if (busy || !atTop()) return;
           const t = event.target;
-          if (t && t.closest && t.closest('input, textarea, select, button, a, .rss')) return;
+          if (t && t.closest && t.closest('input, textarea, select, button, .rss')) return;
           startY = event.touches[0].clientY;
           pulling = true;
           lastPull = 0;
@@ -192,10 +192,10 @@ const htmlLang = localeHtml[locale];
         window.addEventListener('touchmove', (event) => {
           if (!pulling || busy) return;
           const dy = event.touches[0].clientY - startY;
-          if (dy < 10 || !atTop()) return;
-          const pull = dy * 0.4;
+          if (dy < 4 || !atTop()) return;
+          const pull = dy * 0.9;
           show(pull, false);
-          if (event.cancelable && pull > 12) event.preventDefault();
+          if (event.cancelable && pull > 8) event.preventDefault();
         }, { passive: false });
         window.addEventListener('touchend', () => {
           if (!pulling) return;
