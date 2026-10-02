@@ -21,10 +21,28 @@ html, body {
   font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   overscroll-behavior-y: contain;
 }
+/* PWA iOS: viewport-fit=cover desenha sob a status bar. Reserva o notch. */
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #0b0e13;
+  z-index: 60;
+  pointer-events: none;
+}
 a { color: var(--gold); text-decoration: none; }
 a:hover { text-decoration: underline; }
 img { max-width: 100%; height: auto; }
-.wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 16px 20px 64px; }
 .eyebrow {
   font-size: 11px; font-weight: 700; letter-spacing: .18em;
   text-transform: uppercase; color: var(--gold); margin: 0 0 8px;
@@ -334,9 +352,9 @@ footer.site a:hover { color: var(--text); }
 }
 .ptr {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
   left: 50%;
-  z-index: 40;
+  z-index: 70;
   display: flex;
   align-items: center;
   gap: 8px;
