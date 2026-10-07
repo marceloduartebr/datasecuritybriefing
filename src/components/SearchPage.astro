@@ -48,6 +48,13 @@ const filterEmpty = copy.filterEmpty;
   <form class="search" id="search-form" action={formAction} method="get" role="search">
     <label class="faint" for="q">{copy.searchLabel}</label>
     <input id="q" name="q" type="search" placeholder={copy.searchPlaceholder} autocomplete="off" />
+    <div class="feed-filters is-collapsed" id="feed-filters">
+    <button type="button" class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="feed-panels">
+      <span class="faint">{copy.filterToggle}</span>
+      <strong id="filter-summary"></strong>
+      <span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <div class="filter-panels" id="feed-panels">
     <fieldset class="scope-filter" id="region-filter">
       <legend class="faint">{copy.filterRegion}</legend>
       <div class="scope-options" role="radiogroup" aria-label={copy.filterRegion}>
@@ -68,6 +75,8 @@ const filterEmpty = copy.filterEmpty;
         <button type="button" class="scope-btn" data-scope="vulnerabilidades" aria-pressed="false">{copy.searchVulns}</button>
       </div>
     </fieldset>
+    </div>
+    </div>
   </form>
   <p class="faint" id="search-status"></p>
   <div id="search-results" class="search-results"></div>
@@ -110,17 +119,29 @@ const filterEmpty = copy.filterEmpty;
   let scope = 'todos';
   let region = 'todos';
 
+  const box = document.getElementById('feed-filters');
+  const toggle = document.getElementById('filter-toggle');
+  const summary = document.getElementById('filter-summary');
+  const setOpen = (open) => {
+    box.classList.toggle('is-collapsed', !open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.querySelector('.chev').textContent = open ? '▴' : '▾';
+  };
   const syncUi = () => {
-    scopeBtns.forEach((btn) => {
-      const on = btn.getAttribute('data-scope') === scope;
-      btn.classList.toggle('is-active', on);
-      btn.setAttribute('aria-pressed', String(on));
-    });
+    const labels = [];
     regionBtns.forEach((btn) => {
       const on = btn.getAttribute('data-region') === region;
       btn.classList.toggle('is-active', on);
       btn.setAttribute('aria-pressed', String(on));
+      if (on) labels.push(btn.textContent.trim());
     });
+    scopeBtns.forEach((btn) => {
+      const on = btn.getAttribute('data-scope') === scope;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', String(on));
+      if (on) labels.push(btn.textContent.trim());
+    });
+    summary.textContent = labels.join(' · ');
   };
 
   const writeUrl = (q) => {
@@ -219,6 +240,7 @@ const filterEmpty = copy.filterEmpty;
       syncUi();
       writeUrl(input.value);
       run();
+      setOpen(false);
     });
   });
   regionBtns.forEach((btn) => {
@@ -227,7 +249,11 @@ const filterEmpty = copy.filterEmpty;
       syncUi();
       writeUrl(input.value);
       run();
+      setOpen(false);
     });
+  });
+  toggle.addEventListener('click', () => {
+    setOpen(box.classList.contains('is-collapsed'));
   });
   input.focus();
 </script>

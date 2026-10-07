@@ -21,7 +21,13 @@ const tipoOf = (tipo: string) =>
   tipo === 'noticia' || tipo === 'vulnerabilidades' ? tipo : 'incidente';
 ---
 <Base description={copy.homeDescription} locale={locale} path="/">
-  <div class="feed-filters" id="feed-filters">
+  <div class="feed-filters is-collapsed" id="feed-filters">
+    <button type="button" class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="feed-panels">
+      <span class="faint">{copy.filterToggle}</span>
+      <strong id="filter-summary"></strong>
+      <span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <div class="filter-panels" id="feed-panels">
     <fieldset class="scope-filter">
       <legend class="faint">{copy.filterRegion}</legend>
       <div class="scope-options" role="radiogroup" aria-label={copy.filterRegion} data-group="regiao">
@@ -42,6 +48,7 @@ const tipoOf = (tipo: string) =>
         <button type="button" class="scope-btn" data-value="vulnerabilidades" aria-pressed="false">{copy.searchVulns}</button>
       </div>
     </fieldset>
+    </div>
   </div>
   <p class="muted" id="home-empty" hidden>{copy.filterEmpty}</p>
 
@@ -107,15 +114,26 @@ const tipoOf = (tipo: string) =>
     return set.includes(el.getAttribute('data-pais') || '');
   };
 
+  const box = document.getElementById('feed-filters');
+  const toggle = document.getElementById('filter-toggle');
+  const summary = document.getElementById('filter-summary');
+  const setOpen = (open) => {
+    box.classList.toggle('is-collapsed', !open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.querySelector('.chev').textContent = open ? '▴' : '▾';
+  };
   const syncUi = () => {
+    const labels = [];
     document.querySelectorAll('#feed-filters [data-group]').forEach((group) => {
       const current = group.getAttribute('data-group') === 'tipo' ? tipo : regiao;
       group.querySelectorAll('.scope-btn').forEach((btn) => {
         const on = btn.getAttribute('data-value') === current;
         btn.classList.toggle('is-active', on);
         btn.setAttribute('aria-pressed', String(on));
+        if (on) labels.push(btn.textContent.trim());
       });
     });
+    summary.textContent = labels.join(' · ');
   };
 
   const write = () => {
@@ -173,6 +191,10 @@ const tipoOf = (tipo: string) =>
       else regiao = value;
       write();
       apply();
+      setOpen(false);
     });
+  });
+  toggle.addEventListener('click', () => {
+    setOpen(box.classList.contains('is-collapsed'));
   });
 </script>

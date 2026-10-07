@@ -385,6 +385,27 @@ footer.site a:hover { color: var(--text); }
 .ptr.is-refreshing .ptr-ring { animation: ptr-spin .7s linear infinite; }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
 
-.feed-filters { margin: 0 0 20px; }
+.feed-filters { margin: 0 0 16px; }
 .feed-filters .scope-filter + .scope-filter { margin-top: 10px; }
+.feed-filters.is-collapsed .filter-panels { display: none; }
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  cursor: pointer;
+}
+.filter-toggle:hover { color: var(--text); border-color: #3a4454; }
+.filter-toggle strong { color: var(--text); font-weight: 600; }
+.filter-toggle .chev { color: var(--gold); font-size: 11px; }
+.feed-filters:not(.is-collapsed) .filter-toggle { margin-bottom: 12px; }
 .feed-item.is-hidden { display: none; }
