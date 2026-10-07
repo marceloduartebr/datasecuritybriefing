@@ -384,3 +384,7 @@ footer.site a:hover { color: var(--text); }
 }
 .ptr.is-refreshing .ptr-ring { animation: ptr-spin .7s linear infinite; }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+.feed-filters { margin: 0 0 20px; }
+.feed-filters .scope-filter + .scope-filter { margin-top: 10px; }
+.feed-item.is-hidden { display: none; }

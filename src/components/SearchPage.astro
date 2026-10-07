@@ -26,7 +26,8 @@ const index = posts.map((post) => {
     description: post.data.description,
     tipo,
     tipoLabel: tipoLabel(locale, tipo),
-    pais: paisLabel(post.data.pais),
+    pais: post.data.pais || '',
+    paisLabel: paisLabel(post.data.pais),
     href: briefingPath(locale, post.id),
     date: post.data.pubDate.toLocaleDateString(localeDate[locale], {
       day: '2-digit',
@@ -39,6 +40,7 @@ const index = posts.map((post) => {
 });
 
 const hits = copy.searchHits;
+const filterEmpty = copy.filterEmpty;
 ---
 <Base title={copy.searchTitle} description={copy.searchDesc} locale={locale} path="/busca">
   <p class="eyebrow">{copy.searchTitle}</p>
@@ -46,9 +48,20 @@ const hits = copy.searchHits;
   <form class="search" id="search-form" action={formAction} method="get" role="search">
     <label class="faint" for="q">{copy.searchLabel}</label>
     <input id="q" name="q" type="search" placeholder={copy.searchPlaceholder} autocomplete="off" />
+    <fieldset class="scope-filter" id="region-filter">
+      <legend class="faint">{copy.filterRegion}</legend>
+      <div class="scope-options" role="radiogroup" aria-label={copy.filterRegion}>
+        <button type="button" class="scope-btn is-active" data-region="todos" aria-pressed="true">{copy.regionAll}</button>
+        <button type="button" class="scope-btn" data-region="br" aria-pressed="false">{copy.regionBr}</button>
+        <button type="button" class="scope-btn" data-region="mx" aria-pressed="false">{copy.regionMx}</button>
+        <button type="button" class="scope-btn" data-region="latam" aria-pressed="false">{copy.regionLatam}</button>
+        <button type="button" class="scope-btn" data-region="us" aria-pressed="false">{copy.regionUs}</button>
+        <button type="button" class="scope-btn" data-region="eu" aria-pressed="false">{copy.regionEu}</button>
+      </div>
+    </fieldset>
     <fieldset class="scope-filter" id="scope-filter">
-      <legend class="faint">{copy.searchScope}</legend>
-      <div class="scope-options" role="radiogroup" aria-label={copy.searchScope}>
+      <legend class="faint">{copy.filterType}</legend>
+      <div class="scope-options" role="radiogroup" aria-label={copy.filterType}>
         <button type="button" class="scope-btn is-active" data-scope="todos" aria-pressed="true">{copy.searchAll}</button>
         <button type="button" class="scope-btn" data-scope="incidente" aria-pressed="false">{copy.searchIncidents}</button>
         <button type="button" class="scope-btn" data-scope="noticia" aria-pressed="false">{copy.searchNews}</button>
@@ -60,36 +73,65 @@ const hits = copy.searchHits;
   <div id="search-results" class="search-results"></div>
 </Base>
 
-<script define:vars={{ index, hits }}>
+<script define:vars={{ index, hits, filterEmpty }}>
   const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
   const input = document.getElementById('q');
   const status = document.getElementById('search-status');
   const results = document.getElementById('search-results');
   const form = document.getElementById('search-form');
-  const scopeBtns = [...document.querySelectorAll('.scope-btn')];
+  const scopeBtns = [...document.querySelectorAll('[data-scope]')];
+  const regionBtns = [...document.querySelectorAll('[data-region]')];
   const allowed = new Set(['todos', 'incidente', 'noticia', 'vulnerabilidades']);
+  const allowedReg = new Set(['todos', 'br', 'mx', 'latam', 'us', 'eu']);
+  const REG = {
+    br: ['br'],
+    mx: ['mx'],
+    latam: ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'latam'],
+    us: ['us'],
+    eu: ['eu'],
+  };
+  const KEY = 'dsb-feed';
 
-  const readScope = () => {
-    const raw = new URLSearchParams(location.search).get('tipo') || 'todos';
-    return allowed.has(raw) ? raw : 'todos';
+  const readPair = () => {
+    const params = new URLSearchParams(location.search);
+    const hasUrl = params.has('tipo') || params.has('regiao');
+    let stored = {};
+    if (!hasUrl) {
+      try { stored = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+    }
+    const tRaw = hasUrl ? params.get('tipo') : stored.tipo;
+    const rRaw = hasUrl ? params.get('regiao') : stored.regiao;
+    return {
+      tipo: allowed.has(tRaw) ? tRaw : 'todos',
+      regiao: allowedReg.has(rRaw) ? rRaw : 'todos',
+    };
   };
 
-  let scope = readScope();
+  let scope = 'todos';
+  let region = 'todos';
 
-  const syncScopeUi = () => {
+  const syncUi = () => {
     scopeBtns.forEach((btn) => {
       const on = btn.getAttribute('data-scope') === scope;
       btn.classList.toggle('is-active', on);
       btn.setAttribute('aria-pressed', String(on));
     });
+    regionBtns.forEach((btn) => {
+      const on = btn.getAttribute('data-region') === region;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
   };
 
-  const writeUrl = (q, tipo) => {
+  const writeUrl = (q) => {
+    try { localStorage.setItem(KEY, JSON.stringify({ tipo: scope, regiao: region })); } catch (e) {}
     const url = new URL(location.href);
     if (q) url.searchParams.set('q', q);
     else url.searchParams.delete('q');
-    if (tipo && tipo !== 'todos') url.searchParams.set('tipo', tipo);
+    if (scope && scope !== 'todos') url.searchParams.set('tipo', scope);
     else url.searchParams.delete('tipo');
+    if (region && region !== 'todos') url.searchParams.set('regiao', region);
+    else url.searchParams.delete('regiao');
     history.replaceState(null, '', url);
   };
 
@@ -98,8 +140,14 @@ const hits = copy.searchHits;
     return (n === 1 ? one : many).replace('{n}', String(n));
   };
 
+  const inRegion = (pais) => {
+    if (region === 'todos') return true;
+    return (REG[region] || []).includes(pais || '');
+  };
+
   const labelHits = (n, tipo, hasQuery) => {
     if (!n) {
+      if (region !== 'todos') return filterEmpty;
       if (hasQuery && tipo === 'incidente') return hits.noneTermIncidente;
       if (hasQuery && tipo === 'noticia') return hits.noneTermNoticia;
       if (hasQuery && tipo === 'vulnerabilidades') return hits.noneTermVuln;
@@ -120,6 +168,7 @@ const hits = copy.searchHits;
     const terms = q.split(/\s+/).filter(Boolean);
     const found = index.filter((post) => {
       if (scope !== 'todos' && post.tipo !== scope) return false;
+      if (!inRegion(post.pais)) return false;
       if (!terms.length) return true;
       const hay = fold(post.text);
       return terms.every((term) => hay.includes(term));
@@ -134,7 +183,7 @@ const hits = copy.searchHits;
             <div class="meta-row">
               <p class="faint">${post.date}</p>
               <div class="pills">
-                ${post.pais ? `<span class="pais-pill">${post.pais}</span>` : ''}
+                ${post.paisLabel ? `<span class="pais-pill">${post.paisLabel}</span>` : ''}
                 <span class="tipo-pill ${post.tipo}">${post.tipoLabel}</span>
               </div>
             </div>
@@ -148,24 +197,35 @@ const hits = copy.searchHits;
 
   const params = new URLSearchParams(location.search);
   input.value = params.get('q') || '';
-  scope = readScope();
-  syncScopeUi();
+  const pair = readPair();
+  scope = pair.tipo;
+  region = pair.regiao;
+  syncUi();
   run();
+  if (scope !== 'todos' || region !== 'todos') writeUrl(input.value);
 
   input.addEventListener('input', () => {
-    writeUrl(input.value, scope);
+    writeUrl(input.value);
     run();
   });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    writeUrl(input.value, scope);
+    writeUrl(input.value);
     run();
   });
   scopeBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       scope = btn.getAttribute('data-scope') || 'todos';
-      syncScopeUi();
-      writeUrl(input.value, scope);
+      syncUi();
+      writeUrl(input.value);
+      run();
+    });
+  });
+  regionBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      region = btn.getAttribute('data-region') || 'todos';
+      syncUi();
+      writeUrl(input.value);
       run();
     });
   });

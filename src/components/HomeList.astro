@@ -17,10 +17,36 @@ const fmt = (d: Date) =>
     year: 'numeric',
     timeZone: 'America/Sao_Paulo',
   });
+const tipoOf = (tipo: string) =>
+  tipo === 'noticia' || tipo === 'vulnerabilidades' ? tipo : 'incidente';
 ---
 <Base description={copy.homeDescription} locale={locale} path="/">
+  <div class="feed-filters" id="feed-filters">
+    <fieldset class="scope-filter">
+      <legend class="faint">{copy.filterRegion}</legend>
+      <div class="scope-options" role="radiogroup" aria-label={copy.filterRegion} data-group="regiao">
+        <button type="button" class="scope-btn is-active" data-value="todos" aria-pressed="true">{copy.regionAll}</button>
+        <button type="button" class="scope-btn" data-value="br" aria-pressed="false">{copy.regionBr}</button>
+        <button type="button" class="scope-btn" data-value="mx" aria-pressed="false">{copy.regionMx}</button>
+        <button type="button" class="scope-btn" data-value="latam" aria-pressed="false">{copy.regionLatam}</button>
+        <button type="button" class="scope-btn" data-value="us" aria-pressed="false">{copy.regionUs}</button>
+        <button type="button" class="scope-btn" data-value="eu" aria-pressed="false">{copy.regionEu}</button>
+      </div>
+    </fieldset>
+    <fieldset class="scope-filter">
+      <legend class="faint">{copy.filterType}</legend>
+      <div class="scope-options" role="radiogroup" aria-label={copy.filterType} data-group="tipo">
+        <button type="button" class="scope-btn is-active" data-value="todos" aria-pressed="true">{copy.searchAll}</button>
+        <button type="button" class="scope-btn" data-value="incidente" aria-pressed="false">{copy.searchIncidents}</button>
+        <button type="button" class="scope-btn" data-value="noticia" aria-pressed="false">{copy.searchNews}</button>
+        <button type="button" class="scope-btn" data-value="vulnerabilidades" aria-pressed="false">{copy.searchVulns}</button>
+      </div>
+    </fieldset>
+  </div>
+  <p class="muted" id="home-empty" hidden>{copy.filterEmpty}</p>
+
   {featured ? (
-    <a class="hero" href={briefingPath(locale, featured.id)} style="text-decoration:none;color:inherit">
+    <a class="hero feed-item" data-tipo={tipoOf(featured.data.tipo)} data-pais={featured.data.pais || ''} href={briefingPath(locale, featured.id)} style="text-decoration:none;color:inherit">
       <div class="hero-copy">
         <div class="meta-row">
           <p class="eyebrow">Briefing · {fmt(featured.data.pubDate)}</p>
@@ -39,11 +65,11 @@ const fmt = (d: Date) =>
   )}
 
   {rest.length > 0 && (
-    <section style="margin-top:36px">
+    <section id="home-rest" style="margin-top:36px">
       <p class="eyebrow">{copy.latest}</p>
       <div class="grid">
         {rest.map((post) => (
-          <a class="card" href={briefingPath(locale, post.id)} style="text-decoration:none;color:inherit">
+          <a class="card feed-item" data-tipo={tipoOf(post.data.tipo)} data-pais={post.data.pais || ''} href={briefingPath(locale, post.id)} style="text-decoration:none;color:inherit">
             <div class="card-copy">
               <div class="meta-row">
                 <p class="faint">{fmt(post.data.pubDate)}</p>
@@ -59,3 +85,94 @@ const fmt = (d: Date) =>
     </section>
   )}
 </Base>
+
+<script>
+  const REG = {
+    br: ['br'],
+    mx: ['mx'],
+    latam: ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'latam'],
+    us: ['us'],
+    eu: ['eu'],
+  };
+  const allowedTipo = new Set(['todos', 'incidente', 'noticia', 'vulnerabilidades']);
+  const allowedReg = new Set(['todos', 'br', 'mx', 'latam', 'us', 'eu']);
+  const KEY = 'dsb-feed';
+  let tipo = 'todos';
+  let regiao = 'todos';
+
+  const match = (el) => {
+    if (tipo !== 'todos' && el.getAttribute('data-tipo') !== tipo) return false;
+    if (regiao === 'todos') return true;
+    const set = REG[regiao] || [];
+    return set.includes(el.getAttribute('data-pais') || '');
+  };
+
+  const syncUi = () => {
+    document.querySelectorAll('#feed-filters [data-group]').forEach((group) => {
+      const current = group.getAttribute('data-group') === 'tipo' ? tipo : regiao;
+      group.querySelectorAll('.scope-btn').forEach((btn) => {
+        const on = btn.getAttribute('data-value') === current;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-pressed', String(on));
+      });
+    });
+  };
+
+  const write = () => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ tipo, regiao }));
+    } catch (e) {}
+    const url = new URL(location.href);
+    if (tipo !== 'todos') url.searchParams.set('tipo', tipo);
+    else url.searchParams.delete('tipo');
+    if (regiao !== 'todos') url.searchParams.set('regiao', regiao);
+    else url.searchParams.delete('regiao');
+    history.replaceState(null, '', url);
+  };
+
+  const apply = () => {
+    const items = [...document.querySelectorAll('.feed-item')];
+    let n = 0;
+    items.forEach((el) => {
+      const on = match(el);
+      el.classList.toggle('is-hidden', !on);
+      if (on) n += 1;
+    });
+    const rest = document.getElementById('home-rest');
+    if (rest) {
+      const any = [...rest.querySelectorAll('.feed-item')].some((el) => !el.classList.contains('is-hidden'));
+      rest.hidden = !any;
+    }
+    const empty = document.getElementById('home-empty');
+    if (empty) empty.hidden = n > 0;
+    syncUi();
+  };
+
+  const read = () => {
+    const params = new URLSearchParams(location.search);
+    const hasUrl = params.has('tipo') || params.has('regiao');
+    let stored = {};
+    if (!hasUrl) {
+      try { stored = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+    }
+    const tRaw = hasUrl ? params.get('tipo') : stored.tipo;
+    const rRaw = hasUrl ? params.get('regiao') : stored.regiao;
+    tipo = allowedTipo.has(tRaw) ? tRaw : 'todos';
+    regiao = allowedReg.has(rRaw) ? rRaw : 'todos';
+  };
+
+  read();
+  apply();
+  if (tipo !== 'todos' || regiao !== 'todos') write();
+
+  document.querySelectorAll('#feed-filters .scope-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('[data-group]');
+      const value = btn.getAttribute('data-value') || 'todos';
+      if (group && group.getAttribute('data-group') === 'tipo') tipo = value;
+      else regiao = value;
+      write();
+      apply();
+    });
+  });
+</script>
