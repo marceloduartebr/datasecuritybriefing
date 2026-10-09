@@ -17,13 +17,17 @@ const fmt = view.data.pubDate.toLocaleDateString(localeDate[locale], {
   timeZone: 'America/Sao_Paulo',
 });
 const shareUrl = new URL(briefingPath(locale, view.id), Astro.site ?? 'https://dsb.duarte.top').href;
+const waHref = `https://wa.me/?text=${encodeURIComponent(`${view.data.title} — ${shareUrl}`)}`;
 ---
 <Base title={view.data.title} description={view.data.description} locale={locale} path={`/briefings/${view.id}`}>
   <article class="prose">
     {locale !== 'pt' && !view.translated && <p class="fallback-note">{copy.fallbackNotice}</p>}
     <p class="eyebrow">Briefing · {fmt}</p>
     <div class="meta-row">
-      <button type="button" class="share-copy" data-share-url={shareUrl}>{copy.share}</button>
+      <div class="share-actions">
+        <button type="button" class="share-copy" data-share-url={shareUrl}>{copy.share}</button>
+        <a class="share-wa" href={waHref} target="_blank" rel="noopener noreferrer">{copy.shareWhatsApp}</a>
+      </div>
       <Pills locale={locale} tipo={view.data.tipo} pais={view.data.pais} />
     </div>
     <h1>{view.data.title}</h1>

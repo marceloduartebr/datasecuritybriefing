@@ -256,6 +256,27 @@ article.prose th, article.prose td {
   color: var(--text);
   border-color: #3a2e1a;
 }
+.share-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.share-wa {
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--gold);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.share-wa:hover { border-color: var(--gold); text-decoration: none; }
 .cover {
   display: block;
   width: 100%;
