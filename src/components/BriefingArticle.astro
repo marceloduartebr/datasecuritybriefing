@@ -19,7 +19,7 @@ const fmt = view.data.pubDate.toLocaleDateString(localeDate[locale], {
 const shareUrl = new URL(briefingPath(locale, view.id), Astro.site ?? 'https://dsb.duarte.top').href;
 const waHref = `https://wa.me/?text=${encodeURIComponent(`${view.data.title} — ${shareUrl}`)}`;
 ---
-<Base title={view.data.title} description={view.data.description} locale={locale} path={`/briefings/${view.id}`}>
+<Base title={view.data.title} description={view.data.description} locale={locale} path={`/briefings/${view.id}`} image={view.data.cover} type="article">
   <article class="prose">
     {locale !== 'pt' && !view.translated && <p class="fallback-note">{copy.fallbackNotice}</p>}
     <p class="eyebrow">Briefing · {fmt}</p>

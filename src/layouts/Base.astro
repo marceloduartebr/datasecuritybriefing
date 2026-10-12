@@ -8,13 +8,20 @@ type Props = {
   description?: string;
   locale?: Locale;
   path?: string;
+  image?: string;
+  type?: 'website' | 'article';
 };
 
-const { title, description, locale = defaultLocale, path = '/' } = Astro.props;
+const { title, description, locale = defaultLocale, path = '/', image, type = 'website' } = Astro.props;
 const copy = t(locale);
 const pageTitle = title ? `${title} · Data Security Briefing` : 'Data Security Briefing';
 const feedPath = localizePath(locale, '/rss.xml');
 const feedUrl = new URL(feedPath, Astro.site ?? 'https://dsb.duarte.top').href;
+const pageUrl = new URL(localizePath(locale, path), Astro.site ?? 'https://dsb.duarte.top').href;
+const imageUrl = image
+  ? (image.startsWith('http') ? image : new URL(image, Astro.site ?? 'https://dsb.duarte.top').href)
+  : new URL('/icon-512.png', Astro.site ?? 'https://dsb.duarte.top').href;
+const ogLocale = locale === 'pt' ? 'pt_BR' : locale === 'es' ? 'es' : 'en';
 const hrefLang = alternates(path);
 const htmlLang = localeHtml[locale];
 ---
@@ -59,6 +66,20 @@ const htmlLang = localeHtml[locale];
     <meta name="mobile-web-app-capable" content="yes" />
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={pageUrl} />
+    <meta property="og:site_name" content="Data Security Briefing" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={pageTitle} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:secure_url" content={imageUrl} />
+    <meta property="og:image:alt" content={title ?? 'Data Security Briefing'} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    {description && <meta name="twitter:description" content={description} />}
+    <meta name="twitter:image" content={imageUrl} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png?v=2" />
     <link rel="manifest" href="/manifest.webmanifest" />
