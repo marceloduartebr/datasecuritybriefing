@@ -430,3 +430,32 @@ footer.site a:hover { color: var(--text); }
 .filter-toggle .chev { color: var(--gold); font-size: 11px; }
 .feed-filters:not(.is-collapsed) .filter-toggle { margin-bottom: 12px; }
 .feed-item.is-hidden { display: none; }
+
+.qr-share {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 28px 0 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+.qr-share img {
+  width: 132px;
+  height: 132px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 6px;
+  flex: 0 0 auto;
+}
+.qr-share figcaption {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.qr-share strong {
+  display: block;
+  color: var(--text);
+  margin-bottom: 4px;
+}

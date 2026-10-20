@@ -1,4 +1,4 @@
-const CACHE = "dsb-pwa-v13";
+const CACHE = "dsb-pwa-v14";
 const PRECACHE = [
   "/",
   "/sobre",
@@ -9,7 +9,8 @@ const PRECACHE = [
   "/icon-180.png",
   "/icon-192.png",
   "/icon-512.png",
-  "/icon-512-maskable.png"
+  "/icon-512-maskable.png",
+  "/qr.png"
 ];
 
 self.addEventListener("install", (event) => {
