@@ -217,7 +217,10 @@ const htmlLang = localeHtml[locale];
         const dialog = document.getElementById('qr-dialog');
         if (!dialog) return;
         document.querySelectorAll('.qr-open').forEach((btn) => {
-          btn.addEventListener('click', () => dialog.showModal());
+          btn.addEventListener('click', () => {
+            window.scrollTo(0, 0);
+            dialog.showModal();
+          });
         });
         const closeBtn = dialog.querySelector('.qr-close');
         if (closeBtn) closeBtn.addEventListener('click', () => dialog.close());

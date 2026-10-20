@@ -444,13 +444,19 @@ footer.site a:hover { color: var(--text); }
 .qr-share img {
   width: 132px;
   height: 132px;
+  max-width: none;
+  aspect-ratio: 1;
+  object-fit: contain;
   background: #fff;
   border-radius: 10px;
   padding: 6px;
-  flex: 0 0 auto;
   display: block;
+  box-sizing: border-box;
 }
 .qr-open {
+  width: 132px;
+  height: 132px;
+  flex: 0 0 132px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -462,7 +468,11 @@ footer.site a:hover { color: var(--text); }
   outline-offset: 3px;
 }
 .qr-dialog {
-  position: relative;
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -474,8 +484,11 @@ footer.site a:hover { color: var(--text); }
 }
 .qr-dialog img {
   display: block;
-  width: min(82vw, 440px);
+  width: min(78vw, 440px);
   height: auto;
+  max-width: none;
+  aspect-ratio: 1;
+  object-fit: contain;
 }
 .qr-close {
   position: absolute;
