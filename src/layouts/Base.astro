@@ -146,6 +146,10 @@ const htmlLang = localeHtml[locale];
         <p class="copy">{copy.copy}</p>
       </footer>
     </div>
+    <dialog id="qr-dialog" class="qr-dialog">
+      <img src="/qr.png" alt="" />
+      <button type="button" class="qr-close" aria-label={locale === 'pt' ? 'Fechar' : locale === 'es' ? 'Cerrar' : 'Close'}>×</button>
+    </dialog>
     <script is:inline define:vars={{ feedUrl, copiedLabel: copy.rssCopied, defaultCopy: copy.rssCopy, refreshLabel: copy.refresh, refreshingLabel: copy.refreshing }}>
       const root = document.querySelector('.rss');
       if (root) {
@@ -197,6 +201,18 @@ const htmlLang = localeHtml[locale];
           navigator.serviceWorker.register('/sw.js').catch(() => {});
         });
       }
+      (function () {
+        const dialog = document.getElementById('qr-dialog');
+        if (!dialog) return;
+        document.querySelectorAll('.qr-open').forEach((btn) => {
+          btn.addEventListener('click', () => dialog.showModal());
+        });
+        const closeBtn = dialog.querySelector('.qr-close');
+        if (closeBtn) closeBtn.addEventListener('click', () => dialog.close());
+        dialog.addEventListener('click', (event) => {
+          if (event.target === dialog) dialog.close();
+        });
+      })();
       (function () {
         const bar = document.querySelector('.ptr');
         const labelEl = bar && bar.querySelector('.ptr-label');

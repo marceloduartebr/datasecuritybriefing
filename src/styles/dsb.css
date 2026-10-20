@@ -448,6 +448,48 @@ footer.site a:hover { color: var(--text); }
   border-radius: 10px;
   padding: 6px;
   flex: 0 0 auto;
+  display: block;
+}
+.qr-open {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  border-radius: 10px;
+}
+.qr-open:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.qr-dialog {
+  position: relative;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  max-width: min(92vw, 520px);
+}
+.qr-dialog::backdrop {
+  background: rgba(6, 8, 12, .72);
+}
+.qr-dialog img {
+  display: block;
+  width: min(82vw, 440px);
+  height: auto;
+}
+.qr-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: #0b0e13;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
 }
 .qr-share figcaption {
   color: var(--muted);
