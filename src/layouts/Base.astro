@@ -33,6 +33,18 @@ const htmlLang = localeHtml[locale];
       (function () {
         try {
           var ua = navigator.userAgent || '';
+          if (!/iphone|ipad|ipod/i.test(ua)) return;
+          if (!/(CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo)/i.test(ua)) return;
+          var href = location.href;
+          if (href.indexOf('x-safari-') === 0) return;
+          location.replace('x-safari-' + href);
+        } catch (e) {}
+      })();
+    </script>
+    <script is:inline>
+      (function () {
+        try {
+          var ua = navigator.userAgent || '';
           if (/bot|crawl|spider|slurp|facebookexternalhit|preview|headless/i.test(ua)) return;
           var path = location.pathname;
           var prefix = path === '/es' || path.indexOf('/es/') === 0 ? 'es' : (path === '/en' || path.indexOf('/en/') === 0 ? 'en' : 'pt');
@@ -204,16 +216,8 @@ const htmlLang = localeHtml[locale];
       (function () {
         const dialog = document.getElementById('qr-dialog');
         if (!dialog) return;
-        const ios = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-        const standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
         document.querySelectorAll('.qr-open').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            if (ios && standalone) {
-              window.location.href = 'x-safari-https://dsb.duarte.top/qr.png';
-              return;
-            }
-            dialog.showModal();
-          });
+          btn.addEventListener('click', () => dialog.showModal());
         });
         const closeBtn = dialog.querySelector('.qr-close');
         if (closeBtn) closeBtn.addEventListener('click', () => dialog.close());
