@@ -204,8 +204,16 @@ const htmlLang = localeHtml[locale];
       (function () {
         const dialog = document.getElementById('qr-dialog');
         if (!dialog) return;
+        const ios = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+        const standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
         document.querySelectorAll('.qr-open').forEach((btn) => {
-          btn.addEventListener('click', () => dialog.showModal());
+          btn.addEventListener('click', () => {
+            if (ios && standalone) {
+              window.location.href = 'x-safari-https://dsb.duarte.top/qr.png';
+              return;
+            }
+            dialog.showModal();
+          });
         });
         const closeBtn = dialog.querySelector('.qr-close');
         if (closeBtn) closeBtn.addEventListener('click', () => dialog.close());
