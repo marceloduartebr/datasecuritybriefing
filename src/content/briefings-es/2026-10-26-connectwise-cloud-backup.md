@@ -8,7 +8,6 @@ tags: ["incidente", "supply-chain", "microsoft-365", "msp", "eua"]
 pais: us
 pubDate: 2026-10-26T18:19:00-03:00
 cover: "https://covers.duarte.top/covers/20261020-connectwise-cloud-backup.jpg"
-slug: connectwise-cloud-backup
 ---
 
 En una línea: Credencial del ConnectWise Cloud Backup usada para acceder a 162 tenants Microsoft 365.
