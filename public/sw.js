@@ -1,4 +1,4 @@
-const CACHE = "dsb-pwa-v19";
+const CACHE = "dsb-pwa-v20";
 const PRECACHE = [
   "/",
   "/sobre",
@@ -10,6 +10,7 @@ const PRECACHE = [
   "/icon-192.png",
   "/icon-512.png",
   "/icon-512-maskable.png",
+  "/fila-icon-512.png",
   "/qr.png"
 ];
 
