@@ -1,6 +1,8 @@
 ---
 import '../styles/dsb.css';
-import { defaultLocale, localeHtml, localeLabel, locales, t, type Locale } from '../i18n/ui';
+import { getCollection } from 'astro:content';
+import SiteNav from '../components/SiteNav.astro';
+import { defaultLocale, localeHtml, locales, t, type Locale } from '../i18n/ui';
 import { alternates, localizePath } from '../i18n/urls';
 
 type Props = {
@@ -24,6 +26,53 @@ const imageUrl = image
 const ogLocale = locale === 'pt' ? 'pt_BR' : locale === 'es' ? 'es' : 'en';
 const hrefLang = alternates(path);
 const htmlLang = localeHtml[locale];
+const briefingSlug = path.startsWith('/briefings/') ? path.slice('/briefings/'.length) : '';
+let briefingLocales: Record<Locale, boolean> | null = null;
+if (briefingSlug) {
+  const [esPosts, enPosts] = await Promise.all([
+    getCollection('briefingsEs'),
+    getCollection('briefingsEn'),
+  ]);
+  briefingLocales = {
+    pt: true,
+    es: esPosts.some((entry) => entry.id === briefingSlug),
+    en: enPosts.some((entry) => entry.id === briefingSlug),
+  };
+}
+function langHref(item: Locale) {
+  if (briefingLocales && !briefingLocales[item]) return localizePath(item, '/');
+  return localizePath(item, path);
+}
+const langNames: Record<Locale, string> = {
+  pt: 'Português',
+  es: 'Español',
+  en: 'English',
+};
+const langLinks = locales.map((item) => ({
+  locale: item,
+  href: langHref(item),
+  label: item.toUpperCase(),
+  hreflang: localeHtml[item],
+  title: langNames[item],
+  current: item === locale,
+}));
+const navItems = [
+  { href: localizePath(locale, '/'), label: copy.navBriefings, current: path === '/' || path.startsWith('/briefings/') },
+  { href: localizePath(locale, '/busca'), label: copy.navSearch, current: path === '/busca' },
+  { href: localizePath(locale, '/sobre'), label: copy.navAbout, current: path === '/sobre' },
+  { href: localizePath(locale, '/instalar'), label: copy.navInstall, current: path === '/instalar' },
+];
+const navProps = {
+  items: navItems,
+  rssLabel: copy.rss,
+  rssHint: copy.rssHint,
+  rssCopy: copy.rssCopy,
+  rssDownload: copy.rssDownload,
+  feedPath,
+  feedUrl,
+  langLabel: copy.langAria,
+  langLinks,
+};
 ---
 <html lang={htmlLang}>
   <head>
@@ -46,26 +95,17 @@ const htmlLang = localeHtml[locale];
         try {
           var ua = navigator.userAgent || '';
           if (/bot|crawl|spider|slurp|facebookexternalhit|preview|headless/i.test(ua)) return;
-          var path = location.pathname;
-          var prefix = path === '/es' || path.indexOf('/es/') === 0 ? 'es' : (path === '/en' || path.indexOf('/en/') === 0 ? 'en' : 'pt');
           var stored = localStorage.getItem('dsb-lang');
-          var want = stored;
-          if (want !== 'pt' && want !== 'es' && want !== 'en') {
-            want = 'pt';
-            var list = navigator.languages || [navigator.language || ''];
-            for (var i = 0; i < list.length; i++) {
-              var tag = String(list[i] || '').toLowerCase();
-              if (tag.indexOf('pt') === 0) { want = 'pt'; break; }
-              if (tag.indexOf('es') === 0) { want = 'es'; break; }
-              if (tag.indexOf('en') === 0) { want = 'en'; break; }
-            }
-            localStorage.setItem('dsb-lang', want);
+          if (stored === 'pt' || stored === 'es' || stored === 'en') return;
+          var want = 'pt';
+          var list = navigator.languages || [navigator.language || ''];
+          for (var i = 0; i < list.length; i++) {
+            var tag = String(list[i] || '').toLowerCase();
+            if (tag.indexOf('pt') === 0) { want = 'pt'; break; }
+            if (tag.indexOf('es') === 0) { want = 'es'; break; }
+            if (tag.indexOf('en') === 0) { want = 'en'; break; }
           }
-          if (want === prefix) return;
-          var rest = prefix === 'pt' ? path : (path.replace(/^\/(es|en)/, '') || '/');
-          if (!rest) rest = '/';
-          var next = want === 'pt' ? rest : ('/' + want + (rest === '/' ? '' : rest));
-          location.replace(next + location.search + location.hash);
+          localStorage.setItem('dsb-lang', want);
         } catch (e) {}
       })();
     </script>
@@ -109,51 +149,28 @@ const htmlLang = localeHtml[locale];
       <span class="ptr-ring" aria-hidden="true"></span>
       <span class="ptr-label"></span>
     </div>
-    <div class="wrap">
-      <header class="site">
+    <header class="topo">
+      <div class="container linha1">
         <a class="brand" href={localizePath(locale, '/')}>
-          <img class="mark" src="/fila-icon-512.png" width="52" height="52" alt="" />
+          <img class="mark" src="/fila-icon-512.png" width="38" height="38" alt="" />
           <span>
             <strong class="brand-title">Data Security Briefing</strong>
             <small><em>{copy.brandBy}</em> Marcelo Duarte</small>
           </span>
         </a>
-        <nav class="site">
-          <a href={localizePath(locale, '/')}>{copy.navBriefings}</a>
-          <a href={localizePath(locale, '/busca')}>{copy.navSearch}</a>
-          <a href={localizePath(locale, '/sobre')}>{copy.navAbout}</a>
-          <a href={localizePath(locale, '/instalar')}>{copy.navInstall}</a>
-          <div class="rss">
-            <button type="button" class="rss-toggle" aria-expanded="false" aria-controls="rss-panel">{copy.rss}</button>
-            <div id="rss-panel" class="rss-panel" hidden>
-              <p class="rss-hint">{copy.rssHint}</p>
-              <button type="button" class="rss-copy" data-feed={feedUrl}>{copy.rssCopy}</button>
-              <a class="rss-download" href={feedPath} download="datasecuritybriefing.xml">{copy.rssDownload}</a>
-            </div>
-          </div>
-          <nav class="lang" aria-label="Language">
-            {locales.map((item, i) => (
-              <>
-                {i > 0 && <span class="sep" aria-hidden="true">·</span>}
-                <a
-                  href={item === 'pt' ? (path === '/' ? '/' : path) : `/${item}${path === '/' ? '' : path}`}
-                  class={item === locale ? 'is-active' : undefined}
-                  aria-current={item === locale ? 'true' : undefined}
-                  data-locale={item}
-                >{localeLabel[item]}</a>
-              </>
-            ))}
-          </nav>
-        </nav>
+        <SiteNav variant="desk" label={copy.navAria} {...navProps} />
         <div class="acoes">
-          <a class="btn-icone" href="https://x.com/DSBriefing" target="_blank" rel="noopener" aria-label={copy.navX} title="X">
-            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M17.3 3H20.2l-6.6 7.5L21.5 21h-5.7l-4.5-5.8L6.1 21H3.2l7-8L2.7 3h5.8l4 5.3L17.3 3Zm-1 16.2h1.6L7.8 4.7H6.1l10.2 14.5Z"/></svg>
+          <a class="btn-icone" href="https://x.com/DSBriefing" target="_blank" rel="noopener noreferrer" aria-label={copy.navX} title="X">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.3 3H20.2l-6.6 7.5L21.5 21h-5.7l-4.5-5.8L6.1 21H3.2l7-8L2.7 3h5.8l4 5.3L17.3 3Zm-1 16.2h1.6L7.8 4.7H6.1l10.2 14.5Z"/></svg>
           </a>
-          <button type="button" class="btn-icone qr-open" aria-label={locale === 'pt' ? 'Mostrar o QR code do site' : locale === 'es' ? 'Mostrar el código QR del sitio' : 'Show the site QR code'} title="QR">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M6.5 6.5h0M17.5 6.5h0M6.5 17.5h0" stroke-width="2.6"/><path d="M14 14h3v3M21 14v.01M14 21h3M20 17v4h1"/></svg>
+          <button type="button" class="btn-icone qr-abre" aria-haspopup="dialog" aria-controls="qr-dialog" aria-label={copy.qrOpen} title="QR">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M6.5 6.5h0M17.5 6.5h0M6.5 17.5h0" stroke-width="2.6"/><path d="M14 14h3v3M21 14v.01M14 21h3M20 17v4h1"/></svg>
           </button>
         </div>
-      </header>
+      </div>
+      <SiteNav variant="mob" label={copy.navAriaMobile} {...navProps} />
+    </header>
+    <div class="wrap">
       <slot />
       <footer class="site">
         <p>{copy.footerLine} <a href={localizePath(locale, '/instalar')}>{copy.footerInstall}</a></p>
@@ -165,26 +182,35 @@ const htmlLang = localeHtml[locale];
       <button type="button" class="qr-close" aria-label={locale === 'pt' ? 'Fechar' : locale === 'es' ? 'Cerrar' : 'Close'}>×</button>
     </dialog>
     <script is:inline define:vars={{ feedUrl, copiedLabel: copy.rssCopied, defaultCopy: copy.rssCopy, refreshLabel: copy.refresh, refreshingLabel: copy.refreshing }}>
-      const root = document.querySelector('.rss');
-      if (root) {
+      const closeRss = (root) => {
+        const panel = root.querySelector('.rss-panel');
         const toggle = root.querySelector('.rss-toggle');
-        const panel = root.querySelector('#rss-panel');
+        if (panel) panel.hidden = true;
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      };
+      document.querySelectorAll('.rss').forEach((root) => {
+        const toggle = root.querySelector('.rss-toggle');
+        const panel = root.querySelector('.rss-panel');
         const copyBtn = root.querySelector('.rss-copy');
-        const close = () => {
-          panel.hidden = true;
-          toggle.setAttribute('aria-expanded', 'false');
+        if (!toggle || !panel || !copyBtn) return;
+        const place = () => {
+          const rect = toggle.getBoundingClientRect();
+          const width = Math.max(panel.offsetWidth, 220);
+          let left = rect.left;
+          if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
+          if (left < 8) left = 8;
+          panel.style.top = (rect.bottom + 8) + 'px';
+          panel.style.left = left + 'px';
         };
         toggle.addEventListener('click', (event) => {
           event.stopPropagation();
           const open = panel.hidden;
+          document.querySelectorAll('.rss').forEach((other) => {
+            if (other !== root) closeRss(other);
+          });
+          if (open) place();
           panel.hidden = !open;
           toggle.setAttribute('aria-expanded', String(open));
-        });
-        document.addEventListener('click', (event) => {
-          if (!root.contains(event.target)) close();
-        });
-        document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') close();
         });
         copyBtn.addEventListener('click', async () => {
           const url = copyBtn.getAttribute('data-feed') || feedUrl;
@@ -204,12 +230,31 @@ const htmlLang = localeHtml[locale];
           copyBtn.textContent = copiedLabel;
           window.setTimeout(() => { copyBtn.textContent = defaultCopy; }, 1800);
         });
-      }
-      document.querySelectorAll('.lang a[data-locale]').forEach((link) => {
+      });
+      document.addEventListener('click', (event) => {
+        document.querySelectorAll('.rss').forEach((root) => {
+          if (!root.contains(event.target)) closeRss(root);
+        });
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') document.querySelectorAll('.rss').forEach(closeRss);
+      });
+      document.querySelectorAll('.idiomas a[data-locale]').forEach((link) => {
         link.addEventListener('click', () => {
           try { localStorage.setItem('dsb-lang', link.getAttribute('data-locale') || 'pt'); } catch {}
         });
       });
+      (function () {
+        const nav = document.querySelector('.nav-mob');
+        if (!nav) return;
+        const update = () => {
+          nav.classList.toggle('rola', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2);
+        };
+        update();
+        nav.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(update);
+      })();
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -218,7 +263,7 @@ const htmlLang = localeHtml[locale];
       (function () {
         const dialog = document.getElementById('qr-dialog');
         if (!dialog) return;
-        document.querySelectorAll('.qr-open').forEach((btn) => {
+        document.querySelectorAll('.qr-open, .qr-abre').forEach((btn) => {
           btn.addEventListener('click', () => {
             window.scrollTo(0, 0);
             dialog.showModal();
