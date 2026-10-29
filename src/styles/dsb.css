@@ -440,6 +440,21 @@ footer.site a:hover { color: var(--text); }
 .feed-filters:not(.is-collapsed) .filter-toggle { margin-bottom: 12px; }
 .feed-item.is-hidden { display: none; }
 
+.social {
+  display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 8px;
+}
+.social-link {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+.social-link:hover { color: var(--gold); border-color: #3a2e1a; text-decoration: none; }
+.social-link svg { display: block; flex-shrink: 0; }
 .qr-share {
   display: flex;
   align-items: center;
