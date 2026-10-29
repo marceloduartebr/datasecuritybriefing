@@ -248,9 +248,10 @@ const navProps = {
         const nav = document.querySelector('.nav-mob');
         if (!nav) return;
         const update = () => {
-          nav.classList.toggle('rola', nav.scrollWidth > nav.clientWidth + 1);
+          nav.classList.toggle('rola', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2);
         };
         update();
+        nav.addEventListener('scroll', update, { passive: true });
         window.addEventListener('resize', update);
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(update);
       })();
