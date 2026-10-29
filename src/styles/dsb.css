@@ -127,6 +127,9 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 12px; }
 .brand span { min-width: 0; }
 .brand-title {
   display: block;
+  -webkit-font-smoothing: antialiased;
+  font-optical-sizing: none;
+  text-rendering: optimizeLegibility;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
