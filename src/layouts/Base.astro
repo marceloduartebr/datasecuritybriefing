@@ -60,16 +60,10 @@ const navItems = [
   { href: localizePath(locale, '/'), label: copy.navBriefings, current: path === '/' || path.startsWith('/briefings/') },
   { href: localizePath(locale, '/busca'), label: copy.navSearch, current: path === '/busca' },
   { href: localizePath(locale, '/sobre'), label: copy.navAbout, current: path === '/sobre' },
-  { href: localizePath(locale, '/instalar'), label: copy.navInstall, current: path === '/instalar' },
 ];
+const installHref = localizePath(locale, '/instalar');
 const navProps = {
   items: navItems,
-  rssLabel: copy.rss,
-  rssHint: copy.rssHint,
-  rssCopy: copy.rssCopy,
-  rssDownload: copy.rssDownload,
-  feedPath,
-  feedUrl,
   langLabel: copy.langAria,
   langLinks,
 };
@@ -163,6 +157,19 @@ const navProps = {
           <a class="btn-icone" href="https://x.com/DSBriefing" target="_blank" rel="noopener noreferrer" aria-label={copy.navX} title="X">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.3 3H20.2l-6.6 7.5L21.5 21h-5.7l-4.5-5.8L6.1 21H3.2l7-8L2.7 3h5.8l4 5.3L17.3 3Zm-1 16.2h1.6L7.8 4.7H6.1l10.2 14.5Z"/></svg>
           </a>
+          <a class="btn-icone" href={installHref} aria-label={copy.footerInstall} title={copy.navInstall} aria-current={path === '/instalar' ? 'page' : undefined}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19h16"/></svg>
+          </a>
+          <div class="rss">
+            <button type="button" class="btn-icone rss-toggle" aria-expanded="false" aria-controls="rss-panel" aria-label={copy.rss} title={copy.rss}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.4"/></svg>
+            </button>
+            <div id="rss-panel" class="rss-panel" hidden>
+              <p class="rss-hint">{copy.rssHint}</p>
+              <button type="button" class="rss-copy" data-feed={feedUrl}>{copy.rssCopy}</button>
+              <a class="rss-download" href={feedPath} download="datasecuritybriefing.xml">{copy.rssDownload}</a>
+            </div>
+          </div>
           <button type="button" class="btn-icone qr-abre" aria-haspopup="dialog" aria-controls="qr-dialog" aria-label={copy.qrOpen} title="QR">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M6.5 6.5h0M17.5 6.5h0M6.5 17.5h0" stroke-width="2.6"/><path d="M14 14h3v3M21 14v.01M14 21h3M20 17v4h1"/></svg>
           </button>
