@@ -1,0 +1,58 @@
+---
+import SeletorIdioma from './SeletorIdioma.astro';
+
+type Item = { href: string; label: string; current: boolean };
+type LangLink = {
+  locale: string;
+  href: string;
+  label: string;
+  hreflang: string;
+  title: string;
+  current: boolean;
+};
+
+type Props = {
+  variant: 'desk' | 'mob';
+  label: string;
+  items: Item[];
+  rssLabel: string;
+  rssHint: string;
+  rssCopy: string;
+  rssDownload: string;
+  feedPath: string;
+  feedUrl: string;
+  langLabel: string;
+  langLinks: LangLink[];
+};
+
+const {
+  variant,
+  label,
+  items,
+  rssLabel,
+  rssHint,
+  rssCopy,
+  rssDownload,
+  feedPath,
+  feedUrl,
+  langLabel,
+  langLinks,
+} = Astro.props;
+
+const panelId = `rss-panel-${variant}`;
+const navClass = variant === 'desk' ? 'nav-desk' : 'nav-mob container';
+---
+<nav class={navClass} aria-label={label}>
+  {items.map((item) => (
+    <a href={item.href} aria-current={item.current ? 'page' : undefined}>{item.label}</a>
+  ))}
+  <div class="rss">
+    <button type="button" class="rss-toggle" aria-expanded="false" aria-controls={panelId}>{rssLabel}</button>
+    <div id={panelId} class="rss-panel" hidden>
+      <p class="rss-hint">{rssHint}</p>
+      <button type="button" class="rss-copy" data-feed={feedUrl}>{rssCopy}</button>
+      <a class="rss-download" href={feedPath} download="datasecuritybriefing.xml">{rssDownload}</a>
+    </div>
+  </div>
+  <SeletorIdioma label={langLabel} links={langLinks} />
+</nav>
