@@ -72,6 +72,23 @@ header.site {
 }
 .btn-icone:hover { color: var(--gold); border-color: #3a2e1a; text-decoration: none; }
 .btn-icone svg { display: block; }
+@media (max-width: 720px) {
+  header.site { align-items: center; gap: 8px; padding: 8px 12px 10px; }
+  .brand { flex: 1 1 auto; min-width: 0; gap: 8px; }
+  .brand img.mark { width: 36px; height: 36px; }
+  .brand-title { font-size: 15px; }
+  .brand small { font-size: 10px; margin-top: 0; }
+  .acoes { margin-left: auto; gap: 5px; }
+  .btn-icone { width: 32px; height: 32px; border-radius: 9px; }
+  nav.site {
+    flex: 1 1 100%;
+    order: 3;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+  }
+}
 .brand { display: flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; }
 .brand img.mark {
   width: 52px; height: 52px; max-width: none; flex-shrink: 0;
