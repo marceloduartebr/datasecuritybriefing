@@ -75,6 +75,7 @@ const ui = {
     regionLatam: 'LATAM',
     regionUs: 'EUA',
     regionEu: 'Europa',
+    regionGlobal: 'Global',
     filterEmpty: 'Nenhum briefing nesse recorte.',
     aboutTitle: 'Sobre',
     aboutDesc: 'Marcelo Duarte e o Data Security Briefing.',
@@ -146,6 +147,7 @@ const ui = {
     regionLatam: 'LATAM',
     regionUs: 'EE. UU.',
     regionEu: 'Europa',
+    regionGlobal: 'Global',
     filterEmpty: 'Ningún briefing en ese recorte.',
     aboutTitle: 'Acerca',
     aboutDesc: 'Marcelo Duarte y Data Security Briefing.',
@@ -217,6 +219,7 @@ const ui = {
     regionLatam: 'LATAM',
     regionUs: 'US',
     regionEu: 'Europe',
+    regionGlobal: 'Global',
     filterEmpty: 'No briefing in that cut.',
     aboutTitle: 'About',
     aboutDesc: 'Marcelo Duarte and Data Security Briefing.',
@@ -250,7 +253,7 @@ export function tipoLabel(locale: Locale, tipo: string) {
   return ui[locale].tipo[key];
 }
 
-export const paises = ['br', 'mx', 'ar', 'cl', 'pe', 'py', 'uy', 'co', 'us', 'eu', 'latam'] as const;
+export const paises = ['br', 'mx', 'ar', 'cl', 'pe', 'py', 'uy', 'co', 'us', 'eu', 'latam', 'global'] as const;
 export type Pais = (typeof paises)[number];
 
 const paisIso: Record<Pais, string> = {
@@ -265,6 +268,7 @@ const paisIso: Record<Pais, string> = {
   us: 'US',
   eu: 'EU',
   latam: 'LATAM',
+  global: 'Global',
 };
 
 export function isPais(value: string | undefined): value is Pais {
