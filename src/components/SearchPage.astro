@@ -64,6 +64,7 @@ const filterEmpty = copy.filterEmpty;
         <button type="button" class="scope-btn" data-region="latam" aria-pressed="false">{copy.regionLatam}</button>
         <button type="button" class="scope-btn" data-region="us" aria-pressed="false">{copy.regionUs}</button>
         <button type="button" class="scope-btn" data-region="eu" aria-pressed="false">{copy.regionEu}</button>
+        <button type="button" class="scope-btn" data-region="global" aria-pressed="false">{copy.regionGlobal}</button>
       </div>
     </fieldset>
     <fieldset class="scope-filter" id="scope-filter">
@@ -91,13 +92,14 @@ const filterEmpty = copy.filterEmpty;
   const scopeBtns = [...document.querySelectorAll('[data-scope]')];
   const regionBtns = [...document.querySelectorAll('[data-region]')];
   const allowed = new Set(['todos', 'incidente', 'noticia', 'vulnerabilidades']);
-  const allowedReg = new Set(['todos', 'br', 'mx', 'latam', 'us', 'eu']);
+  const allowedReg = new Set(['todos', 'br', 'mx', 'latam', 'us', 'eu', 'global']);
   const REG = {
     br: ['br'],
     mx: ['mx'],
     latam: ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'latam'],
     us: ['us'],
     eu: ['eu'],
+    global: ['global'],
   };
   const KEY = 'dsb-feed';
 
