@@ -37,6 +37,7 @@ const tipoOf = (tipo: string) =>
         <button type="button" class="scope-btn" data-value="latam" aria-pressed="false">{copy.regionLatam}</button>
         <button type="button" class="scope-btn" data-value="us" aria-pressed="false">{copy.regionUs}</button>
         <button type="button" class="scope-btn" data-value="eu" aria-pressed="false">{copy.regionEu}</button>
+        <button type="button" class="scope-btn" data-value="global" aria-pressed="false">{copy.regionGlobal}</button>
       </div>
     </fieldset>
     <fieldset class="scope-filter">
@@ -100,9 +101,10 @@ const tipoOf = (tipo: string) =>
     latam: ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'latam'],
     us: ['us'],
     eu: ['eu'],
+    global: ['global'],
   };
   const allowedTipo = new Set(['todos', 'incidente', 'noticia', 'vulnerabilidades']);
-  const allowedReg = new Set(['todos', 'br', 'mx', 'latam', 'us', 'eu']);
+  const allowedReg = new Set(['todos', 'br', 'mx', 'latam', 'us', 'eu', 'global']);
   const KEY = 'dsb-feed';
   let tipo = 'todos';
   let regiao = 'todos';
