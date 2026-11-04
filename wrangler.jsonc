@@ -1,0 +1,16 @@
+{
+  // Site estático. Sem `main`, o Workers Builds não dispara o autoconfig do
+  // Astro (adapter + dist/_worker.js), que rejeita o _redirects no upload.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "datasecuritybriefing",
+  "compatibility_date": "2026-11-04",
+  "observability": {
+    "enabled": true,
+    "traces": {
+      "enabled": true
+    }
+  },
+  "assets": {
+    "directory": "./dist"
+  }
+}
