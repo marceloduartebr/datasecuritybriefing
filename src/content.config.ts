@@ -1,5 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
+import { briefingEntryId } from './lib/briefing-id';
 
 const briefingSchema = z.object({
   title: z.string(),
@@ -14,18 +15,26 @@ const briefingSchema = z.object({
   notionUrl: z.string().url().optional(),
 });
 
+function briefingLoader(base: string) {
+  return glob({
+    pattern: '*.md',
+    base,
+    generateId: ({ entry }) => briefingEntryId(entry),
+  });
+}
+
 const briefings = defineCollection({
-  loader: glob({ pattern: '*.md', base: './src/content/briefings' }),
+  loader: briefingLoader('./src/content/briefings'),
   schema: briefingSchema,
 });
 
 const briefingsEs = defineCollection({
-  loader: glob({ pattern: '*.md', base: './src/content/briefings-es' }),
+  loader: briefingLoader('./src/content/briefings-es'),
   schema: briefingSchema,
 });
 
 const briefingsEn = defineCollection({
-  loader: glob({ pattern: '*.md', base: './src/content/briefings-en' }),
+  loader: briefingLoader('./src/content/briefings-en'),
   schema: briefingSchema,
 });
 
