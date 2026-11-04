@@ -9,7 +9,7 @@ pubDate: 2026-11-03T18:18:00-03:00
 cover: https://covers.duarte.top/covers/20261028-argentina-ia-saude-crowdstrike.jpg
 slug: argentina-ia-saude-crowdstrike
 notionUrl: https://app.notion.com/406174117473819a9fd8c719ea8bf3a8
-pais: AR
+pais: ar
 ---
 
 En una línea: Un actor con agentes de IA comprometió al menos 15 entidades de salud argentinas y extrajo credenciales y registros clínicos de al menos una.
