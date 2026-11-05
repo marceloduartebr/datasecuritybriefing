@@ -218,7 +218,37 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 12px; }
   text-underline-offset: 0.45em;
   text-decoration-thickness: 2px;
 }
-.acoes .rss { display: flex; flex: 0 0 auto; }
+.btn-icone.sino { position: relative; }
+.btn-icone.sino .marca {
+  display: none;
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #2fa866;
+  border: 2px solid var(--bg);
+}
+.btn-icone.sino.ativo { color: var(--gold); border-color: var(--gold); }
+.btn-icone.sino.ativo .corpo { fill: currentColor; }
+.btn-icone.sino.ativo .marca { display: block; }
+.btn-icone.sino[aria-busy='true'] { opacity: 0.6; }
+.sino-aviso {
+  position: fixed;
+  left: 50%;
+  top: calc(4.2rem + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 90vw;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  background: #1a2130;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.95rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
 .idiomas {
   display: inline-flex;
   align-items: center;
@@ -326,41 +356,6 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 12px; }
 }
 .x-link:hover { color: var(--text); text-decoration: none; }
 .x-link svg { display: block; flex-shrink: 0; }
-.rss-panel {
-  position: fixed;
-  z-index: 30;
-  min-width: 220px;
-  padding: 10px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0,0,0,.35);
-}
-.rss-hint {
-  margin: 0 0 8px;
-  font-size: 11px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-.rss-copy,
-.rss-download {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-.rss-copy:hover,
-.rss-download:hover { background: #1f2632; text-decoration: none; }
 .hero, .card {
   display: flex;
   flex-direction: column;
