@@ -61,13 +61,20 @@ const navItems = [
   { href: localizePath(locale, '/'), label: copy.navBriefings, current: path === '/' || path.startsWith('/briefings/') },
   { href: localizePath(locale, '/busca'), label: copy.navSearch, current: path === '/busca' },
   { href: localizePath(locale, '/sobre'), label: copy.navAbout, current: path === '/sobre' },
-  { href: feedPath, label: copy.rss, current: false },
 ];
 const installHref = localizePath(locale, '/instalar');
 const navProps = {
   items: navItems,
   langLabel: copy.langAria,
   langLinks,
+  rss: {
+    feedUrl,
+    feedPath,
+    label: copy.rss,
+    hint: copy.rssHint,
+    copyLabel: copy.rssCopy,
+    downloadLabel: copy.rssDownload,
+  },
 };
 ---
 <html lang={htmlLang}>
@@ -178,7 +185,64 @@ const navProps = {
       <img src="/qr.png" alt="" />
       <button type="button" class="qr-close" aria-label={locale === 'pt' ? 'Fechar' : locale === 'es' ? 'Cerrar' : 'Close'}>×</button>
     </dialog>
-    <script is:inline define:vars={{ refreshLabel: copy.refresh, refreshingLabel: copy.refreshing }}>
+    <script is:inline define:vars={{ feedUrl, copiedLabel: copy.rssCopied, defaultCopy: copy.rssCopy, refreshLabel: copy.refresh, refreshingLabel: copy.refreshing }}>
+      const closeRss = (root) => {
+        const panel = root.querySelector('.rss-panel');
+        const toggle = root.querySelector('.rss-toggle');
+        if (panel) panel.hidden = true;
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      };
+      document.querySelectorAll('.rss').forEach((root) => {
+        const toggle = root.querySelector('.rss-toggle');
+        const panel = root.querySelector('.rss-panel');
+        const copyBtn = root.querySelector('.rss-copy');
+        if (!toggle || !panel || !copyBtn) return;
+        const place = () => {
+          const rect = toggle.getBoundingClientRect();
+          const width = Math.max(panel.offsetWidth, 220);
+          let left = rect.left;
+          if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
+          if (left < 8) left = 8;
+          panel.style.top = (rect.bottom + 8) + 'px';
+          panel.style.left = left + 'px';
+        };
+        toggle.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const open = panel.hidden;
+          document.querySelectorAll('.rss').forEach((other) => {
+            if (other !== root) closeRss(other);
+          });
+          if (open) place();
+          panel.hidden = !open;
+          toggle.setAttribute('aria-expanded', String(open));
+        });
+        copyBtn.addEventListener('click', async () => {
+          const url = copyBtn.getAttribute('data-feed') || feedUrl;
+          try {
+            await navigator.clipboard.writeText(url);
+          } catch {
+            const field = document.createElement('textarea');
+            field.value = url;
+            field.setAttribute('readonly', '');
+            field.style.position = 'fixed';
+            field.style.left = '-9999px';
+            document.body.appendChild(field);
+            field.select();
+            document.execCommand('copy');
+            field.remove();
+          }
+          copyBtn.textContent = copiedLabel;
+          window.setTimeout(() => { copyBtn.textContent = defaultCopy; }, 1800);
+        });
+      });
+      document.addEventListener('click', (event) => {
+        document.querySelectorAll('.rss').forEach((root) => {
+          if (!root.contains(event.target)) closeRss(root);
+        });
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') document.querySelectorAll('.rss').forEach(closeRss);
+      });
       document.querySelectorAll('.idiomas a[data-locale]').forEach((link) => {
         link.addEventListener('click', () => {
           try { localStorage.setItem('dsb-lang', link.getAttribute('data-locale') || 'pt'); } catch {}
@@ -251,7 +315,7 @@ const navProps = {
         window.addEventListener('touchstart', (event) => {
           if (busy || !atTop()) return;
           const t = event.target;
-          if (t && t.closest && t.closest('input, textarea, select, button')) return;
+          if (t && t.closest && t.closest('input, textarea, select, button, .rss')) return;
           startY = event.touches[0].clientY;
           pulling = true;
           lastPull = 0;
