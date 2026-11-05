@@ -2,6 +2,7 @@
 import '../styles/dsb.css';
 import { getCollection } from 'astro:content';
 import SiteNav from '../components/SiteNav.astro';
+import SinoAvisos from '../components/SinoAvisos.astro';
 import { defaultLocale, localeHtml, locales, t, type Locale } from '../i18n/ui';
 import { alternates, localizePath } from '../i18n/urls';
 
@@ -60,6 +61,7 @@ const navItems = [
   { href: localizePath(locale, '/'), label: copy.navBriefings, current: path === '/' || path.startsWith('/briefings/') },
   { href: localizePath(locale, '/busca'), label: copy.navSearch, current: path === '/busca' },
   { href: localizePath(locale, '/sobre'), label: copy.navAbout, current: path === '/sobre' },
+  { href: feedPath, label: copy.rss, current: false },
 ];
 const installHref = localizePath(locale, '/instalar');
 const navProps = {
@@ -157,19 +159,10 @@ const navProps = {
           <a class="btn-icone" href={installHref} aria-label={copy.footerInstall} title={copy.navInstall} aria-current={path === '/instalar' ? 'page' : undefined}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19h16"/></svg>
           </a>
-          <div class="rss">
-            <button type="button" class="btn-icone rss-toggle" aria-expanded="false" aria-controls="rss-panel" aria-label={copy.rss} title={copy.rss}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.4"/></svg>
-            </button>
-            <div id="rss-panel" class="rss-panel" hidden>
-              <p class="rss-hint">{copy.rssHint}</p>
-              <button type="button" class="rss-copy" data-feed={feedUrl}>{copy.rssCopy}</button>
-              <a class="rss-download" href={feedPath} download="datasecuritybriefing.xml">{copy.rssDownload}</a>
-            </div>
-          </div>
           <button type="button" class="btn-icone qr-abre" aria-haspopup="dialog" aria-controls="qr-dialog" aria-label={copy.qrOpen} title="QR">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><path d="M6.5 6.5h0M17.5 6.5h0M6.5 17.5h0" stroke-width="2.6"/><path d="M14 14h3v3M21 14v.01M14 21h3M20 17v4h1"/></svg>
           </button>
+          <SinoAvisos locale={locale} />
         </div>
       </div>
       <SiteNav variant="mob" label={copy.navAriaMobile} {...navProps} />
@@ -185,64 +178,7 @@ const navProps = {
       <img src="/qr.png" alt="" />
       <button type="button" class="qr-close" aria-label={locale === 'pt' ? 'Fechar' : locale === 'es' ? 'Cerrar' : 'Close'}>×</button>
     </dialog>
-    <script is:inline define:vars={{ feedUrl, copiedLabel: copy.rssCopied, defaultCopy: copy.rssCopy, refreshLabel: copy.refresh, refreshingLabel: copy.refreshing }}>
-      const closeRss = (root) => {
-        const panel = root.querySelector('.rss-panel');
-        const toggle = root.querySelector('.rss-toggle');
-        if (panel) panel.hidden = true;
-        if (toggle) toggle.setAttribute('aria-expanded', 'false');
-      };
-      document.querySelectorAll('.rss').forEach((root) => {
-        const toggle = root.querySelector('.rss-toggle');
-        const panel = root.querySelector('.rss-panel');
-        const copyBtn = root.querySelector('.rss-copy');
-        if (!toggle || !panel || !copyBtn) return;
-        const place = () => {
-          const rect = toggle.getBoundingClientRect();
-          const width = Math.max(panel.offsetWidth, 220);
-          let left = rect.left;
-          if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
-          if (left < 8) left = 8;
-          panel.style.top = (rect.bottom + 8) + 'px';
-          panel.style.left = left + 'px';
-        };
-        toggle.addEventListener('click', (event) => {
-          event.stopPropagation();
-          const open = panel.hidden;
-          document.querySelectorAll('.rss').forEach((other) => {
-            if (other !== root) closeRss(other);
-          });
-          if (open) place();
-          panel.hidden = !open;
-          toggle.setAttribute('aria-expanded', String(open));
-        });
-        copyBtn.addEventListener('click', async () => {
-          const url = copyBtn.getAttribute('data-feed') || feedUrl;
-          try {
-            await navigator.clipboard.writeText(url);
-          } catch {
-            const field = document.createElement('textarea');
-            field.value = url;
-            field.setAttribute('readonly', '');
-            field.style.position = 'fixed';
-            field.style.left = '-9999px';
-            document.body.appendChild(field);
-            field.select();
-            document.execCommand('copy');
-            field.remove();
-          }
-          copyBtn.textContent = copiedLabel;
-          window.setTimeout(() => { copyBtn.textContent = defaultCopy; }, 1800);
-        });
-      });
-      document.addEventListener('click', (event) => {
-        document.querySelectorAll('.rss').forEach((root) => {
-          if (!root.contains(event.target)) closeRss(root);
-        });
-      });
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') document.querySelectorAll('.rss').forEach(closeRss);
-      });
+    <script is:inline define:vars={{ refreshLabel: copy.refresh, refreshingLabel: copy.refreshing }}>
       document.querySelectorAll('.idiomas a[data-locale]').forEach((link) => {
         link.addEventListener('click', () => {
           try { localStorage.setItem('dsb-lang', link.getAttribute('data-locale') || 'pt'); } catch {}
@@ -315,7 +251,7 @@ const navProps = {
         window.addEventListener('touchstart', (event) => {
           if (busy || !atTop()) return;
           const t = event.target;
-          if (t && t.closest && t.closest('input, textarea, select, button, .rss')) return;
+          if (t && t.closest && t.closest('input, textarea, select, button')) return;
           startY = event.touches[0].clientY;
           pulling = true;
           lastPull = 0;
