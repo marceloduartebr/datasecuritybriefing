@@ -177,7 +177,7 @@ const navProps = {
     <div class="wrap">
       <slot />
       <footer class="site">
-        <p>{copy.footerLine} <a href={localizePath(locale, '/instalar')}>{copy.footerInstall}</a></p>
+        <p>{copy.footerLine} <a href={localizePath(locale, '/instalar')}>{copy.footerInstall}</a>{' · '}<a href="/notificacoes">{locale === 'es' ? 'Recibir avisos' : locale === 'en' ? 'Get alerts' : 'Receber avisos'}</a></p>
         <p class="copy">{copy.copy}</p>
       </footer>
     </div>
