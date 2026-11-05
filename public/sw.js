@@ -1,9 +1,10 @@
-const CACHE = "dsb-pwa-v25";
+const CACHE = "dsb-pwa-v26";
 const PRECACHE = [
   "/",
   "/sobre",
   "/busca",
   "/instalar",
+  "/notificacoes",
   "/manifest.webmanifest",
   "/favicon.svg",
   "/icon-180.png",
@@ -60,5 +61,54 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(() => caches.match(req).then((hit) => hit || caches.match("/")))
+  );
+});
+
+// Web Push — payload JSON: { titulo, texto, url, tag? }. Envio: scripts/push/enviar.mjs
+self.addEventListener("push", (event) => {
+  let d = {
+    titulo: "Data Security Briefing",
+    texto: "Há um novo briefing no DSB.",
+    url: "/",
+  };
+  try {
+    if (event.data) d = { ...d, ...event.data.json() };
+  } catch (_) {
+    try {
+      d.texto = event.data.text();
+    } catch (_) {}
+  }
+  const url = new URL(d.url || "/", self.location.origin);
+  const destino =
+    url.origin === self.location.origin ? url.href : self.location.origin + "/";
+  event.waitUntil(
+    self.registration.showNotification(d.titulo, {
+      body: d.texto || d.corpo || "",
+      icon: "/icon-192.png",
+      badge: "/icon-180.png",
+      data: { url: destino },
+      lang: "pt-BR",
+      tag: d.tag || undefined,
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((abertas) => {
+      for (const c of abertas) {
+        if (c.url.startsWith(self.location.origin) && "focus" in c) {
+          return c
+            .focus()
+            .then((f) =>
+              f && "navigate" in f ? f.navigate(url) : clients.openWindow(url)
+            )
+            .catch(() => clients.openWindow(url));
+        }
+      }
+      return clients.openWindow(url);
+    })
   );
 });
