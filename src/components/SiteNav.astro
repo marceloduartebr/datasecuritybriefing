@@ -10,6 +10,14 @@ type LangLink = {
   title: string;
   current: boolean;
 };
+type Rss = {
+  feedUrl: string;
+  feedPath: string;
+  label: string;
+  hint: string;
+  copyLabel: string;
+  downloadLabel: string;
+};
 
 type Props = {
   variant: 'desk' | 'mob';
@@ -17,14 +25,35 @@ type Props = {
   items: Item[];
   langLabel: string;
   langLinks: LangLink[];
+  rss?: Rss;
 };
 
-const { variant, label, items, langLabel, langLinks } = Astro.props;
+const { variant, label, items, langLabel, langLinks, rss } = Astro.props;
 const navClass = variant === 'desk' ? 'nav-desk' : 'nav-mob container';
+const panelId = variant === 'desk' ? 'rss-panel-desk' : 'rss-panel-mob';
 ---
 <nav class={navClass} aria-label={label}>
   {items.map((item) => (
     <a href={item.href} aria-current={item.current ? 'page' : undefined}>{item.label}</a>
   ))}
+  {rss && (
+    <div class="rss">
+      <button
+        type="button"
+        class="nav-rss rss-toggle"
+        aria-expanded="false"
+        aria-controls={panelId}
+        aria-label={rss.label}
+        title={rss.label}
+      >
+        {rss.label}
+      </button>
+      <div id={panelId} class="rss-panel" hidden>
+        <p class="rss-hint">{rss.hint}</p>
+        <button type="button" class="rss-copy" data-feed={rss.feedUrl}>{rss.copyLabel}</button>
+        <a class="rss-download" href={rss.feedPath} download="datasecuritybriefing.xml">{rss.downloadLabel}</a>
+      </div>
+    </div>
+  )}
   <SeletorIdioma label={langLabel} links={langLinks} />
 </nav>
