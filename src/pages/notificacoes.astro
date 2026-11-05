@@ -1,0 +1,205 @@
+---
+import Base from '../layouts/Base.astro';
+// VAPID pública (repo ok). Privada só em ~/.config/dsb/vapid.json no box.
+const VAPID_PUBLICA = 'BBil-vzxxUdz652VnUs1k8vLSJ5RWaZNFNfcSxNv65u2AKBl41-zpcx2xICyJ1TMY2Pcpl7XcHN7kBuIyZdCiaQ';
+const siteUrl = 'https://dsb.duarte.top';
+---
+<Base
+  locale="pt"
+  path="/notificacoes"
+  title="Notificações"
+  description="Ative avisos no celular quando sair um novo briefing no Data Security Briefing."
+>
+  <article class="prose notif-pag">
+    <p class="eyebrow">App</p>
+    <h1>Receber avisos de novos briefings</h1>
+    <p>
+      Quando um briefing novo entrar no ar, você recebe um aviso no celular ou no computador.
+      Toque e o DSB abre na página certa. É grátis; dá para desligar quando quiser.
+    </p>
+
+    <div class="notif-caixa" id="notif" data-vapid={VAPID_PUBLICA}>
+      <p class="notif-estado" id="notif-estado" aria-live="polite">Verificando o seu aparelho…</p>
+      <div class="notif-botoes">
+        <button type="button" class="notif-btn notif-btn-pri" id="notif-ativar" hidden>Receber avisos</button>
+        <button type="button" class="notif-btn" id="notif-desativar" hidden>Parar de receber avisos</button>
+      </div>
+      <div class="notif-ios" id="notif-ios" hidden>
+        <p><strong>No iPhone, os avisos só funcionam com o DSB instalado na Tela de Início</strong> (iOS 16.4 ou mais novo):</p>
+        <ol>
+          <li>Abra {siteUrl} no Safari.</li>
+          <li>Toque em Compartilhar (quadrado com seta).</li>
+          <li>Escolha «Adicionar à Tela de Início» e confirme.</li>
+          <li>Abra o DSB pelo ícone novo, volte a esta página e toque em «Receber avisos».</li>
+        </ol>
+        <p><a href="/instalar">Como instalar o app</a></p>
+      </div>
+    </div>
+
+    <h2>Como funciona</h2>
+    <ul>
+      <li><strong>Android:</strong> Chrome, mesmo sem instalar. Toque em «Receber avisos» e depois em «Permitir».</li>
+      <li><strong>iPhone:</strong> primeiro adicione o DSB à Tela de Início, abra pelo ícone e ative aqui.</li>
+      <li><strong>Windows / Mac / Linux:</strong> Chrome ou Edge com o site (ou o app instalado).</li>
+      <li>Para parar: «Parar de receber avisos» nesta página, ou bloqueie as notificações do DSB nos ajustes do sistema.</li>
+    </ul>
+  </article>
+</Base>
+
+<style>
+  .notif-caixa {
+    border: 1px solid #2a3140;
+    background: #12171f;
+    border-radius: 14px;
+    padding: 1.1rem 1.2rem;
+    margin: 1.4rem 0 2rem;
+  }
+  .notif-estado { margin: 0 0 0.8rem; color: #d7dce6; }
+  .notif-botoes { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .notif-btn {
+    appearance: none;
+    border: 1px solid #3a4558;
+    background: #1a2130;
+    color: #eef1f6;
+    border-radius: 10px;
+    padding: 0.55rem 0.95rem;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .notif-btn:hover { border-color: #c9a227; }
+  .notif-btn-pri {
+    background: #c9a227;
+    border-color: #c9a227;
+    color: #0b0e13;
+  }
+  .notif-btn:disabled { opacity: 0.6; cursor: wait; }
+  .notif-ios { margin-top: 0.8rem; }
+  .notif-ios ol { padding-left: 1.2rem; }
+</style>
+
+<script>
+  const caixa = document.getElementById('notif');
+  const estado = document.getElementById('notif-estado');
+  const bAtivar = document.getElementById('notif-ativar');
+  const bDesativar = document.getElementById('notif-desativar');
+  const ios = document.getElementById('notif-ios');
+  const VAPID = caixa && caixa.dataset.vapid;
+
+  const ehIOS =
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone =
+    matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone === true;
+  const suporta =
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window;
+
+  function chaveBytes(b64) {
+    const p = '='.repeat((4 - (b64.length % 4)) % 4);
+    const s = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(s, (c) => c.charCodeAt(0));
+  }
+  async function api(rota, corpo) {
+    const r = await fetch('/api/push/' + rota, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+  }
+  function mostra(ativo) {
+    bAtivar.hidden = ativo;
+    bDesativar.hidden = !ativo;
+    estado.textContent = ativo
+      ? 'Os avisos estão ativados neste aparelho.'
+      : 'Os avisos estão desligados neste aparelho.';
+  }
+  async function reg() {
+    return (
+      (await navigator.serviceWorker.getRegistration()) ||
+      navigator.serviceWorker.register('/sw.js')
+    );
+  }
+
+  async function iniciar() {
+    if (!caixa || !estado || !bAtivar || !bDesativar || !ios || !VAPID) return;
+    if (ehIOS && !standalone) {
+      estado.textContent = 'Para receber avisos no iPhone, instale o DSB antes.';
+      ios.hidden = false;
+      return;
+    }
+    if (!suporta) {
+      estado.textContent =
+        'Este navegador não aceita notificações. No Android, use o Chrome.';
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      estado.textContent =
+        'As notificações do DSB estão bloqueadas. Libere nos ajustes e recarregue esta página.';
+      return;
+    }
+    const r =
+      (await navigator.serviceWorker.ready.catch(() => null)) || (await reg());
+    const sub = await r.pushManager.getSubscription();
+    mostra(!!sub && Notification.permission === 'granted');
+  }
+
+  bAtivar.addEventListener('click', async () => {
+    bAtivar.disabled = true;
+    estado.textContent = 'Ativando…';
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        estado.textContent =
+          'Você não permitiu as notificações. Se mudar de ideia, libere nos ajustes e tente de novo.';
+        return;
+      }
+      const r = await reg();
+      await navigator.serviceWorker.ready;
+      let sub = await r.pushManager.getSubscription();
+      if (!sub) {
+        sub = await r.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: chaveBytes(VAPID),
+        });
+      }
+      await api('subscribe', {
+        subscription: sub.toJSON(),
+        topicos: ['edicao'],
+      });
+      mostra(true);
+    } catch (e) {
+      console.warn(e);
+      estado.textContent = 'Não deu certo agora. Verifique a internet e tente de novo.';
+    } finally {
+      bAtivar.disabled = false;
+    }
+  });
+
+  bDesativar.addEventListener('click', async () => {
+    bDesativar.disabled = true;
+    try {
+      const r = await reg();
+      const sub = await r.pushManager.getSubscription();
+      if (sub) {
+        await api('unsubscribe', { endpoint: sub.endpoint }).catch(() => null);
+        await sub.unsubscribe();
+      }
+      mostra(false);
+    } catch (e) {
+      console.warn(e);
+      estado.textContent = 'Não deu certo agora. Tente de novo.';
+    } finally {
+      bDesativar.disabled = false;
+    }
+  });
+
+  iniciar().catch((e) => {
+    console.warn(e);
+    if (estado)
+      estado.textContent = 'Não foi possível verificar os avisos neste aparelho.';
+  });
+</script>
