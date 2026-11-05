@@ -1,8 +1,9 @@
+// Site estático (Astro → dist) + Worker mínimo só para /api/push/*.
+// Sem adapter Astro Cloudflare: o main abaixo é o nosso, não o _worker.js gerado.
 {
-  // Site estático. Sem `main`, o Workers Builds não dispara o autoconfig do
-  // Astro (adapter + dist/_worker.js), que rejeita o _redirects no upload.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "datasecuritybriefing",
+  "main": "worker/index.js",
   "compatibility_date": "2026-11-04",
   "observability": {
     "enabled": true,
@@ -11,6 +12,14 @@
     }
   },
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/push/*"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "DSB_PUSH",
+      "id": "1467af16ba4f4d3db8f3c6dd292f2d0b"
+    }
+  ]
 }
