@@ -73,3 +73,19 @@ export async function chave(endpoint) {
     [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join('')
   );
 }
+
+/** Valores aceitos no KV (iguais aos filtros do blog). */
+export const TIPOS = ['noticia', 'vulnerabilidades', 'incidente'];
+export const REGIOES = ['br', 'mx', 'latam', 'us', 'eu', 'global'];
+
+export function filtrarTipos(lista) {
+  if (!Array.isArray(lista)) return [];
+  const ok = new Set(TIPOS);
+  return [...new Set(lista.filter((t) => typeof t === 'string' && ok.has(t)))];
+}
+
+export function filtrarRegioes(lista) {
+  if (!Array.isArray(lista)) return [];
+  const ok = new Set(REGIOES);
+  return [...new Set(lista.filter((r) => typeof r === 'string' && ok.has(r)))];
+}
