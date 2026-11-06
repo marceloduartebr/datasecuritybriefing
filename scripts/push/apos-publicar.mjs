@@ -123,10 +123,16 @@ for (const it of novos) {
     continue;
   }
   const meta = metaDoSlug(it.slug);
+  const tituloPorTipo = {
+    noticia: 'Nova Notícia',
+    incidente: 'Novo Incidente',
+    vulnerabilidades: 'Nova Vulnerabilidade',
+  };
+  const tituloPush = (meta.tipo && tituloPorTipo[meta.tipo]) || 'Novo briefing no DSB';
   const cmdArgs = [
     join(root, 'scripts/push/enviar.mjs'),
     '--titulo',
-    'Novo briefing no DSB',
+    tituloPush,
     '--texto',
     it.titulo,
     '--url',
