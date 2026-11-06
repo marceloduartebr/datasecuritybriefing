@@ -8,6 +8,8 @@ import {
   lerCorpo,
   endpointOk,
   chave,
+  filtrarTipos,
+  filtrarRegioes,
 } from './push/api-comum.js';
 
 async function subscribe(request, env) {
@@ -35,15 +37,48 @@ async function subscribe(request, env) {
     ? corpo.topicos.filter((t) => t === 'edicao')
     : ['edicao'];
   if (!topicos.length) topicos.push('edicao');
+
+  // tipos/regioes: omitidos = todos (compatível com inscritos antigos).
+  // arrays vazios após filtro = nenhum (UI deve exigir ao menos um).
+  const temTipos = Array.isArray(corpo.tipos);
+  const temRegioes = Array.isArray(corpo.regioes);
+  const tipos = temTipos ? filtrarTipos(corpo.tipos) : null;
+  const regioes = temRegioes ? filtrarRegioes(corpo.regioes) : null;
+
+  const kvKey = await chave(s.endpoint);
+  let criado = new Date().toISOString();
+  try {
+    const antigo = await env.DSB_PUSH.get(kvKey);
+    if (antigo) {
+      const prev = JSON.parse(antigo);
+      if (prev && typeof prev.criado === 'string') criado = prev.criado;
+    }
+  } catch {
+    /* ignore */
+  }
+
   const registro = {
     endpoint: s.endpoint,
     keys: { p256dh, auth },
     topicos,
-    criado: new Date().toISOString(),
+    criado,
+    atualizado: new Date().toISOString(),
     ua: (request.headers.get('User-Agent') || '').slice(0, 160),
   };
-  await env.DSB_PUSH.put(await chave(s.endpoint), JSON.stringify(registro));
-  return json({ ok: true }, 200, request);
+  if (tipos !== null) registro.tipos = tipos;
+  if (regioes !== null) registro.regioes = regioes;
+
+  await env.DSB_PUSH.put(kvKey, JSON.stringify(registro));
+  return json(
+    {
+      ok: true,
+      topicos,
+      ...(tipos !== null ? { tipos } : {}),
+      ...(regioes !== null ? { regioes } : {}),
+    },
+    200,
+    request,
+  );
 }
 
 async function unsubscribe(request, env) {
