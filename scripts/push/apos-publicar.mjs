@@ -2,10 +2,11 @@
 /**
  * Depois do lote do blog: acha briefings do dia no ar (RSS), envia push uma vez por slug.
  *   node scripts/push/apos-publicar.mjs [--simular] [--data AAAA-MM-DD]
+ * Lê tipo/pais do frontmatter em src/content/briefings/<slug>.md
  * Dedupe: ~/.config/dsb/push-enviados.json
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +15,7 @@ const args = process.argv.slice(2);
 const simular = args.includes('--simular');
 const iData = args.indexOf('--data');
 const TZ = 'America/Sao_Paulo';
+const TIPOS_OK = new Set(['noticia', 'vulnerabilidades', 'incidente']);
 
 function hojeSP() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -52,6 +54,23 @@ async function headOk(url) {
 
 function stripTags(s) {
   return s.replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1').trim();
+}
+
+function metaDoSlug(slug) {
+  const path = join(root, 'src/content/briefings', `${slug}.md`);
+  if (!existsSync(path)) {
+    console.warn('sem frontmatter local:', path);
+    return {};
+  }
+  const raw = readFileSync(path, 'utf8');
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!m) return {};
+  const fm = m[1];
+  const tipoM = fm.match(/^tipo:\s*['"]?([a-z]+)['"]?\s*$/m);
+  const paisM = fm.match(/^pais:\s*['"]?([a-z]+)['"]?\s*$/m);
+  const tipo = tipoM && TIPOS_OK.has(tipoM[1]) ? tipoM[1] : undefined;
+  const pais = paisM ? paisM[1] : undefined;
+  return { tipo, pais };
 }
 
 async function itensDoDia() {
@@ -103,6 +122,7 @@ for (const it of novos) {
     console.warn('ainda não no ar:', it.path);
     continue;
   }
+  const meta = metaDoSlug(it.slug);
   const cmdArgs = [
     join(root, 'scripts/push/enviar.mjs'),
     '--titulo',
@@ -116,13 +136,20 @@ for (const it of novos) {
     '--tag',
     it.slug,
   ];
+  if (meta.tipo) cmdArgs.push('--tipo', meta.tipo);
+  if (meta.pais) cmdArgs.push('--pais', meta.pais);
   if (simular) cmdArgs.push('--simular');
-  console.log(simular ? '[simular]' : '[enviar]', it.slug);
+  console.log(
+    simular ? '[simular]' : '[enviar]',
+    it.slug,
+    meta.tipo || '-',
+    meta.pais || '-',
+  );
   try {
     execFileSync(process.execPath, cmdArgs, { stdio: 'inherit', cwd: root });
     if (!simular) {
       st.enviados[it.slug] = new Date().toISOString();
-      enviados.push(it);
+      enviados.push({ ...it, ...meta });
     }
   } catch (e) {
     console.error('falhou push', it.slug, e.message);
@@ -132,6 +159,11 @@ if (!simular && enviados.length) saveState(st);
 console.log(
   JSON.stringify({
     data,
-    enviados: enviados.map((e) => ({ slug: e.slug, path: e.path })),
+    enviados: enviados.map((e) => ({
+      slug: e.slug,
+      path: e.path,
+      tipo: e.tipo || null,
+      pais: e.pais || null,
+    })),
   }),
 );
