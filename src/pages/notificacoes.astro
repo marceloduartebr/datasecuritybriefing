@@ -1,27 +1,68 @@
 ---
 import Base from '../layouts/Base.astro';
 // VAPID pública (repo ok). Privada só em ~/.config/dsb/vapid.json no box.
-const VAPID_PUBLICA = 'BBil-vzxxUdz652VnUs1k8vLSJ5RWaZNFNfcSxNv65u2AKBl41-zpcx2xICyJ1TMY2Pcpl7XcHN7kBuIyZdCiaQ';
+const VAPID_PUBLICA = 'BBil-vzxxUdz652VnLS1k8vLSJ5RWaZNFNfcSxNv65u2AKBl41-zpcx2xICyJ1TMY2Pcpl7XcHN7kBuIyZdCiaQ';
 const siteUrl = 'https://dsb.duarte.top';
+const TIPOS = [
+  { id: 'noticia', label: 'Notícias' },
+  { id: 'vulnerabilidades', label: 'Vulnerabilidades' },
+  { id: 'incidente', label: 'Incidentes' },
+];
+const REGIOES = [
+  { id: 'br', label: 'Brasil' },
+  { id: 'mx', label: 'México' },
+  { id: 'latam', label: 'LATAM' },
+  { id: 'us', label: 'EUA' },
+  { id: 'eu', label: 'Europa' },
+  { id: 'global', label: 'Global' },
+];
 ---
 <Base
   locale="pt"
   path="/notificacoes"
   title="Notificações"
-  description="Ative avisos no celular quando sair um novo briefing no Data Security Briefing."
+  description="Escolha tipos e regiões e ative avisos no celular quando sair um novo briefing no Data Security Briefing."
 >
   <article class="prose notif-pag">
     <p class="eyebrow">App</p>
     <h1>Receber avisos de novos briefings</h1>
     <p>
-      Quando um briefing novo entrar no ar, você recebe um aviso no celular ou no computador.
+      Escolha o que quer receber. Quando um briefing novo entrar no ar com esses filtros, você recebe um aviso no celular ou no computador.
       Toque e o DSB abre na página certa. É grátis; dá para desligar quando quiser.
     </p>
 
     <div class="notif-caixa" id="notif" data-vapid={VAPID_PUBLICA}>
       <p class="notif-estado" id="notif-estado" aria-live="polite">Verificando o seu aparelho…</p>
+
+      <div class="notif-prefs" id="notif-prefs" hidden>
+        <fieldset class="notif-field">
+          <legend>Tipo</legend>
+          <div class="notif-checks">
+            {TIPOS.map((t) => (
+              <label class="notif-check">
+                <input type="checkbox" name="tipo" value={t.id} checked />
+                <span>{t.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset class="notif-field">
+          <legend>Região</legend>
+          <div class="notif-checks">
+            {REGIOES.map((r) => (
+              <label class="notif-check">
+                <input type="checkbox" name="regiao" value={r.id} checked />
+                <span>{r.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p class="notif-dica">LATAM cobre Argentina, Chile, Peru, Paraguai, Uruguai, Colômbia e itens marcados como LATAM.</p>
+      </div>
+
       <div class="notif-botoes">
         <button type="button" class="notif-btn notif-btn-pri" id="notif-ativar" hidden>Receber avisos</button>
+        <button type="button" class="notif-btn notif-btn-pri" id="notif-salvar" hidden>Salvar preferências</button>
         <button type="button" class="notif-btn" id="notif-desativar" hidden>Parar de receber avisos</button>
       </div>
       <div class="notif-ios" id="notif-ios" hidden>
@@ -38,7 +79,7 @@ const siteUrl = 'https://dsb.duarte.top';
 
     <h2>Como funciona</h2>
     <ul>
-      <li><strong>Android:</strong> Chrome, mesmo sem instalar. Toque em «Receber avisos» e depois em «Permitir».</li>
+      <li><strong>Android:</strong> Chrome, mesmo sem instalar. Escolha tipo e região, toque em «Receber avisos» e depois em «Permitir».</li>
       <li><strong>iPhone:</strong> primeiro adicione o DSB à Tela de Início, abra pelo ícone e ative aqui.</li>
       <li><strong>Windows / Mac / Linux:</strong> Chrome ou Edge com o site (ou o app instalado).</li>
       <li>Para parar: «Parar de receber avisos» nesta página, ou bloqueie as notificações do DSB nos ajustes do sistema.</li>
@@ -55,6 +96,47 @@ const siteUrl = 'https://dsb.duarte.top';
     margin: 1.4rem 0 2rem;
   }
   .notif-estado { margin: 0 0 0.8rem; color: #d7dce6; }
+  .notif-prefs { margin: 0 0 1rem; }
+  .notif-field {
+    border: 0;
+    margin: 0 0 0.85rem;
+    padding: 0;
+  }
+  .notif-field legend {
+    font-weight: 700;
+    color: #eef1f6;
+    margin-bottom: 0.45rem;
+  }
+  .notif-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.7rem;
+  }
+  .notif-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid #3a4558;
+    background: #1a2130;
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    cursor: pointer;
+    font-size: 0.92rem;
+    color: #d7dce6;
+  }
+  .notif-check:has(input:checked) {
+    border-color: #c9a227;
+    color: #eef1f6;
+  }
+  .notif-check input {
+    accent-color: #c9a227;
+    margin: 0;
+  }
+  .notif-dica {
+    margin: 0.2rem 0 0;
+    font-size: 0.88rem;
+    color: #9aa3b2;
+  }
   .notif-botoes { display: flex; flex-wrap: wrap; gap: 0.6rem; }
   .notif-btn {
     appearance: none;
@@ -79,9 +161,15 @@ const siteUrl = 'https://dsb.duarte.top';
 </style>
 
 <script>
+  const KEY = 'dsb-push-prefs';
+  const TIPOS_ALL = ['noticia', 'vulnerabilidades', 'incidente'];
+  const REGIOES_ALL = ['br', 'mx', 'latam', 'us', 'eu', 'global'];
+
   const caixa = document.getElementById('notif');
   const estado = document.getElementById('notif-estado');
+  const prefs = document.getElementById('notif-prefs');
   const bAtivar = document.getElementById('notif-ativar');
+  const bSalvar = document.getElementById('notif-salvar');
   const bDesativar = document.getElementById('notif-desativar');
   const ios = document.getElementById('notif-ios');
   const VAPID = caixa && caixa.dataset.vapid;
@@ -109,13 +197,53 @@ const siteUrl = 'https://dsb.duarte.top';
       body: JSON.stringify(corpo),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json().catch(() => ({ ok: true }));
+  }
+  function lerChecks(name) {
+    return [...document.querySelectorAll('input[name="' + name + '"]:checked')].map(
+      (el) => el.value,
+    );
+  }
+  function aplicarChecks(name, valores) {
+    const set = new Set(valores);
+    document.querySelectorAll('input[name="' + name + '"]').forEach((el) => {
+      el.checked = set.has(el.value);
+    });
+  }
+  function carregarPrefs() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return { tipos: TIPOS_ALL.slice(), regioes: REGIOES_ALL.slice() };
+      const p = JSON.parse(raw);
+      const tipos = Array.isArray(p.tipos)
+        ? p.tipos.filter((t) => TIPOS_ALL.includes(t))
+        : TIPOS_ALL.slice();
+      const regioes = Array.isArray(p.regioes)
+        ? p.regioes.filter((r) => REGIOES_ALL.includes(r))
+        : REGIOES_ALL.slice();
+      return {
+        tipos: tipos.length ? tipos : TIPOS_ALL.slice(),
+        regioes: regioes.length ? regioes : REGIOES_ALL.slice(),
+      };
+    } catch {
+      return { tipos: TIPOS_ALL.slice(), regioes: REGIOES_ALL.slice() };
+    }
+  }
+  function salvarPrefsLocal(tipos, regioes) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ tipos, regioes }));
+    } catch (_) {}
+  }
+  function prefsDaTela() {
+    return { tipos: lerChecks('tipo'), regioes: lerChecks('regiao') };
   }
   function mostra(ativo) {
     bAtivar.hidden = ativo;
+    bSalvar.hidden = !ativo;
     bDesativar.hidden = !ativo;
     estado.textContent = ativo
-      ? 'Os avisos estão ativados neste aparelho.'
-      : 'Os avisos estão desligados neste aparelho.';
+      ? 'Os avisos estão ativados neste aparelho. Ajuste tipo e região e salve se quiser.'
+      : 'Os avisos estão desligados neste aparelho. Escolha tipo e região e ative.';
   }
   async function reg() {
     return (
@@ -123,9 +251,26 @@ const siteUrl = 'https://dsb.duarte.top';
       navigator.serviceWorker.register('/sw.js')
     );
   }
+  async function upsert(sub) {
+    const { tipos, regioes } = prefsDaTela();
+    if (!tipos.length || !regioes.length) {
+      throw new Error('prefs');
+    }
+    await api('subscribe', {
+      subscription: sub.toJSON(),
+      topicos: ['edicao'],
+      tipos,
+      regioes,
+    });
+    salvarPrefsLocal(tipos, regioes);
+  }
 
   async function iniciar() {
-    if (!caixa || !estado || !bAtivar || !bDesativar || !ios || !VAPID) return;
+    if (!caixa || !estado || !prefs || !bAtivar || !bSalvar || !bDesativar || !ios || !VAPID)
+      return;
+    const p = carregarPrefs();
+    aplicarChecks('tipo', p.tipos);
+    aplicarChecks('regiao', p.regioes);
     if (ehIOS && !standalone) {
       estado.textContent = 'Para receber avisos no iPhone, instale o DSB antes.';
       ios.hidden = false;
@@ -136,6 +281,7 @@ const siteUrl = 'https://dsb.duarte.top';
         'Este navegador não aceita notificações. No Android, use o Chrome.';
       return;
     }
+    prefs.hidden = false;
     if (Notification.permission === 'denied') {
       estado.textContent =
         'As notificações do DSB estão bloqueadas. Libere nos ajustes e recarregue esta página.';
@@ -148,6 +294,11 @@ const siteUrl = 'https://dsb.duarte.top';
   }
 
   bAtivar.addEventListener('click', async () => {
+    const { tipos, regioes } = prefsDaTela();
+    if (!tipos.length || !regioes.length) {
+      estado.textContent = 'Marque ao menos um tipo e uma região.';
+      return;
+    }
     bAtivar.disabled = true;
     estado.textContent = 'Ativando…';
     try {
@@ -166,16 +317,41 @@ const siteUrl = 'https://dsb.duarte.top';
           applicationServerKey: chaveBytes(VAPID),
         });
       }
-      await api('subscribe', {
-        subscription: sub.toJSON(),
-        topicos: ['edicao'],
-      });
+      await upsert(sub);
       mostra(true);
     } catch (e) {
       console.warn(e);
-      estado.textContent = 'Não deu certo agora. Verifique a internet e tente de novo.';
+      estado.textContent =
+        e && e.message === 'prefs'
+          ? 'Marque ao menos um tipo e uma região.'
+          : 'Não deu certo agora. Verifique a internet e tente de novo.';
     } finally {
       bAtivar.disabled = false;
+    }
+  });
+
+  bSalvar.addEventListener('click', async () => {
+    const { tipos, regioes } = prefsDaTela();
+    if (!tipos.length || !regioes.length) {
+      estado.textContent = 'Marque ao menos um tipo e uma região.';
+      return;
+    }
+    bSalvar.disabled = true;
+    estado.textContent = 'Salvando…';
+    try {
+      const r = await reg();
+      const sub = await r.pushManager.getSubscription();
+      if (!sub) {
+        mostra(false);
+        return;
+      }
+      await upsert(sub);
+      estado.textContent = 'Preferências salvas.';
+    } catch (e) {
+      console.warn(e);
+      estado.textContent = 'Não deu certo salvar agora. Tente de novo.';
+    } finally {
+      bSalvar.disabled = false;
     }
   });
 
