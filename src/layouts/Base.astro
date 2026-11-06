@@ -23,7 +23,8 @@ const feedUrl = new URL(feedPath, Astro.site ?? 'https://dsb.duarte.top').href;
 const pageUrl = new URL(localizePath(locale, path), Astro.site ?? 'https://dsb.duarte.top').href;
 const imageUrl = image
   ? (image.startsWith('http') ? image : new URL(image, Astro.site ?? 'https://dsb.duarte.top').href)
-  : new URL('/icon-512.png', Astro.site ?? 'https://dsb.duarte.top').href;
+  : new URL('/og.jpg', Astro.site ?? 'https://dsb.duarte.top').href;
+const defaultOg = !image;
 const ogLocale = locale === 'pt' ? 'pt_BR' : locale === 'es' ? 'es' : 'en';
 const hrefLang = alternates(path);
 const htmlLang = localeHtml[locale];
@@ -130,6 +131,8 @@ const navProps = {
     <meta property="og:locale" content={ogLocale} />
     <meta property="og:image" content={imageUrl} />
     <meta property="og:image:secure_url" content={imageUrl} />
+    {defaultOg && <meta property="og:image:width" content="1200" />}
+    {defaultOg && <meta property="og:image:height" content="630" />}
     <meta property="og:image:alt" content={title ?? 'Data Security Briefing'} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
