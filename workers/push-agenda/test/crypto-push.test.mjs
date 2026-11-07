@@ -3,13 +3,19 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 import ece from 'http_ece';
 import { b64urlDecode, b64urlEncode } from '../src/bytes.js';
-import { assinarJwtVapid, cifrarAes128gcm, montarPedidoPush } from '../src/crypto-push.js';
+import { assinarJwtVapid, cifrarAes128gcm, medirCifra, montarPedidoPush } from '../src/crypto-push.js';
 
 function parEcdh() {
   const ecdh = crypto.createECDH('prime256v1');
   ecdh.generateKeys();
   return ecdh;
 }
+
+test('medição cifra sem rede', async () => {
+  const r = await medirCifra();
+  assert.equal(typeof r.cifraMs, 'number');
+  assert.equal(r.cifraMs >= 0, true);
+});
 
 test('aes128gcm coincide com http_ece e o destinatário recupera o JSON', async () => {
   const remetente = parEcdh();

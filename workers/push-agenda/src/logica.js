@@ -3,7 +3,7 @@
  * Artigo só fica `concluido` quando a descoberta terminou e não há entrega pendente
  * nem esgotada. `enviado` não volta para a fila. 404/410 não são retentados.
  */
-import { dataBrasilia } from '../../../src/lib/push-catalogo.mjs';
+import { dataBrasilia, prefixoDoSlug, selecionarDoDia } from '../../../src/lib/push-catalogo.mjs';
 import {
   INTERVALO_CATALOGO_MS,
   JANELA_ATRASO_MS,
@@ -12,6 +12,7 @@ import {
   LOCK_MS,
   MAX_TENTATIVAS,
   STALE_ENVIO_MS,
+  TETO_SOMENTE,
   TOPICO,
 } from './constantes.js';
 import { atrasoMs } from './entrega.js';
@@ -228,6 +229,34 @@ export function definirEnvio(db, ligado) {
   return { ok: true, envio: ligado ? 'on' : 'off' };
 }
 
+/** Fan-out para o KV inteiro. O teste isolado não usa esta chave. Padrão: ausente = off. */
+export function definirFanout(db, ligado) {
+  if (typeof ligado !== 'boolean') return { ok: false, erro: 'ligado_booleano' };
+  gravarMeta(db, 'fanout', ligado ? 'on' : 'off');
+  return { ok: true, fanout: ligado ? 'on' : 'off' };
+}
+
+const CHAVE_SUB = /^sub:[0-9a-f]{64}$/;
+
+/** `somente` limita o tick a até 3 chaves do KV. Sem isso, o tick é fan-out. */
+export function normalizarIsolado(somente, slug) {
+  if (somente === undefined || somente === null) {
+    if (slug !== undefined) return { erro: 'slug_sem_somente' };
+    return { chaves: null, slug: null };
+  }
+  if (!Array.isArray(somente) || somente.length < 1 || somente.length > TETO_SOMENTE) {
+    return { erro: 'somente' };
+  }
+  const chaves = [];
+  for (const id of somente) {
+    if (typeof id !== 'string' || !CHAVE_SUB.test(id)) return { erro: 'somente' };
+    if (!chaves.includes(id)) chaves.push(id);
+  }
+  if (typeof slug !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return { erro: 'slug' };
+  if (!prefixoDoSlug(slug)) return { erro: 'slug' };
+  return { chaves, slug };
+}
+
 export function importarHistorico(db, corpo, agora) {
   if (!corpo || typeof corpo !== 'object' || Array.isArray(corpo)) return { ok: false, erro: 'corpo' };
   const agoraIso = iso(agora);
@@ -316,6 +345,7 @@ export function lerStatus(db, extra = {}) {
   }
   return {
     envio: lerMeta(db, 'envio') === 'on' ? 'on' : 'off',
+    fanout: lerMeta(db, 'fanout') === 'on' ? 'on' : 'off',
     pushEnvio: extra.pushEnvio ? 'on' : 'off',
     cutoff: lerMeta(db, 'cutoff'),
     janelaAte: lerMeta(db, 'janela_ate'),
@@ -329,29 +359,26 @@ export function lerStatus(db, extra = {}) {
   };
 }
 
-export function simularPlano({ catalogo, inscritos, agora, cutoff, envio, pushEnvio }) {
-  const agoraData = agora instanceof Date ? agora : new Date(agora);
-  const hoje = dataBrasilia(agoraData);
+export function simularPlano({ catalogo, inscritos, agora, cutoff, envio, pushEnvio, fanout }) {
   const itens = Array.isArray(catalogo) ? catalogo : (catalogo && catalogo.itens) || [];
+  const selecao = selecionarDoDia(itens, agora);
   const candidatos = [];
   const ignorados = [];
   let foraDoDia = 0;
   for (const item of itens) {
-    if (item.data !== hoje) {
-      foraDoDia += 1;
-      continue;
-    }
-    if (Date.parse(item.publicadoEm) > agoraData.getTime()) {
-      ignorados.push({ slug: item.slug, motivo: 'futuro' });
-      continue;
-    }
+    if (prefixoDoSlug(item.slug) !== selecao.hoje) foraDoDia += 1;
+  }
+  for (const item of selecao.futuros) ignorados.push({ slug: item.slug, motivo: 'futuro' });
+  for (const item of selecao.prontos) {
     if (cutoff && Date.parse(item.publicadoEm) < Date.parse(cutoff)) {
       ignorados.push({ slug: item.slug, motivo: 'antes_do_cutoff' });
       continue;
     }
-    const destinatarios = (inscritos || []).filter(
-      (s) => s && !s.ilegivel && inscricaoCompativel(s, { tipo: item.tipo, pais: item.pais, topico: TOPICO }),
-    ).length;
+    const destinatarios = Array.isArray(inscritos)
+      ? inscritos.filter(
+          (s) => s && !s.ilegivel && !s.ausente && inscricaoCompativel(s, { tipo: item.tipo, pais: item.pais, topico: TOPICO }),
+        ).length
+      : null;
     candidatos.push({
       slug: item.slug,
       titulo: payloadPush(item).titulo,
@@ -365,15 +392,164 @@ export function simularPlano({ catalogo, inscritos, agora, cutoff, envio, pushEn
   }
   const ligado = envio === true || envio === 'on';
   const push = pushEnvio === true || pushEnvio === 'on';
+  const aberto = fanout === true || fanout === 'on';
   return {
-    hoje,
+    hoje: selecao.hoje,
     envio: ligado ? 'on' : 'off',
+    fanout: aberto ? 'on' : 'off',
     pushEnvio: push ? 'on' : 'off',
     cutoff: cutoff || null,
-    enviaria: Boolean(ligado && push && cutoff && candidatos.some((c) => c.destinatarios > 0)),
+    kvLido: Array.isArray(inscritos),
+    enviaria: Boolean(
+      ligado && push && aberto && cutoff && candidatos.some((c) => c.destinatarios > 0),
+    ),
     candidatos,
     ignorados,
     foraDoDia,
+  };
+}
+
+async function executarIsolado(db, opts, isolado, ctx) {
+  const { agoraMs, agoraIso, cutoff, cat, maxTentativas, dono, lockMs } = ctx;
+  const item = (cat.itens || []).find((it) => it.slug === isolado.slug);
+  if (!item) {
+    return { ok: true, enviou: false, motivo: 'slug_ausente', continuar: false, isolado: true };
+  }
+  const hoje = dataBrasilia(ctx.agora);
+  if (prefixoDoSlug(item.slug) !== hoje) {
+    return { ok: true, enviou: false, motivo: 'fora_do_dia', continuar: false, isolado: true };
+  }
+  if (Date.parse(item.publicadoEm) > agoraMs) {
+    return { ok: true, enviou: false, motivo: 'futuro', continuar: false, isolado: true };
+  }
+  if (Date.parse(item.publicadoEm) < Date.parse(cutoff)) {
+    return { ok: true, enviou: false, motivo: 'antes_do_cutoff', continuar: false, isolado: true };
+  }
+  const row = artigo(db, item.slug);
+  if (row && (row.status === 'concluido' || row.status === 'ignorado')) {
+    return { ok: true, enviou: false, motivo: row.status, continuar: false, isolado: true };
+  }
+  let noAr = false;
+  try {
+    noAr = await opts.confirmarNoAr(item.url);
+  } catch {
+    noAr = false;
+  }
+  if (!noAr) {
+    garantirArtigo(db, item, 'aguardando', agoraIso, false);
+    return { ok: true, enviou: false, motivo: 'fora_do_ar', continuar: false, isolado: true };
+  }
+  garantirArtigo(db, item, 'pendente', agoraIso, true);
+  const vistas = await opts.carregar(isolado.chaves);
+  let ausentes = 0;
+  let ignoradosFiltro = 0;
+  for (const ch of vistas) {
+    if (!ch || ch.ausente || ch.ilegivel) {
+      ausentes += 1;
+      continue;
+    }
+    if (!inscricaoCompativel(ch, { tipo: item.tipo, pais: item.pais, topico: TOPICO })) {
+      ignoradosFiltro += 1;
+      continue;
+    }
+    db.exec(
+      `INSERT INTO entregas (slug, inscrito, status, tentativas, proxima, http_status, atualizado)
+       VALUES (?, ?, 'pendente', 0, NULL, NULL, ?)
+       ON CONFLICT(slug, inscrito) DO NOTHING`,
+      [item.slug, ch.inscrito, agoraIso],
+    );
+  }
+  const marcas = isolado.chaves.map(() => '?').join(', ');
+  const fila = db.exec(
+    `SELECT slug, inscrito, tentativas FROM entregas
+     WHERE slug = ? AND status = 'pendente' AND inscrito IN (${marcas})
+       AND (proxima IS NULL OR proxima <= ?)`,
+    [item.slug, ...isolado.chaves, agoraIso],
+  );
+  let enviados = 0;
+  let expirados = 0;
+  let transientes = 0;
+  let esgotados = 0;
+  for (const ent of fila) {
+    if (!renovarLock(db, dono, lockMs)) {
+      return { ok: true, enviou: enviados > 0, motivo: 'lock_perdido', continuar: false, isolado: true };
+    }
+    db.exec(
+      `UPDATE entregas SET status = 'enviando', atualizado = ?
+       WHERE slug = ? AND inscrito = ? AND status = 'pendente'`,
+      [agoraIso, ent.slug, ent.inscrito],
+    );
+    const payload = payloadPush(item);
+    let resultado;
+    try {
+      resultado = await opts.enviar(ent.inscrito, payload);
+    } catch {
+      resultado = { classe: 'transiente' };
+    }
+    const tentativas = Number(ent.tentativas) + 1;
+    const classe = resultado && resultado.classe;
+    if (classe === 'ok') {
+      db.exec(
+        `UPDATE entregas SET status = 'enviado', tentativas = ?, proxima = NULL, http_status = ?, atualizado = ?
+         WHERE slug = ? AND inscrito = ?`,
+        [tentativas, resultado.status ?? 201, agoraIso, ent.slug, ent.inscrito],
+      );
+      enviados += 1;
+    } else if (classe === 'expirado') {
+      try {
+        await opts.apagar(ent.inscrito);
+      } catch {
+        /* estado local segue terminal */
+      }
+      db.exec(
+        `UPDATE entregas SET status = 'expirado', tentativas = ?, proxima = NULL, http_status = ?, atualizado = ?
+         WHERE slug = ? AND inscrito = ?`,
+        [tentativas, resultado.status ?? null, agoraIso, ent.slug, ent.inscrito],
+      );
+      expirados += 1;
+    } else if (classe === 'permanente' || tentativas >= maxTentativas) {
+      db.exec(
+        `UPDATE entregas SET status = 'esgotado', tentativas = ?, proxima = NULL, http_status = ?, atualizado = ?
+         WHERE slug = ? AND inscrito = ?`,
+        [tentativas, resultado && resultado.status ? resultado.status : null, agoraIso, ent.slug, ent.inscrito],
+      );
+      esgotados += 1;
+    } else {
+      const ms = atrasoMs(tentativas, {
+        status: resultado && resultado.status,
+        retryAfterSeg: resultado && resultado.retryAfterSeg,
+      });
+      db.exec(
+        `UPDATE entregas SET status = 'pendente', tentativas = ?, proxima = ?, http_status = ?, atualizado = ?
+         WHERE slug = ? AND inscrito = ?`,
+        [tentativas, new Date(agoraMs + ms).toISOString(), resultado && resultado.status ? resultado.status : null, agoraIso, ent.slug, ent.inscrito],
+      );
+      transientes += 1;
+    }
+  }
+  // Descoberta do KV inteiro continua aberta: o teste não conclui o artigo para o resto.
+  const status = recalcular(db, item.slug, agoraIso);
+  let motivo = 'teste_isolado';
+  if (!fila.length && enviados === 0) {
+    const ja = db.exec(
+      `SELECT COUNT(*) AS n FROM entregas WHERE slug = ? AND status = 'enviado' AND inscrito IN (${marcas})`,
+      [item.slug, ...isolado.chaves],
+    );
+    if (Number(ja[0].n) > 0) motivo = 'ja_enviado';
+  }
+  return {
+    ok: true,
+    enviou: enviados > 0,
+    motivo,
+    enviados,
+    expirados,
+    transientes,
+    esgotados,
+    ausentes,
+    ignoradosFiltro,
+    statusArtigo: status,
+    continuar: false,
+    isolado: true,
   };
 }
 
@@ -397,6 +573,11 @@ export async function executarTick(db, opts) {
   if (!cutoff) return { ok: true, enviou: false, motivo: 'sem_cutoff', continuar: false };
   if (opts.vapidDisponivel && !(await opts.vapidDisponivel())) {
     return { ok: true, enviou: false, motivo: 'sem_vapid', continuar: false };
+  }
+  const isolado = normalizarIsolado(opts.somente, opts.slug);
+  if (isolado.erro) return { ok: false, enviou: false, motivo: isolado.erro, continuar: false };
+  if (!isolado.chaves && lerMeta(db, 'fanout') !== 'on') {
+    return { ok: true, enviou: false, motivo: 'fanout_desligado', continuar: false, fanout: 'off' };
   }
 
   const dono = opts.dono || crypto.randomUUID();
@@ -428,11 +609,20 @@ export async function executarTick(db, opts) {
     const dentroJanela = Boolean(janelaAte && agoraMs <= Date.parse(janelaAte));
 
     const limiteStale = new Date(agoraMs - (opts.staleMs ?? STALE_ENVIO_MS)).toISOString();
-    db.exec(
-      `UPDATE entregas SET status = 'pendente', atualizado = ?
-       WHERE status = 'enviando' AND atualizado < ?`,
-      [agoraIso, limiteStale],
-    );
+    if (isolado.chaves) {
+      const marcas = isolado.chaves.map(() => '?').join(', ');
+      db.exec(
+        `UPDATE entregas SET status = 'pendente', atualizado = ?
+         WHERE status = 'enviando' AND atualizado < ? AND slug = ? AND inscrito IN (${marcas})`,
+        [agoraIso, limiteStale, isolado.slug, ...isolado.chaves],
+      );
+    } else {
+      db.exec(
+        `UPDATE entregas SET status = 'pendente', atualizado = ?
+         WHERE status = 'enviando' AND atualizado < ?`,
+        [agoraIso, limiteStale],
+      );
+    }
 
     let cat;
     try {
@@ -447,9 +637,25 @@ export async function executarTick(db, opts) {
       cat = { itens: [] };
     }
 
-    const hoje = dataBrasilia(agora);
-    const doDia = cat.itens.filter((it) => it.data === hoje);
-    const prontos = doDia.filter((it) => Date.parse(it.publicadoEm) <= agoraMs);
+    if (isolado.chaves) {
+      if (catalogoFalhou) {
+        return { ok: true, enviou: false, motivo: 'catalogo_indisponivel', continuar: false, isolado: true };
+      }
+      return await executarIsolado(db, opts, isolado, {
+        agora,
+        agoraMs,
+        agoraIso,
+        cutoff,
+        cat,
+        maxTentativas,
+        dono,
+        lockMs,
+      });
+    }
+
+    const selecao = selecionarDoDia(cat.itens, agora);
+    const doDia = selecao.prontos.concat(selecao.futuros);
+    const prontos = selecao.prontos;
 
     let heads = 0;
     for (const item of prontos) {
@@ -461,7 +667,7 @@ export async function executarTick(db, opts) {
         continue;
       }
       if (row?.no_ar) continue;
-      if (heads >= 4) break;
+      if (heads >= 2) break;
       heads += 1;
       let noAr = false;
       try {

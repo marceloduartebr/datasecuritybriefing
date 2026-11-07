@@ -105,6 +105,17 @@ export async function assinarJwtVapid({ aud, sub, exp, publicRaw, privateRaw }) 
   return `${entrada}.${b64urlEncode(assinatura)}`;
 }
 
+/** Uma cifra local, sem rede, para o operador ler cpu_time_ms da invocação. */
+export async function medirCifra() {
+  const inicio = performance.now();
+  const par = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const publica = new Uint8Array(await crypto.subtle.exportKey('raw', par.publicKey));
+  const auth = new Uint8Array(16);
+  crypto.getRandomValues(auth);
+  await cifrarAes128gcm(ascii('{"titulo":"medicao","texto":"medicao","url":"/","tag":"medicao"}'), publica, auth);
+  return { cifraMs: Math.max(0, Math.round(performance.now() - inicio)) };
+}
+
 export async function montarPedidoPush({ endpoint, p256dh, auth, payload, vapid, agora }) {
   let url;
   try {

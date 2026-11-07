@@ -65,6 +65,50 @@ test('simular autenticado não ecoa inscrição nem dispara envio', async () => 
   assert.equal(JSON.stringify(json).includes('fcm'), false);
 });
 
+test('tick isolado inválido não chama o envio', async () => {
+  let ticks = 0;
+  const res = await tratarPedido(
+    pedido('/admin/tick', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ somente: ['https://fcm.googleapis.com/fcm/send/segredo'], slug: '2026-11-07-alfa' }),
+    }),
+    { ADMIN_TOKEN: TOKEN },
+    {
+      tick: async () => {
+        ticks += 1;
+        return { ok: true, enviou: true };
+      },
+    },
+  );
+  assert.equal(res.status, 400);
+  assert.equal(ticks, 0);
+  assert.equal(JSON.stringify(await res.json()).includes('fcm'), false);
+});
+
+test('medição não dispara tick', async () => {
+  let ticks = 0;
+  const res = await tratarPedido(
+    pedido('/admin/medir', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: '{}',
+    }),
+    { ADMIN_TOKEN: TOKEN },
+    {
+      medir: async () => ({ ok: true, enviou: false, cifraMs: 3, viabilidade: 'nao_medida_na_conta' }),
+      tick: async () => {
+        ticks += 1;
+        return { ok: true };
+      },
+    },
+  );
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.enviou, false);
+  assert.equal(ticks, 0);
+});
+
 test('envio só aceita booleano e tick admin não recebe relógio do cliente', async () => {
   let visto;
   const env = { ADMIN_TOKEN: TOKEN };

@@ -20,6 +20,31 @@ export function dataBrasilia(instante) {
   }).format(data);
 }
 
+/** Igual ao bot: o dia do push é o prefixo YYYY-MM-DD do nome do arquivo, não o calendário do pubDate. */
+export function prefixoDoSlug(slug) {
+  const m = /^(\d{4}-\d{2}-\d{2})-/.exec(slug || '');
+  return m ? m[1] : null;
+}
+
+/**
+ * Candidatos de hoje pelo prefixo do slug. `futuros` têm o prefixo de hoje,
+ * mas o instante de pubDate ainda não chegou e não podem sair.
+ */
+export function selecionarDoDia(itens, agora) {
+  const agoraData = agora instanceof Date ? agora : new Date(agora);
+  const hoje = dataBrasilia(agoraData);
+  const agoraMs = agoraData.getTime();
+  const prontos = [];
+  const futuros = [];
+  if (!hoje || !Array.isArray(itens)) return { hoje, prontos, futuros };
+  for (const item of itens) {
+    if (!item || prefixoDoSlug(item.slug) !== hoje) continue;
+    if (Date.parse(item.publicadoEm) > agoraMs) futuros.push(item);
+    else prontos.push(item);
+  }
+  return { hoje, prontos, futuros };
+}
+
 function desquote(valor) {
   const s = String(valor).trim();
   if (s.startsWith('"') && s.endsWith('"') && s.length >= 2) {
@@ -67,10 +92,10 @@ export function itemDeArquivo(slug, markdown, agora) {
   if (!titulo || titulo.length > 300) return { excluir: 'titulo' };
   const publicado = new Date(fm.pubDate);
   if (!fm.pubDate || Number.isNaN(publicado.getTime())) return { excluir: 'pubDate' };
-  const agoraData = agora instanceof Date ? agora : new Date(agora);
-  if (publicado.getTime() > agoraData.getTime()) return { excluir: 'futuro' };
-  const data = dataBrasilia(publicado);
-  if (!data) return { excluir: 'data' };
+  const data = prefixoDoSlug(slug);
+  if (!data) return { excluir: 'sem_prefixo' };
+  // `agora` fica na assinatura para o bloqueio de futuro na seleção, não para omitir o item.
+  void agora;
   const item = {
     slug,
     titulo,
@@ -102,14 +127,16 @@ export function normalizarItem(bruto) {
   if (!slugValido(bruto.slug)) return null;
   if (typeof bruto.titulo !== 'string' || !bruto.titulo || bruto.titulo.length > 300) return null;
   if (bruto.url !== `/briefings/${bruto.slug}`) return null;
-  if (typeof bruto.data !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(bruto.data)) return null;
+  const data = prefixoDoSlug(bruto.slug);
+  if (!data) return null;
+  if (bruto.data !== undefined && bruto.data !== data) return null;
   const publicado = new Date(bruto.publicadoEm);
   if (Number.isNaN(publicado.getTime())) return null;
   const item = {
     slug: bruto.slug,
     titulo: bruto.titulo,
     url: bruto.url,
-    data: bruto.data,
+    data,
     publicadoEm: publicado.toISOString(),
   };
   const tipo = tipoValido(bruto.tipo);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executarTick, gravarMeta, importarHistorico, lerStatus, simularPlano } from '../src/logica.js';
-import { banco, inscrito, item, ligar, paginador } from './util-banco.mjs';
+import { banco, chaveTeste, inscrito, item, ligar, paginador } from './util-banco.mjs';
 
 function base(db, extra = {}) {
   ligar(db);
@@ -400,6 +400,7 @@ test('cutoff ignora o que já passou e a importação é idempotente', async () 
   assert.equal(lerStatus(db).cutoff, '2026-11-07T14:00:00.000Z');
 
   gravarMeta(db, 'envio', 'on');
+  gravarMeta(db, 'fanout', 'on');
   const chamadas = [];
   await executarTick(db, {
     agora,
@@ -467,6 +468,70 @@ test('simulação lista o plano e não grava nem envia', async () => {
   assert.equal(plano.foraDoDia, 1);
   assert.equal(JSON.stringify(plano).includes('sub:'), false);
   assert.equal(lerStatus(db).artigos.length, 0);
+});
+
+test('fan-out desligado não envia nem com as outras travas abertas', async () => {
+  const db = banco();
+  const { opts, chamadas } = base(db);
+  db.exec(`DELETE FROM meta WHERE chave = 'fanout'`);
+  const r = await executarTick(db, opts);
+  assert.equal(r.motivo, 'fanout_desligado');
+  assert.equal(chamadas.length, 0);
+  assert.equal(lerStatus(db).artigos.length, 0);
+});
+
+test('teste isolado envia só a chave pedida e não conclui o artigo para o resto', async () => {
+  const db = banco();
+  ligar(db);
+  db.exec(`DELETE FROM meta WHERE chave = 'fanout'`);
+  const alvo = chaveTeste(1);
+  const outro = chaveTeste(2);
+  let listou = false;
+  const chamadas = [];
+  const r = await executarTick(db, {
+    agora: new Date('2026-11-07T15:00:00.000Z'),
+    pushEnvio: 'on',
+    somente: [alvo],
+    slug: '2026-11-07-alfa',
+    catalogo: async () => ({ itens: [item()] }),
+    confirmarNoAr: async () => true,
+    pagina: async () => {
+      listou = true;
+      return { chaves: [inscrito(alvo), inscrito(outro)], completo: true, cursor: '' };
+    },
+    carregar: async (chaves) => chaves.map((id) => inscrito(id)),
+    apagar: async () => {},
+    enviar: async (id, payload) => {
+      chamadas.push({ id, tag: payload.tag });
+      return { classe: 'ok', status: 201 };
+    },
+  });
+  assert.equal(r.motivo, 'teste_isolado');
+  assert.equal(r.enviados, 1);
+  assert.deepEqual(chamadas.map((c) => c.id), [alvo]);
+  assert.equal(listou, false);
+  assert.equal(lerStatus(db).artigos[0].status, 'pendente');
+  assert.equal(lerStatus(db).fanout, 'off');
+});
+
+test('slug de amanhã não sai hoje mesmo se o pubDate já caiu em Brasília', async () => {
+  const db = banco();
+  const { opts, chamadas } = base(db, {
+    agora: new Date('2026-11-08T02:00:00.000Z'),
+    catalogo: async () => ({
+      itens: [
+        item({
+          slug: '2026-11-08-cedo',
+          url: '/briefings/2026-11-08-cedo',
+          data: '2026-11-07',
+          publicadoEm: '2026-11-08T01:30:00.000Z',
+        }),
+      ],
+    }),
+  });
+  const r = await executarTick(db, opts);
+  assert.equal(chamadas.length, 0);
+  assert.equal(r.continuar, false);
 });
 
 test('artigo de outro dia não é escolhido', async () => {

@@ -1,5 +1,6 @@
 import { autorizarAdmin } from './auth.js';
 import { logEvento } from './log.js';
+import { normalizarIsolado } from './logica.js';
 
 const LIMITE = 262144;
 
@@ -47,11 +48,23 @@ export async function tratarPedido(request, env, agenda) {
     }
     if (request.method !== 'POST') return json({ ok: false, erro: 'metodo' }, 405);
 
-    if (path === '/admin/tick') return json(await agenda.tick({ origem: 'admin' }));
-
     const lido = await lerCorpo(request);
     if (lido.erro) return json({ ok: false, erro: lido.erro }, lido.status);
 
+    if (path === '/admin/tick') {
+      const isolado = normalizarIsolado(lido.corpo.somente, lido.corpo.slug);
+      if (isolado.erro) return json({ ok: false, erro: isolado.erro, enviou: false }, 400);
+      const pedido = { origem: 'admin' };
+      if (isolado.chaves) {
+        pedido.somente = isolado.chaves;
+        pedido.slug = isolado.slug;
+      }
+      return json(await agenda.tick(pedido));
+    }
+    if (path === '/admin/medir') {
+      const r = await agenda.medir(lido.corpo);
+      return json(r, 200);
+    }
     if (path === '/admin/simular') return json({ ok: true, ...(await agenda.simular(lido.corpo)) });
     if (path === '/admin/importar') {
       const r = await agenda.importar(lido.corpo);
@@ -59,6 +72,10 @@ export async function tratarPedido(request, env, agenda) {
     }
     if (path === '/admin/envio') {
       const r = await agenda.definirEnvio(lido.corpo.ligado);
+      return json(r, r.ok ? 200 : 400);
+    }
+    if (path === '/admin/fanout') {
+      const r = await agenda.definirFanout(lido.corpo.ligado);
       return json(r, r.ok ? 200 : 400);
     }
     return json({ ok: false, erro: 'nao_encontrado' }, 404);

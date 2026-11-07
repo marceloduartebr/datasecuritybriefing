@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { dataBrasilia, gerarCatalogo, normalizarItens } from './push-catalogo.mjs';
+import { dataBrasilia, gerarCatalogo, normalizarItens, prefixoDoSlug, selecionarDoDia } from './push-catalogo.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const dirBriefings = path.join(root, 'src/content/briefings');
@@ -31,7 +31,7 @@ test('data de Brasília não segue o dia UTC', () => {
   assert.equal(dataBrasilia(new Date('2026-11-08T03:30:00.000Z')), '2026-11-08');
 });
 
-test('catálogo omite futuro, tipo/país ausentes e campos privados', () => {
+test('catálogo usa o prefixo do slug e guarda futuro para o bloqueio na seleção', () => {
   const agora = new Date('2026-11-07T15:00:00.000Z');
   const { itens, excluidos } = gerarCatalogo(
     [
@@ -73,9 +73,10 @@ test('catálogo omite futuro, tipo/país ausentes e campos privados', () => {
   );
   assert.deepEqual(
     itens.map((i) => i.slug),
-    ['2026-11-07-hoje', '2026-11-07-sem-meta', '2026-11-07-utc-ainda-dia-6'],
+    ['2026-11-07-futuro', '2026-11-07-hoje', '2026-11-07-sem-meta', '2026-11-07-utc-ainda-dia-6'],
   );
-  assert.equal(excluidos.find((e) => e.slug === '2026-11-07-futuro').motivo, 'futuro');
+  assert.equal(excluidos.length, 0);
+  for (const item of itens) assert.equal(item.data, prefixoDoSlug(item.slug));
   const hoje = itens.find((i) => i.slug === '2026-11-07-hoje');
   assert.equal(hoje.titulo, 'Notícia do dia');
   assert.equal(hoje.url, '/briefings/2026-11-07-hoje');
@@ -86,7 +87,17 @@ test('catálogo omite futuro, tipo/país ausentes e campos privados', () => {
   assert.equal('tipo' in sem, false);
   assert.equal('pais' in sem, false);
   const virada = itens.find((i) => i.slug === '2026-11-07-utc-ainda-dia-6');
-  assert.equal(virada.data, '2026-11-06');
+  assert.equal(virada.data, '2026-11-07');
+  assert.notEqual(virada.data, dataBrasilia(new Date('2026-11-07T01:30:00.000Z')));
+  const selecao = selecionarDoDia(itens, agora);
+  assert.deepEqual(
+    selecao.prontos.map((i) => i.slug),
+    ['2026-11-07-hoje', '2026-11-07-sem-meta', '2026-11-07-utc-ainda-dia-6'],
+  );
+  assert.deepEqual(
+    selecao.futuros.map((i) => i.slug),
+    ['2026-11-07-futuro'],
+  );
   const serial = JSON.stringify(itens);
   assert.equal(serial.includes('notion'), false);
   assert.equal(serial.includes('fonte-privada'), false);
@@ -162,9 +173,8 @@ test('corpus publicado não carrega dado interno e respeita o fuso', () => {
   for (const item of itens) {
     assert.equal(item.url, `/briefings/${item.slug}`);
     assert.match(item.data, /^\d{4}-\d{2}-\d{2}$/);
-    const bruto = arquivos.find((a) => a.slug === item.slug).markdown;
-    const pub = bruto.match(/^pubDate:\s*(\S+)/m)[1];
-    assert.equal(item.data, dataBrasilia(new Date(pub)));
+    assert.equal(item.data, prefixoDoSlug(item.slug));
+    assert.equal(item.data, item.slug.slice(0, 10));
   }
   const cisco = itens.find((i) => i.slug === '2026-09-24-cisco-seg-cve-2026-76461-kev');
   assert.equal(cisco.tipo, 'vulnerabilidades');

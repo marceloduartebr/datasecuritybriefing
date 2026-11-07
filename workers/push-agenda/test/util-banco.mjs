@@ -10,7 +10,12 @@ export function banco() {
 
 export function ligar(db, cutoff = '2026-11-07T00:00:00.000Z') {
   gravarMeta(db, 'envio', 'on');
+  gravarMeta(db, 'fanout', 'on');
   gravarMeta(db, 'cutoff', cutoff);
+}
+
+export function chaveTeste(n) {
+  return `sub:${String(n).padStart(64, 'a')}`;
 }
 
 export function item(parcial = {}) {

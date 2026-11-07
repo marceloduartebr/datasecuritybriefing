@@ -6,8 +6,12 @@ export const TOPICO = 'edicao';
 export const TTL_SEG = 6 * 3600;
 export const JANELA_ATRASO_MS = 20 * 60 * 1000;
 export const INTERVALO_CATALOGO_MS = 5 * 60 * 1000;
-export const LOTE_ENVIO = 8;
-export const LOTE_KV = 15;
+/** Cabe em 50 subrequests (Workers Free) com folga: 1 catálogo + 2 HEAD + 1 list + 12 gets + 4 envios + 4 deletes. */
+export const LOTE_ENVIO = 4;
+export const LOTE_KV = 12;
+export const ORCAMENTO_SUBREQUESTS = 40;
+export const TETO_SIMULACAO = 20;
+export const TETO_SOMENTE = 3;
 export const MAX_TENTATIVAS = 5;
 export const LOCK_MS = 120_000;
 export const STALE_ENVIO_MS = 120_000;

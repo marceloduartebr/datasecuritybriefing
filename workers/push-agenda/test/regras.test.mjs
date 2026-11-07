@@ -8,6 +8,7 @@ import { atrasoMs, classificarResposta } from '../src/entrega.js';
 import { combinaRegiao, combinaTipo, inscricaoCompativel } from '../src/filtros.js';
 import { listarTodasChaves, vistaInscricao } from '../src/kv-lista.js';
 import { logEvento } from '../src/log.js';
+import { CRON_DOCUMENTADO } from '../src/constantes.js';
 import { tituloPush } from '../src/titulos.js';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
@@ -169,6 +170,7 @@ test('config do agendador fica desligada e não reutiliza recurso do site além 
   const site = jsonc(path.join(aqui, '../../../wrangler.jsonc'));
   assert.equal(agenda.name, 'dsb-push-agenda');
   assert.equal(agenda.triggers, undefined);
+  assert.equal(CRON_DOCUMENTADO, '25 14,22 * * 1-5');
   assert.equal(JSON.stringify(agenda).includes('PUSH_ENVIO'), false);
   assert.equal(JSON.stringify(agenda).includes('crons'), false);
   assert.equal(agenda.observability.traces.enabled, false);

@@ -1,10 +1,12 @@
 import { DurableObject } from 'cloudflare:workers';
-import { normalizarItens } from '../../../src/lib/push-catalogo.mjs';
-import { SITE } from './constantes.js';
+import { normalizarItens, selecionarDoDia } from '../../../src/lib/push-catalogo.mjs';
+import { CRON_DOCUMENTADO, LOTE_ENVIO, LOTE_KV, ORCAMENTO_SUBREQUESTS, SITE, TETO_SIMULACAO } from './constantes.js';
+import { medirCifra } from './crypto-push.js';
 import { logEvento } from './log.js';
 import {
   criarSchema,
   definirEnvio as gravarEnvio,
+  definirFanout as gravarFanout,
   executarTick,
   importarHistorico,
   lerMeta,
@@ -14,8 +16,6 @@ import {
 import { vistaInscricao } from './kv-lista.js';
 import { baixarCatalogo, confirmarNoAr, enviarParaInscrito } from './rede.js';
 import { adaptadorDo } from './sql.js';
-
-const TETO_SIMULACAO = 300;
 
 export class AgendaPush extends DurableObject {
   constructor(ctx, env) {
@@ -39,15 +39,24 @@ export class AgendaPush extends DurableObject {
 
   async definirEnvio(ligado) {
     const r = gravarEnvio(this.db(), ligado);
-    if (r.ok && ligado === false) {
-      try {
-        await this.ctx.storage.deleteAlarm();
-      } catch {
-        /* sem alarme anterior */
-      }
-    }
+    if (r.ok && ligado === false) await this.apagarAlarme();
     logEvento('envio', { resultado: r.ok ? r.envio : 'erro' });
     return r;
+  }
+
+  async definirFanout(ligado) {
+    const r = gravarFanout(this.db(), ligado);
+    if (r.ok && ligado === false) await this.apagarAlarme();
+    logEvento('fanout', { resultado: r.ok ? r.fanout : 'erro' });
+    return r;
+  }
+
+  async apagarAlarme() {
+    try {
+      await this.ctx.storage.deleteAlarm();
+    } catch {
+      /* sem alarme anterior */
+    }
   }
 
   async importar(corpo) {
@@ -64,20 +73,13 @@ export class AgendaPush extends DurableObject {
 
   async vistas() {
     const vistas = [];
-    let cursor;
-    let truncado = false;
-    do {
-      const page = await this.env.DSB_PUSH.list({ prefix: 'sub:', cursor, limit: 100 });
-      for (const chave of page.keys || []) {
-        if (vistas.length >= TETO_SIMULACAO) {
-          truncado = true;
-          break;
-        }
-        vistas.push(vistaInscricao(chave.name, await this.env.DSB_PUSH.get(chave.name)));
-      }
-      cursor = page.list_complete || truncado ? undefined : page.cursor;
-    } while (cursor);
-    return { vistas, truncado };
+    const page = await this.env.DSB_PUSH.list({ prefix: 'sub:', limit: TETO_SIMULACAO });
+    for (const chave of page.keys || []) {
+      if (vistas.length >= TETO_SIMULACAO) break;
+      vistas.push(vistaInscricao(chave.name, await this.env.DSB_PUSH.get(chave.name)));
+    }
+    const truncado = !page.list_complete || (page.keys || []).length > vistas.length;
+    return { vistas, truncado, amostras: vistas.length };
   }
 
   async simular(corpo) {
@@ -86,17 +88,72 @@ export class AgendaPush extends DurableObject {
       corpo && corpo.catalogo
         ? normalizarItens(corpo.catalogo)
         : await baixarCatalogo(fetch, this.urlCatalogo());
-    const { vistas, truncado } = await this.vistas();
+    let inscritos = null;
+    let truncado = false;
+    if (corpo && corpo.comKv === true) {
+      const lido = await this.vistas();
+      inscritos = lido.vistas;
+      truncado = lido.truncado;
+    }
     const plano = simularPlano({
       catalogo: catalogo.itens || [],
-      inscritos: vistas,
+      inscritos,
       agora: new Date(),
       cutoff: lerMeta(db, 'cutoff'),
       envio: lerMeta(db, 'envio') === 'on',
       pushEnvio: this.env.PUSH_ENVIO === 'on',
+      fanout: lerMeta(db, 'fanout') === 'on',
     });
-    logEvento('simular', { candidatos: plano.candidatos.length, enviaria: plano.enviaria });
-    return { ...plano, truncado };
+    logEvento('simular', {
+      candidatos: plano.candidatos.length,
+      enviaria: plano.enviaria,
+      kv: Boolean(inscritos),
+    });
+    return { ...plano, truncado, enviou: false };
+  }
+
+  async medir(corpo) {
+    const inicio = performance.now();
+    const catalogo =
+      corpo && corpo.catalogo
+        ? normalizarItens(corpo.catalogo)
+        : await baixarCatalogo(fetch, this.urlCatalogo());
+    const selecao = selecionarDoDia(catalogo.itens || [], new Date());
+    let kv = { lido: false, amostras: 0, truncado: false };
+    if (corpo && corpo.comKv === true) {
+      const lido = await this.vistas();
+      kv = { lido: true, amostras: lido.amostras, truncado: lido.truncado };
+    }
+    const cifra = await medirCifra();
+    const db = this.db();
+    const resposta = {
+      ok: true,
+      enviou: false,
+      enviaria: false,
+      hoje: selecao.hoje,
+      prontos: selecao.prontos.map((item) => item.slug),
+      futuros: selecao.futuros.map((item) => item.slug),
+      catalogoErro: catalogo.erro || null,
+      kv,
+      cifraMs: cifra.cifraMs,
+      duracaoMs: Math.max(0, Math.round(performance.now() - inicio)),
+      loteEnvio: LOTE_ENVIO,
+      loteKv: LOTE_KV,
+      orcamentoSubrequests: ORCAMENTO_SUBREQUESTS,
+      cronDocumentado: CRON_DOCUMENTADO,
+      cronAtivoNoArquivo: false,
+      envio: lerMeta(db, 'envio') === 'on' ? 'on' : 'off',
+      fanout: lerMeta(db, 'fanout') === 'on' ? 'on' : 'off',
+      pushEnvio: this.env.PUSH_ENVIO === 'on' ? 'on' : 'off',
+      viabilidade: 'nao_medida_na_conta',
+    };
+    logEvento('medir', {
+      cifraMs: resposta.cifraMs,
+      duracaoMs: resposta.duracaoMs,
+      prontos: resposta.prontos.length,
+      kv: kv.lido,
+    });
+    return resposta;
   }
 
   opcoes(pedido) {
@@ -105,6 +162,8 @@ export class AgendaPush extends DurableObject {
       agora: new Date(),
       origem: pedido && pedido.origem,
       programado: pedido && pedido.programado,
+      somente: pedido && pedido.somente,
+      slug: pedido && pedido.slug,
       pushEnvio: env.PUSH_ENVIO,
       vapidDisponivel: async () => Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY),
       catalogo: () => baixarCatalogo(fetch, this.urlCatalogo()),
@@ -120,6 +179,15 @@ export class AgendaPush extends DurableObject {
           cursor: page.list_complete ? '' : page.cursor || '',
           completo: Boolean(page.list_complete),
         };
+      },
+      carregar: async (chaves) => {
+        const vistas = [];
+        for (const id of chaves) {
+          const bruto = await env.DSB_PUSH.get(id);
+          if (typeof bruto !== 'string') vistas.push({ inscrito: id, ausente: true });
+          else vistas.push(vistaInscricao(id, bruto));
+        }
+        return vistas;
       },
       apagar: async (inscrito) => {
         if (typeof inscrito === 'string' && inscrito.startsWith('sub:')) {
