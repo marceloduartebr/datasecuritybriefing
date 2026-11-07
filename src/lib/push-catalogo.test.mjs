@@ -157,7 +157,7 @@ test('normalizar descarta campos extras e url fora do site', () => {
   ]);
 });
 
-test('corpus publicado não carrega dado interno e respeita o fuso', () => {
+test('corpus publicado não carrega dado interno e usa o prefixo do arquivo', () => {
   const arquivos = readdirSync(dirBriefings)
     .filter((nome) => nome.endsWith('.md'))
     .map((nome) => ({
