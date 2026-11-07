@@ -1,0 +1,8 @@
+# Copiar para .dev.vars só na máquina local. .dev.vars é ignorado pelo git.
+# Não colocar segredo de produção. Não copiar ~/.config/dsb/vapid.json para o repositório.
+#
+# ADMIN_TOKEN=          # aleatório, 32+ bytes; sem isto /admin responde 503
+# VAPID_PUBLIC_KEY=     # mesmo par já usado pelo site; não gerar outro
+# VAPID_PRIVATE_KEY=
+# VAPID_SUBJECT=https://dsb.duarte.top/sobre
+# PUSH_ENVIO=           # deixar vazio. Só o valor exato on destrava o envio, junto com a chave no DO.
