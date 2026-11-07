@@ -8,13 +8,15 @@
     "build": "astro build",
     "preview": "astro preview",
     "push:enviar": "node scripts/push/enviar.mjs",
-    "push:apos-publicar": "node scripts/push/apos-publicar.mjs"
+    "push:apos-publicar": "node scripts/push/apos-publicar.mjs",
+    "test": "node --disable-warning=ExperimentalWarning --test src/lib/push-catalogo.test.mjs workers/push-agenda/test/*.test.mjs"
   },
   "dependencies": {
     "astro": "^5.13.0",
     "@astrojs/rss": "^4.0.12"
   },
   "devDependencies": {
+    "http_ece": "^1.2.0",
     "web-push": "^3.6.7"
   }
 }

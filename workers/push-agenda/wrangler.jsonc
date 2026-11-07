@@ -1,0 +1,67 @@
+// Worker de agendamento Web Push do DSB. Independente do Worker do site
+// (wrangler.jsonc na raiz, nome "datasecuritybriefing").
+//
+// ESTE ARQUIVO NÃO ATIVA ENVIO.
+// - Não há "triggers". Sem a chave, o deploy sobe sem cron.
+// - Não há var PUSH_ENVIO. O código só envia se o secret PUSH_ENVIO for exatamente "on"
+//   E a chave operacional "envio" no SQLite do Durable Object for "on" (padrão: ausente = off).
+// - O par VAPID e o ADMIN_TOKEN entram depois, como secrets. Não há valor neste arquivo.
+//
+// FONTE DE VERDADE OPERACIONAL
+// 1. Envio: chave SQLite `envio` (admin /admin/envio). Deploy deste arquivo NÃO apaga essa chave.
+//    O secret PUSH_ENVIO é a segunda trava e também não é removido por deploy (não está em vars).
+// 2. Cron: o que estiver neste arquivo na hora do `wrangler deploy`. Hoje a chave triggers
+//    está ausente de propósito.
+//    AVISO: wrangler deploy substitui os cron triggers da conta pelo conteúdo deste arquivo.
+//    Cron criado só no painel é apagado no próximo deploy. Quando o corte autorizar a agenda,
+//    a expressão tem de entrar AQUI, no mesmo commit do deploy:
+//      "triggers": { "crons": ["25 14,22 * * 1-5"] }
+//    Isso é 11:25 e 19:25 em America/Sao_Paulo (UTC−3, sem horário de verão desde 2019),
+//    dias úteis. Não colar essa chave antes da autorização do runbook.
+// 3. Não recolocar PUSH_ENVIO em "vars". Um "off" commitado passaria a ser aplicado em todo
+//    deploy e apagaria uma ativação feita por secret/var fora do arquivo, sem aviso no diff
+//    se alguém só "limpar" a linha. Ausência + padrão off no código é o comportamento seguro.
+// 4. A migration v1 cria a classe SQLite uma vez. Não trocar a tag nem apagar a classe:
+//    isso criaria objeto novo e perderia dedupe (risco de reenvio).
+//
+// KV DSB_PUSH é o namespace JÁ existente das inscrições. Não criar outro.
+// Não apontar para recurso do Boa Nova do Dia. Chaves e namespaces dos dois produtos ficam separados.
+// Traces ficam desligados: o span de fetch grava url.full (endpoint de push) e o de KV grava a chave.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "dsb-push-agenda",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": false,
+      "head_sampling_rate": 0
+    }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "DSB_PUSH",
+      "id": "1467af16ba4f4d3db8f3c6dd292f2d0b"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AGENDA",
+        "class_name": "AgendaPush"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-agenda-push",
+      "new_sqlite_classes": ["AgendaPush"]
+    }
+  ]
+}
