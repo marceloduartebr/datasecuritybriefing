@@ -165,14 +165,13 @@ function jsonc(arquivo) {
   return JSON.parse(texto);
 }
 
-test('config do agendador fica desligada e não reutiliza recurso do site além do KV existente', () => {
+test('config do agendador versiona o cron e não reutiliza recurso do site além do KV existente', () => {
   const agenda = jsonc(path.join(aqui, '../wrangler.jsonc'));
   const site = jsonc(path.join(aqui, '../../../wrangler.jsonc'));
   assert.equal(agenda.name, 'dsb-push-agenda');
-  assert.equal(agenda.triggers, undefined);
+  assert.deepEqual(agenda.triggers, { crons: [CRON_DOCUMENTADO] });
   assert.equal(CRON_DOCUMENTADO, '25 14,22 * * 1-5');
   assert.equal(JSON.stringify(agenda).includes('PUSH_ENVIO'), false);
-  assert.equal(JSON.stringify(agenda).includes('crons'), false);
   assert.equal(agenda.observability.traces.enabled, false);
   assert.equal(agenda.kv_namespaces.length, 1);
   assert.equal(agenda.kv_namespaces[0].binding, 'DSB_PUSH');

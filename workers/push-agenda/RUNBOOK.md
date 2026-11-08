@@ -22,7 +22,7 @@ Inscrição antiga sem `topicos` não recebe o tópico `edicao`. É o que `envia
 | Decisão | Onde vive | O deploy deste arquivo apaga? |
 |---|---|---|
 | Código e bindings | `workers/push-agenda/wrangler.jsonc` | Substitui o script e os bindings declarados |
-| Cron | **Só** a chave `triggers` desse arquivo | **Sim.** `wrangler deploy` substitui os crons da conta pelo arquivo. Cron criado só no painel some no próximo deploy. Hoje a chave não existe: deploy sobe sem cron |
+| Cron | `triggers.crons` em `workers/push-agenda/wrangler.jsonc`: `25 14,22 * * 1-5` | **Sim.** O deploy grava essa agenda. Remover a chave num deploy posterior apaga o cron. Não depende de `envio`, `PUSH_ENVIO` nem `fanout` |
 | Trava 1, `envio` | SQLite do Durable Object, via `POST /admin/envio` | Não. Padrão: chave ausente = desligado |
 | Trava 2, `PUSH_ENVIO` | Secret do Worker. Tem de ser exatamente `on` | Não, porque **não** está em `vars`. Não adicionar `vars.PUSH_ENVIO`: um `off` commitado passaria a pisar qualquer ativação em todo deploy |
 | Fan-out, `fanout` | SQLite, via `POST /admin/fanout` | Não. Padrão: ausente = desligado. Sem isto, cron e `POST /admin/tick` sem `somente` não enviam a ninguém |
@@ -34,15 +34,17 @@ Fan-out (o KV inteiro) exige as duas travas, o cutoff **e** `fanout=on`. O teste
 
 Não apontar binding, KV, chave VAPID ou Durable Object para o Boa Nova do Dia. Os produtos ficam separados.
 
-## Por que o cron não está no arquivo
+## Cron versionado
 
-A expressão versionada é `CRON_DOCUMENTADO` em `workers/push-agenda/src/constantes.js`:
+A agenda ativa está em `workers/push-agenda/wrangler.jsonc`:
 
-```text
-25 14,22 * * 1-5
+```jsonc
+"triggers": { "crons": ["25 14,22 * * 1-5"] }
 ```
 
-Isso é 14:25 e 22:25 UTC = 11:25 e 19:25 em Brasília. O fuso está em UTC−3 o ano inteiro desde 2019 (sem horário de verão). Se o fuso mudar, a constante e o `triggers` do corte mudam no mesmo commit. O `wrangler.jsonc` desta PR não tem `triggers`. A constante é a fonte até esse commit; depois, a chave `triggers` do arquivo passa a ser a fonte do cron ativo, porque o deploy substitui o que estiver só no painel.
+É a mesma string de `CRON_DOCUMENTADO`: 14:25 e 22:25 UTC, dias úteis, 11:25 e 19:25 em Brasília (UTC−3, sem horário de verão desde 2019). O deploy deste arquivo liga o relógio. Não liga envio.
+
+`envio`, `PUSH_ENVIO` e `fanout` continuam independentes e, enquanto estiverem off, o disparo do cron não manda notificação. `/admin/medir` ainda devolve `cronAtivoNoArquivo: false`: esse campo é um marcador fixo do código, anterior a esta chave. A fonte do cron é o `wrangler.jsonc`, não essa resposta.
 
 Dentro de 20 minutos depois do disparo o Worker volta a cada 5 minutos se o catálogo ainda não tem o briefing do dia ou se o `HEAD` não é 200. É o atraso de build. Entrega já começada continua depois dessa janela, em lotes, até esgotar a fila ou o backoff. O adiantamento de −10 minutos do bot **não** foi reproduzido.
 
@@ -64,7 +66,7 @@ Números que importam para este desenho:
 - Cron e alarme de Durable Object: parede de 15 min.
 - No máximo 6 conexões simultâneas esperando cabeçalho. O envio é sequencial de propósito.
 - Durable Objects SQLite existem no plano Free e no Paid. Free: 100 mil requests/dia, 13 mil GB-s/dia, 5 milhões de linhas lidas/dia, 100 mil linhas escritas/dia, 5 GB. Paid: 1 milhão de requests/mês incluídos e depois US$ 0,15/milhão; 400 mil GB-s e depois US$ 12,50/milhão de GB-s. A página de pricing diz que o armazenamento SQLite passou a ser faturável em janeiro de 2026.
-- A página de limits do DO fala em 30 s de CPU padrão por request e, ao mesmo tempo, que os limits do Workers também valem. No Free o Workers lista 10 ms. As duas páginas não fecham o número que esta conta realmente aplica. **Não contratar plano novo por causa desta PR.** O lote cabe num orçamento de 40 subrequests (teto documentado no código: 12 leituras de KV e 4 envios por invocação, mais catálogo e até 2 `HEAD`). A CPU de uma cifra no plano atual **não foi medida**. `POST /admin/medir` não envia; o número que vale é o `cpu_time_ms` dessa invocação nos logs do Worker. Se esse número mostrar que um lote de 4 não cabe, o próximo passo é diminuir `LOTE_ENVIO` / `LOTE_KV` no código, não abrir outro plano.
+- A página de limits do Durable Object lista 30 s de CPU por request e não separa Free de Paid. A página de Workers lista 10 ms no Free. As duas tabelas não dizem que 15 ms no Durable Object ultrapassa um teto. Medição nesta conta, sem invocação cortada: teste isolado com aceite, Worker 2 ms e Durable Object 15 ms, outcome ok; `POST /admin/medir` com `comKv: true`, Worker 1 ms e Durable Object 7 ms. Não contratar plano e não mudar lote nem cifra por causa desses números.
 
 ## Traces desligados de propósito
 
@@ -121,7 +123,7 @@ Ordem. Não pular.
    npx wrangler deploy --config workers/push-agenda/wrangler.jsonc
    ```
 
-   Isso cria o Worker `dsb-push-agenda` e o namespace do Durable Object. Não cria KV. Não liga cron. `$URL` abaixo é o hostname que esse comando imprime (`*.workers.dev`). Não usar `dsb.duarte.top`.
+   O primeiro deploy, feito sem `triggers`, criou o Worker `dsb-push-agenda` e o Durable Object. Não criou KV. Um deploy posterior deste arquivo, já com `triggers.crons`, grava a agenda e continua sem ligar `envio` nem `fanout`. `$URL` é o hostname que o comando imprime (`*.workers.dev`). Não usar `dsb.duarte.top`. Só fazer esse deploy depois de pausar a rotina antiga e confirmar que não há envio em curso.
 4. Secrets, sem ecoar em log ou issue:
    - `wrangler secret put ADMIN_TOKEN --config workers/push-agenda/wrangler.jsonc`
    - `wrangler secret put VAPID_PUBLIC_KEY --config workers/push-agenda/wrangler.jsonc`
@@ -151,23 +153,18 @@ Ordem. Não pular.
    ```
 
    A resposta `teste_isolado` com `enviados: 1` é aceite do serviço de push para essa chave, não prova de notificação no aparelho. O artigo permanece `pendente`. Quem não está em `somente` não é lido.
-10. Só depois desse teste e de uma autorização de fan-out: `POST /admin/fanout` `{ "ligado": true }` e, no mesmo commit que for implantado, acrescentar no `wrangler.jsonc` a expressão de `CRON_DOCUMENTADO`:
+10. A agenda já está em `triggers.crons`. O merge e o deploy desse arquivo só depois de pausar `apos-publicar` / `enviar` e confirmar que não há execução em curso. O deploy liga o cron e não liga `envio`, `PUSH_ENVIO` nem `fanout`. Não apagar a linha `esgotado` do teste antigo nem mudar slug global para “limpar” o histórico.
+11. Fan-out, quando for autorizado à parte: `POST /admin/fanout` `{ "ligado": true }`, com as outras travas já ligadas. Não é este commit.
+12. Acompanhar um ciclo de dia útil (11:25 e 19:25). `parcial` ou `esgotado` no status é falha de entrega, não “já foi”.
 
-    ```jsonc
-    "triggers": { "crons": ["25 14,22 * * 1-5"] }
-    ```
-
-    e deploy de novo. Sem essa chave no arquivo, o próximo deploy apaga o cron.
-
-11. Acompanhar um ciclo de dia útil (11:25 e 19:25). `parcial` ou `esgotado` no status é falha de entrega, não “já foi”.
-12. Desligar o bot de vez só depois desse ciclo. Até lá ele fica pausado, não apagado.
+Estado já gravado do artigo `2026-11-07-workos-incidente`, sem limpeza nesta etapa: cutoff `2026-11-07T23:52:59Z` e quatro slugs importados; uma entrega `enviado` na inscrição nova, cujo recebimento foi confirmado; uma linha `esgotado` do teste antigo, cuja inscrição saiu do KV; as outras três inscrições de 5 de novembro não foram tentadas. Esse registro fica como histórico parcial. Não reabrir a linha esgotada por este runbook.
 
 `PUSH_ENVIO` sozinho não envia. `envio` sozinho não envia. Cron sozinho não envia. `fanout` sozinho não envia. Tick sem `somente` e sem `fanout` responde `fanout_desligado` e não grava artigo.
 
 ## Rollback sem duplicar
 
 1. `POST /admin/fanout` e `POST /admin/envio` com `{ "ligado": false }`.
-2. Se o cron já tiver sido commitado, tirar `triggers` **nesse** deploy, sabendo que o arquivo volta a ser a fonte e o cron para. Se o cron ainda não foi para o arquivo, não há o que remover.
+2. Para parar a agenda, remover `triggers` neste arquivo e fazer deploy. Enquanto a chave existir, o deploy mantém o cron. `envio` e `fanout` off já impedem o disparo de enviar.
 3. `GET /admin/status`.
 4. Para cada slug com alguma entrega `enviado`: colocar o slug em `~/.config/dsb/push-enviados.json` **antes** de religar o bot. O bot deduplica por slug, não por pessoa. Religar sem isso reenvia para quem já recebeu.
 5. Slug `parcial`: também entra no arquivo do bot se houve ao menos um `enviado`. Quem ficou `pendente` ou `esgotado` **não** recebe o restante pelo bot. É a escolha que evita duplicata. A alternativa (não recomendar) é deixar o slug fora e aceitar duplicata para todo mundo.
