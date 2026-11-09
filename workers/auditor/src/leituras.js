@@ -44,9 +44,10 @@ export function origemDoReferer(host) {
   const h = String(host || '').toLowerCase().replace(/^www\./, '').replace(/^m\./, '');
   if (!h) return 'Direto';
   if (h === HOST_BLOG) return 'Navegação no blog';
-  if (h === 'linkedin.com' || h.endsWith('.linkedin.com') || h === 'lnkd.in') return 'LinkedIn';
-  if (h === 't.co' || h === 'x.com' || h === 'twitter.com' || h.endsWith('.x.com') || h.endsWith('.twitter.com')) return 'X';
-  if (/^(.+\.)?google\.[a-z.]+$/.test(h) || h === 'android-app' || h === 'googlequicksearchbox') return 'Google';
+  // Apps Android mandam referer android-app://<pacote>: o host vira o nome do pacote.
+  if (h === 'linkedin.com' || h.endsWith('.linkedin.com') || h === 'lnkd.in' || h === 'com.linkedin.android') return 'LinkedIn';
+  if (h === 't.co' || h === 'x.com' || h === 'twitter.com' || h.endsWith('.x.com') || h.endsWith('.twitter.com') || h === 'com.twitter.android') return 'X';
+  if (/^(.+\.)?google\.[a-z.]+$/.test(h) || h === 'com.google.android.gm' || h === 'com.google.android.googlequicksearchbox') return 'Google';
   return 'Outros';
 }
 

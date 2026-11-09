@@ -30,6 +30,10 @@ test('origemDoReferer: LinkedIn, X, Google, direto, blog e outros', () => {
   assert.equal(origemDoReferer('dsb.duarte.top'), 'Navegação no blog');
   assert.equal(origemDoReferer('m.facebook.com'), 'Outros');
   assert.equal(origemDoReferer('notgoogle.evil'), 'Outros');
+  assert.equal(origemDoReferer('com.linkedin.android'), 'LinkedIn');
+  assert.equal(origemDoReferer('com.twitter.android'), 'X');
+  assert.equal(origemDoReferer('com.google.android.googlequicksearchbox'), 'Google');
+  assert.equal(origemDoReferer('linkedin.com.evil.example'), 'Outros');
 });
 
 test('agregar: junta PT/ES/EN e a URL sem data do mesmo post, com título e tipo do catálogo', () => {
