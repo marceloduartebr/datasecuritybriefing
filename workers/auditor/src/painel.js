@@ -1,5 +1,6 @@
 import { capasFaltando } from './auditoria.js';
 import { emBrasilia } from './horario.js';
+import { SITE } from './constantes.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -148,6 +149,8 @@ function problemasHtml(r) {
 export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
   if (!ultimo) {
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSB Auditor</title>
+<link rel="icon" href="${SITE}/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="${SITE}/icon-180.png?v=2">
 <style>${CSS}</style></head><body><main><h1>DSB Auditor</h1><p class="muted">Ainda não houve execução.</p></main></body></html>`;
   }
   const statusGeral = ultimo.ok ? '<span class="ok">Tudo certo</span>' : `<span class="bad">${(ultimo.problemas || []).length} problema(s)</span>`;
@@ -158,6 +161,8 @@ export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>DSB Auditor — painel</title>
+<link rel="icon" href="${SITE}/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="${SITE}/icon-180.png?v=2">
 <style>${CSS}</style>
 </head>
 <body>

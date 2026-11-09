@@ -3,6 +3,7 @@ import { capasFaltando, rodarAuditoria } from './auditoria.js';
 import { lerHistorico, lerUltimo, lerUltimoAlerta } from './armazenamento.js';
 import { slotDoTick } from './horario.js';
 import { renderPainel } from './painel.js';
+import { SITE } from './constantes.js';
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -22,6 +23,11 @@ export async function tratar(request, env, ctx, deps = {}) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/$/, '') || '/';
   if (request.method === 'GET' && path === '/health') return json({ ok: true, servico: 'dsb-auditor' });
+
+  // Fora do Access (/painel): browsers pedem /favicon.ico; redireciona ao ícone do blog.
+  if (request.method === 'GET' && path === '/favicon.ico') {
+    return Response.redirect(`${SITE}/favicon.svg`, 302);
+  }
 
   if (path === '/painel') {
     if (request.method !== 'GET') return json({ ok: false, erro: 'metodo' }, 405);

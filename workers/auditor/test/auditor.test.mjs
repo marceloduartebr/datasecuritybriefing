@@ -294,6 +294,12 @@ test('painel: sem auth e sem ACCESS_* → 404; health intacto; bearer → 200 HT
   assert.match(body, /15:42/);
   assert.match(body, /ALERTAS/);
   assert.match(body, /Tudo certo/);
+  assert.match(body, /rel="icon"[^>]*href="https:\/\/dsb\.duarte\.top\/favicon\.svg"/);
+  assert.match(body, /rel="apple-touch-icon"[^>]*href="https:\/\/dsb\.duarte\.top\/icon-180\.png\?v=2"/);
+  // favicon.ico fora do Access: 302 para o ícone do blog
+  r = await tratar(new Request('https://a/favicon.ico'), env);
+  assert.equal(r.status, 302);
+  assert.equal(r.headers.get('Location'), 'https://dsb.duarte.top/favicon.svg');
   // não aceita token em query
   r = await tratar(new Request(`https://a/painel?token=${TOKEN}`), env);
   assert.equal(r.status, 404);
@@ -378,4 +384,13 @@ test('renderPainel: lista capas e flags em português', () => {
   assert.match(html, /Último alerta/);
   assert.match(html, /problema/);
   assert.match(html, /Blog ES/);
+  assert.match(html, /https:\/\/dsb\.duarte\.top\/favicon\.svg/);
+  assert.match(html, /https:\/\/dsb\.duarte\.top\/icon-180\.png\?v=2/);
+});
+
+test('renderPainel: vazio ainda inclui favicon do blog', () => {
+  const html = renderPainel(null);
+  assert.match(html, /Ainda não houve execução/);
+  assert.match(html, /rel="icon"[^>]*href="https:\/\/dsb\.duarte\.top\/favicon\.svg"/);
+  assert.match(html, /apple-touch-icon[^>]*href="https:\/\/dsb\.duarte\.top\/icon-180\.png\?v=2"/);
 });
