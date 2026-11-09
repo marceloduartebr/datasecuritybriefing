@@ -18,6 +18,9 @@
   "main": "src/index.js",
   "compatibility_date": "2026-11-07",
   "workers_dev": true,
+  "routes": [
+    { "pattern": "dsb-auditor.duarte.top", "custom_domain": true }
+  ],
   "observability": {
     "enabled": true,
     "logs": { "enabled": true, "head_sampling_rate": 1 },

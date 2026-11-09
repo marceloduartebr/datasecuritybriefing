@@ -4,7 +4,7 @@ Worker de auditoria do DSB, **só leitura**. Substituirá as rotinas de aviso do
 (Curadoria 8:30, Check fila 9:50, LinkedIn 10:15/18:15, Blog 11:15/19:15) depois de 1 semana em paralelo.
 Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
 
-- URL: `https://dsb-auditor.marceloduarte.workers.dev`
+- URL: `https://dsb-auditor.marceloduarte.workers.dev` (domínio: `https://dsb-auditor.duarte.top`)
 - Cron (1 trigger): `15,30,50 11-22 * * 1-5` UTC. O código só roda em 08:30, 09:50, 10:15, 11:15, 18:15 e 19:15 (Brasília); os outros ticks saem sem rede.
 - KV próprio: `DSB_AUDITOR` (`ultimo`, `historico` com as 30 últimas). 2 gravações por execução.
 - Service Binding `PUSH_AGENDA` → `dsb-push-agenda`, só `GET /health` (e `/admin/status` se `PUSH_ADMIN_TOKEN` existir).
@@ -53,4 +53,4 @@ HTML mobile-friendly em português, horários em Brasília. Lê só o KV (`ultim
 
 **Com Access:** vars `ACCESS_TEAM` (`https://<time>.cloudflareaccess.com`) e `ACCESS_AUD` (AUD tag do app). O Worker valida o header `Cf-Access-Jwt-Assertion` contra o JWKS do time. Bearer continua válido.
 
-App self-hosted Zero Trust no path `/painel` do hostname `dsb-auditor.marceloduarte.workers.dev` (time `royal-lake-6796`). Login por One-time PIN. Não cobrir o host inteiro — `/health`, `/status`, `/capas-faltando` e `/rodar` precisam ficar públicos para o cron e as checagens da box.
+App self-hosted Zero Trust no path `/painel` dos hostnames `dsb-auditor.marceloduarte.workers.dev` e `dsb-auditor.duarte.top` (time `royal-lake-6796`). Login por One-time PIN. Não cobrir o host inteiro — `/health`, `/status`, `/capas-faltando` e `/rodar` precisam ficar públicos para o cron e as checagens da box.
