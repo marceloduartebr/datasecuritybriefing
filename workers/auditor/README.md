@@ -14,6 +14,7 @@ Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
 | Método | Caminho | Auth | O que faz |
 |---|---|---|---|
 | GET | `/health` | pública | `{ok:true}` |
+| GET | `/painel` | Cloudflare Access JWT **ou** Bearer | HTML do status (só lê KV; não dispara rede/push). Sem Access e sem bearer → **404** |
 | GET | `/status` | Bearer `AUDITOR_TOKEN` | última execução + histórico |
 | GET | `/capas-faltando` | Bearer | itens da fila (Novo/Aprovado) e briefings de hoje sem capa válida |
 | POST | `/rodar` | Bearer | roda a auditoria agora (sem alerta se `ALERTAS=off`) |
@@ -43,3 +44,13 @@ node --test test/                     # testes
 ```
 
 Desligar tudo: tirar `triggers.crons` (lista vazia remove o cron no deploy) ou `npx wrangler delete dsb-auditor`.
+
+## Painel (`/painel`)
+
+HTML mobile-friendly em português, horários em Brasília. Lê só o KV (`ultimo` + `alerta:ultimo`); **não** refaz checagens nem manda push.
+
+**Proteção (antes do Cloudflare Access):** a página responde **404** sem autenticação. Com Bearer `AUDITOR_TOKEN` (header `Authorization`, nunca query/cookie) libera para checagens internas.
+
+**Com Access:** defina as vars `ACCESS_TEAM` (`https://<time>.cloudflareaccess.com`) e `ACCESS_AUD` (AUD tag do app). O Worker valida o header `Cf-Access-Jwt-Assertion` contra o JWKS do time. Bearer continua válido.
+
+Access funciona em `*.workers.dev` (Zero Trust free): no dashboard do Worker → **Settings → Domains & Routes → Enable Cloudflare Access**, ou app self-hosted em Zero Trust apontando para `dsb-auditor.marceloduarte.workers.dev/painel`. Depois envie o team domain e o AUD para gravar as vars.

@@ -76,6 +76,6 @@ export async function enviarAlertas(env, r) {
     j = null;
   }
   const enviado = !!(res.ok && j && j.enviados > 0);
-  if (enviado && kv) await kv.put('alerta:ultimo', JSON.stringify({ data: r.dataBrt, sig }));
+  if (enviado && kv) await kv.put('alerta:ultimo', JSON.stringify({ data: r.dataBrt, sig, em: r.em, slot: r.slot, titulo: alerta.titulo, tipo: r.problemas.length ? 'problema' : 'ok_diario' }));
   return { enviado, http: res.status, enviados: j ? j.enviados ?? 0 : 0, destinos: j && Array.isArray(j.destinos) ? j.destinos : [] };
 }

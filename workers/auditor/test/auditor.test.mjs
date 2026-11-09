@@ -6,6 +6,9 @@ import { calcularProblemas, enviarAlertas, montarAlerta } from '../src/alertas.j
 import { capasFaltando, rodarAuditoria } from '../src/auditoria.js';
 import { tratar } from '../src/index.js';
 import { criarRede } from '../src/rede.js';
+import { renderPainel } from '../src/painel.js';
+import { autorizarPainel } from '../src/auth.js';
+import { validarAccessJwt, _resetJwksCache } from '../src/access.js';
 
 const TOKEN = 'x'.repeat(40);
 const PUSH_OK = { fetch: async () => new Response(JSON.stringify({ ok: true, servico: 'dsb-push-agenda' }), { status: 200 }) };
@@ -236,4 +239,143 @@ test('push: sem binding vira problema; binding só recebe GET /health sem token'
   const r = await checarPush({ PUSH_AGENDA: svc });
   assert.equal(r.ok, true);
   assert.deepEqual(vistos.map((v) => v[0]), ['https://dsb-push-agenda/health']);
+});
+
+function b64url(buf) {
+  const b = Buffer.from(buf).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return b;
+}
+
+async function parRsa() {
+  const { privateKey, publicKey } = await crypto.subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+    true,
+    ['sign', 'verify'],
+  );
+  const jwk = await crypto.subtle.exportKey('jwk', publicKey);
+  jwk.kid = 'test-kid';
+  jwk.alg = 'RS256';
+  jwk.use = 'sig';
+  return { privateKey, jwk };
+}
+
+async function assinarJwt(privateKey, header, payload) {
+  const h = b64url(JSON.stringify(header));
+  const p = b64url(JSON.stringify(payload));
+  const data = new TextEncoder().encode(`${h}.${p}`);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
+  return `${h}.${p}.${b64url(Buffer.from(sig))}`;
+}
+
+test('painel: sem auth e sem ACCESS_* → 404; health intacto; bearer → 200 HTML', async () => {
+  const kv = kvMem();
+  await kv.put('ultimo', JSON.stringify({
+    versao: 1, em: '2026-11-09T18:42:03.029Z', dataBrt: HOJE, horaBrt: '15:42', slot: 'manual',
+    ok: true, problemas: [],
+    flags: { alertas: 'on', okDiario: 'on', notion: 'on' },
+    blog: { ok: true, total: 1, itens: [{ slug: `${HOJE}-x`, paginas: { pt: 200, es: 200, en: 200 }, capa: { ok: true } }] },
+    github: { ok: true, commits: [{ sha: 'abc', mensagem: 'm', em: 'x' }], pushEvento: null },
+    push: { ok: true, health: 200 },
+    notion: { ativo: true, ok: true, novosHoje: { total: 0, aindaNovo: 0 }, semCapa: [], publicadosSemUrn: [], publicadosHoje: 0, aprovadosPorTipo: {}, fila: { total: 0 } },
+    alerta: { enviado: false, motivo: 'sem_problemas' },
+    subrequests: { usadas: 10, orcamento: 45 },
+  }));
+  const env = { DSB_AUDITOR: kv, AUDITOR_TOKEN: TOKEN };
+  let r = await tratar(new Request('https://a/painel'), env);
+  assert.equal(r.status, 404);
+  r = await tratar(new Request('https://a/health'), env);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).servico, 'dsb-auditor');
+  r = await tratar(new Request('https://a/painel', { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /text\/html/);
+  const body = await r.text();
+  assert.match(body, /DSB Auditor/);
+  assert.match(body, /15:42/);
+  assert.match(body, /ALERTAS/);
+  assert.match(body, /Tudo certo/);
+  // não aceita token em query
+  r = await tratar(new Request(`https://a/painel?token=${TOKEN}`), env);
+  assert.equal(r.status, 404);
+});
+
+test('painel: ACCESS configurado exige JWT ou bearer', async () => {
+  const kv = kvMem();
+  await kv.put('ultimo', JSON.stringify({
+    versao: 1, em: '2026-11-09T18:00:00Z', dataBrt: HOJE, horaBrt: '15:00', slot: 'manual',
+    ok: false, problemas: ['Blog: x'],
+    flags: { alertas: 'on', okDiario: 'on', notion: 'on' },
+    blog: { ok: true, total: 0, itens: [] }, github: { ok: true, commits: [] }, push: { ok: true },
+    notion: { ativo: false }, alerta: { enviado: true, motivo: 'ok' }, subrequests: {},
+  }));
+  const env = { DSB_AUDITOR: kv, AUDITOR_TOKEN: TOKEN, ACCESS_TEAM: 'https://exemplo.cloudflareaccess.com', ACCESS_AUD: 'aud-teste' };
+  let r = await tratar(new Request('https://a/painel'), env);
+  assert.equal(r.status, 401);
+  r = await tratar(new Request('https://a/painel', { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /problema/);
+});
+
+test('validarAccessJwt: assina e verifica com JWKS falso', async () => {
+  _resetJwksCache();
+  const { privateKey, jwk } = await parRsa();
+  const team = 'https://exemplo.cloudflareaccess.com';
+  const aud = 'aud-xyz';
+  const now = Math.floor(Date.now() / 1000);
+  const token = await assinarJwt(privateKey, { alg: 'RS256', kid: 'test-kid' }, {
+    iss: team, aud, exp: now + 3600, email: 'marcelo@duarte.top',
+  });
+  const payload = await validarAccessJwt(token, team, aud, {
+    fetchJwks: async () => [jwk],
+    agoraSec: now,
+  });
+  assert.equal(payload.email, 'marcelo@duarte.top');
+  await assert.rejects(() => validarAccessJwt(token, team, 'outro-aud', { fetchJwks: async () => [jwk], agoraSec: now }));
+  await assert.rejects(() => validarAccessJwt(token, team, aud, { fetchJwks: async () => [jwk], agoraSec: now + 10_000 }));
+});
+
+test('autorizarPainel: JWT Access válido libera sem bearer', async () => {
+  _resetJwksCache();
+  const { privateKey, jwk } = await parRsa();
+  const team = 'https://exemplo.cloudflareaccess.com';
+  const aud = 'aud-xyz';
+  const now = Math.floor(Date.now() / 1000);
+  const token = await assinarJwt(privateKey, { alg: 'RS256', kid: 'test-kid' }, { iss: team, aud, exp: now + 3600 });
+  const env = { AUDITOR_TOKEN: TOKEN, ACCESS_TEAM: team, ACCESS_AUD: aud };
+  let r = await autorizarPainel(new Request('https://a/painel', { headers: { 'Cf-Access-Jwt-Assertion': 'a.b.c' } }), env);
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 401);
+  const prev = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    assert.match(String(url), /cdn-cgi\/access\/certs$/);
+    return new Response(JSON.stringify({ keys: [jwk] }), { status: 200 });
+  };
+  try {
+    r = await autorizarPainel(new Request('https://a/painel', { headers: { 'Cf-Access-Jwt-Assertion': token } }), env);
+    assert.equal(r.ok, true);
+    assert.equal(r.via, 'access');
+  } finally {
+    globalThis.fetch = prev;
+    _resetJwksCache();
+  }
+});
+
+test('renderPainel: lista capas e flags em português', () => {
+  const html = renderPainel({
+    em: '2026-11-09T21:15:00Z', dataBrt: HOJE, horaBrt: '18:15', slot: '18:15', ok: false,
+    problemas: ['Fila: sem capa — Foo'],
+    flags: { alertas: 'on', okDiario: 'on', notion: 'on' },
+    blog: { ok: true, total: 1, itens: [{ slug: 's', paginas: { pt: 200, es: 404, en: 200 }, capa: { ok: false, motivo: 'http 404' } }] },
+    github: { ok: true, commits: [{ sha: '1' }], pushEvento: { conclusao: 'success', sha: '1' } },
+    push: { ok: true, health: 200 },
+    notion: { ativo: true, ok: true, novosHoje: { total: 2, aindaNovo: 1 }, semCapa: [{ id: 'a', topic: 'Foo', motivo: 'ausente' }], publicadosSemUrn: [], publicadosHoje: 1, aprovadosPorTipo: { Notícia: 3 }, fila: { total: 5 } },
+    alerta: { enviado: false, motivo: 'repetido' },
+    subrequests: { usadas: 20, orcamento: 45 },
+  }, { ultimoAlerta: { data: HOJE, em: '2026-11-09T18:00:00Z', titulo: 'DSB: 1 problema(s) às 15:00', tipo: 'problema', slot: 'manual' } });
+  assert.match(html, /Capas faltando/);
+  assert.match(html, /Foo/);
+  assert.match(html, /ALERTAS/);
+  assert.match(html, /Último alerta/);
+  assert.match(html, /problema/);
+  assert.match(html, /Blog ES/);
 });

@@ -1,7 +1,8 @@
-import { autorizar } from './auth.js';
+import { autorizar, autorizarPainel } from './auth.js';
 import { capasFaltando, rodarAuditoria } from './auditoria.js';
-import { lerHistorico, lerUltimo } from './armazenamento.js';
+import { lerHistorico, lerUltimo, lerUltimoAlerta } from './armazenamento.js';
 import { slotDoTick } from './horario.js';
+import { renderPainel } from './painel.js';
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -10,10 +11,30 @@ function json(obj, status = 200) {
   });
 }
 
+function html(body, status = 200) {
+  return new Response(body, {
+    status,
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
+  });
+}
+
 export async function tratar(request, env, ctx, deps = {}) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/$/, '') || '/';
   if (request.method === 'GET' && path === '/health') return json({ ok: true, servico: 'dsb-auditor' });
+
+  if (path === '/painel') {
+    if (request.method !== 'GET') return json({ ok: false, erro: 'metodo' }, 405);
+    const auth = await autorizarPainel(request, env);
+    if (!auth.ok) {
+      if (auth.status === 404) return json({ ok: false, erro: 'nao_encontrado' }, 404);
+      return json({ ok: false, erro: auth.erro }, auth.status);
+    }
+    const ultimo = await lerUltimo(env.DSB_AUDITOR);
+    const ultimoAlerta = await lerUltimoAlerta(env.DSB_AUDITOR);
+    return html(renderPainel(ultimo, { ultimoAlerta }));
+  }
+
   if (!['/status', '/capas-faltando', '/rodar'].includes(path)) return json({ ok: false, erro: 'nao_encontrado' }, 404);
   const auth = await autorizar(request, env);
   if (!auth.ok) return json({ ok: false, erro: auth.erro }, auth.status);

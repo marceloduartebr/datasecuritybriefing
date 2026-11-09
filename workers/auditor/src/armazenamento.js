@@ -30,3 +30,11 @@ export async function lerHistorico(kv) {
     return [];
   }
 }
+
+export async function lerUltimoAlerta(kv) {
+  try {
+    return (await kv.get('alerta:ultimo', 'json')) || null;
+  } catch {
+    return null;
+  }
+}

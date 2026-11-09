@@ -6,7 +6,9 @@
 //   (Service Binding + secret ALERTA_TOKEN); a allowlist de 2 inscrições do Marcelo fica fixa lá.
 //   OK diário "tudo certo" só no slot 19:15 BRT, no máx. 1×/dia (KV alerta:ultimo).
 // - NOTION liga/desliga as consultas (só leitura) à fila. Token entra como secret NOTION_TOKEN.
-// - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar), NOTION_TOKEN, ALERTA_TOKEN.
+// - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar, /painel), NOTION_TOKEN, ALERTA_TOKEN.
+// - Vars opcionais ACCESS_TEAM + ACCESS_AUD: validam Cf-Access-Jwt-Assertion no /painel.
+//   Sem elas, /painel só aceita bearer (sem auth → 404). Não colocar AUD/token neste arquivo.
 //   Opcionais: GITHUB_TOKEN, PUSH_ADMIN_TOKEN. Nenhum valor neste arquivo.
 // - KV DSB_AUDITOR é próprio. Não usar DSB_PUSH nem nada do BND.
 {
