@@ -92,7 +92,7 @@ jobs:
               HOJE=$(TZ=America/Sao_Paulo date +%F)
               SLUG=$(python3 -c "import json; d=json.load(open('/tmp/cat.json')); print(next((i['slug'] for i in d.get('itens',[]) if i.get('slug','').startswith('${HOJE}-')), ''))")
               if [ -n "${SLUG}" ]; then
-                H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -I \
+                H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
                   "https://dsb.duarte.top/briefings/${SLUG}" || echo 000)
                 echo "slug=${SLUG} head=${H}"
                 if [ "${H}" = "200" ]; then
@@ -136,7 +136,7 @@ jobs:
           if [ "${MODO}" = "isolado" ]; then
             DEADLINE=$((SECONDS + 120))
             while (( SECONDS < DEADLINE )); do
-              H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -I \
+              H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
                 "https://dsb.duarte.top/briefings/${INPUT_SLUG}" || echo 000)
               echo "isolado head=${H}"
               [ "${H}" = "200" ] && break
