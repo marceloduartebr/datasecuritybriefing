@@ -100,7 +100,18 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 12px; }
   border-color: var(--gold);
   text-decoration: none;
 }
-.btn-icone svg { display: block; width: 1.2rem; height: 1.2rem; }
+.btn-icone svg { display: block; width: 1.2rem; height: 1.2rem; shape-rendering: geometricPrecision; }
+/* iOS Safari: sem aparência nativa de botão, sem realce de toque e sem
+   sombra/filtro, para o logo e os ícones do topo ficarem nítidos. */
+.btn-icone,
+.brand {
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: none;
+  filter: none;
+}
+.brand img.mark { image-rendering: auto; background: transparent; }
 .topo a:focus-visible,
 .topo button:focus-visible {
   outline: 2px solid var(--gold);
@@ -656,6 +667,10 @@ footer.site a:hover { color: var(--text); }
   pointer-events: none;
   transition: opacity .16s ease;
 }
+/* `display:flex` anulava o atributo hidden: a pílula invisível (opacity 0,
+   fixed, z-index 70) ficava sempre sobre o topo e, no iOS, deixava o logo e
+   os ícones borrados em repouso (nítidos só ao puxar). */
+.ptr[hidden] { display: none; }
 .ptr.is-visible { opacity: 1; }
 .ptr-ring {
   width: 14px;
