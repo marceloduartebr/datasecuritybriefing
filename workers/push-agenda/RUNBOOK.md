@@ -1,8 +1,8 @@
-# Runbook — Web Push agendado do DSB
+# Runbook — Web Push do DSB (`dsb-push-agenda`)
 
-Este Worker **não está em produção**. A rotina que envia hoje continua sendo o bot (`scripts/push/apos-publicar.mjs` + `scripts/push/enviar.mjs`), nos dias úteis por volta de 11:25 e 19:25 em `America/Sao_Paulo`.
+Em produção desde 07/11/2026. O disparo **principal** é por evento (após o site no ar); o cron é **fallback**. A rotina antiga do box (`push-dsb-novas-publica-es` / `scripts/push/apos-publicar.mjs` + `enviar.mjs`) permanece **pausada** — não religar sem reconciliar o dedupe por destinatário no Durable Object.
 
-Nada neste repositório implanta, liga cron ou lê inscrições/segredos reais. O primeiro deploy já cria recurso novo (o Durable Object). Só fazer isso com autorização explícita, e mesmo assim com as duas travas de envio fechadas.
+Hostname do Worker: `https://dsb-push-agenda.marceloduarte.workers.dev` (rotas `/admin/*`). Não pendurar no domínio `dsb.duarte.top`.
 
 ## O que este serviço faz
 
@@ -16,6 +16,54 @@ Nada neste repositório implanta, liga cron ou lê inscrições/segredos reais. 
 O dia do push é o prefixo do arquivo, como em `apos-publicar.mjs`. `data` no catálogo é esse prefixo. Se o `pubDate` cair noutro dia de Brasília, o slug ganha.
 
 Inscrição antiga sem `topicos` não recebe o tópico `edicao`. É o que `enviar.mjs` já faz hoje quando o bot passa `--topico edicao`. Não foi afrouxado.
+
+## Disparo por evento (principal)
+
+Fluxo:
+
+1. Push em `main` (conteúdo do blog).
+2. Cloudflare **Workers Builds** implanta o Worker do site `datasecuritybriefing`.
+3. Workflow GitHub Actions `.github/workflows/push-evento.yml` (`push-evento`):
+   - Se a variável do repositório `EVENTO_PUSH` **não** for exatamente `on`, o job encerra sem tick.
+   - Com `EVENTO_PUSH=on`, espera o check **Workers Builds: datasecuritybriefing** com sucesso e faz `POST /admin/tick` com corpo `{"origem":"evento"}` e `Authorization: Bearer <ADMIN_TOKEN>`.
+4. `origem: evento` abre a **janela de 20 minutos** (igual ao cron) para retentar catálogo/`HEAD` enquanto o edge propaga.
+5. Travas `envio` + secret `PUSH_ENVIO=on` + `fanout=on` + cutoff continuam obrigatórias para fan-out.
+
+Segredos do repositório GitHub (só os **nomes**; valores nunca no git nem em issue):
+
+- `ADMIN_TOKEN` — mesmo token admin do Worker
+- `PUSH_AGENDA_URL` — base URL do Worker (`https://dsb-push-agenda.…workers.dev`)
+
+Desligar o disparo por evento (cron continua):
+
+```bash
+gh variable set EVENTO_PUSH -R marceloduartebr/datasecuritybriefing --body off
+```
+
+Religar: `--body on`.
+
+## Cron (fallback)
+
+`triggers.crons` em `wrangler.jsonc`: `25 14,22 * * 1-5` → 11:25 e 19:25 em Brasília (UTC−3). Cobre o que o evento não enviou ou falhou. Dedupe por destinatário no Durable Object: quem já está `enviado` **não** recebe de novo.
+
+## Teste isolado (sem fan-out)
+
+Via GitHub Actions (`workflow_dispatch` do `push-evento`), com inputs:
+
+- `somente`: uma chave `sub:` + 64 hex (máx. 1 por disparo neste workflow; até 3 chaves se chamar a API direto)
+- `slug`: `AAAA-MM-DD-…` já no ar hoje
+
+Isso chama `POST /admin/tick` com `origem: evento`, `somente` e `slug`. Não exige `fanout=on`. Não marca o artigo `concluido` para o restante da audiência.
+
+Exemplo:
+
+```bash
+gh workflow run push-evento.yml -R marceloduartebr/datasecuritybriefing \
+  -f somente='sub:…64hex…' \
+  -f slug='2026-11-09-exemplo'
+```
+
+A resposta `teste_isolado` com `enviados: 1` é aceite do serviço de push, não prova no aparelho.
 
 ## Fonte de verdade operacional
 
