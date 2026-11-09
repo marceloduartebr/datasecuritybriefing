@@ -143,6 +143,7 @@ test('Notion on: Novo do dia, Aprovado sem capa, Publicado sem URN', async () =>
     if (s.includes('Published At')) return resp(200, { results: [
       pagina('p1', 'Pub com URN', 'Publicado', { 'Publish Notes': { rich_text: [{ plain_text: 'urn:li:share:1' }] } }),
       pagina('p2', 'Pub sem URN', 'Publicado', { 'Publish Notes': { rich_text: [] } }),
+      pagina('p3', 'Pub só no blog', 'Publicado', { 'Publish Notes': { rich_text: [{ plain_text: 'Somente blog' }] } }),
     ] });
     return resp(200, { results: [
       pagina('a1', 'Aprovado ok', 'Aprovado', { 'Image URL': { url: 'https://covers.duarte.top/covers/x.jpg' } }),
@@ -203,6 +204,16 @@ test('HTTP: health público; status exige bearer; sem secret = 503', async () =>
   assert.equal((await r.json()).total, 0);
   r = await tratar(new Request('https://a/status', { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` } }), env);
   assert.equal(r.status, 405);
+});
+
+test('resumirPagina: marcador Somente blog (sem URN) não conta como Publicado sem URN', () => {
+  const pg = (n) => resumirPagina({ id: 'x', properties: { 'Publish Notes': { rich_text: [{ plain_text: n }] } } });
+  for (const n of ['Somente blog', 'publicado: SOMENTE BLOG | old', 'somente-blog', 'Somente  blog — sem LinkedIn']) {
+    const p = pg(n);
+    assert.equal(p.somenteBlog, true, n);
+    assert.equal(p.temUrn, false, n);
+  }
+  for (const n of ['', 'blog somente', 'somenteblog', 'LinkedIn falhou']) assert.equal(pg(n).somenteBlog, false, n);
 });
 
 test('resumirPagina detecta URN', () => {

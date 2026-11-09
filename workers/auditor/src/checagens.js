@@ -178,6 +178,8 @@ export function resumirPagina(p) {
     tipo: pr.Tipo && pr.Tipo.select ? pr.Tipo.select.name : null,
     imageUrl: pr['Image URL'] ? pr['Image URL'].url : null,
     temUrn: /urn:li:/i.test(texto(pr['Publish Notes'])),
+    // Publicado só no blog (sem LinkedIn): marcador 'Somente blog' / 'somente-blog' no Publish Notes.
+    somenteBlog: /somente[\s-]+blog/i.test(texto(pr['Publish Notes'])),
   };
 }
 
@@ -224,7 +226,7 @@ export async function checarNotion(rede, env, hoje, checarCapa) {
     const r = await checarCapa(p.imageUrl);
     if (!r.ok) semCapa.push({ id: p.id, topic: p.topic, status: p.status, imageUrl: p.imageUrl, motivo: r.motivo, http: r.status });
   }
-  const semUrn = publicados.paginas.filter((p) => !p.temUrn).map((p) => ({ id: p.id, topic: p.topic, tipo: p.tipo }));
+  const semUrn = publicados.paginas.filter((p) => !p.temUrn && !p.somenteBlog).map((p) => ({ id: p.id, topic: p.topic, tipo: p.tipo }));
   return {
     ativo: true,
     ok: true,
