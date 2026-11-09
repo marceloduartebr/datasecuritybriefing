@@ -2,6 +2,7 @@
 # Produção (fan-out) só com vars.EVENTO_PUSH == 'on'.
 # Teste isolado: workflow_dispatch com inputs somente + slug (1 destinatário).
 # Nunca ecoar ADMIN_TOKEN nem PUSH_AGENDA_URL.
+# Runners GitHub levam 403 ao ler dsb.duarte.top; o Worker confirma no_ar no edge.
 name: push-evento
 
 on:
@@ -57,7 +58,7 @@ jobs:
             exit 0
           fi
 
-      - name: Esperar Workers Builds + página no ar
+      - name: Esperar Workers Builds
         if: steps.gate.outputs.modo == 'evento'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -73,40 +74,15 @@ jobs:
               | head -n 1 || true)
             echo "check: ${STATE:-nenhum}"
             if echo "${STATE}" | grep -q '"conclusion":"success"'; then
-              break
+              echo "Builds ok; Worker abrirá janela de 20 min no tick."
+              exit 0
             fi
             if echo "${STATE}" | grep -qE '"conclusion":"(failure|cancelled|timed_out)"'; then
               echo "Workers Builds falhou"; exit 1
             fi
             sleep 15
           done
-          if ! echo "${STATE:-}" | grep -q '"conclusion":"success"'; then
-            echo "Timeout aguardando Workers Builds"; exit 1
-          fi
-          echo "Poll HEAD /push/catalogo.json e briefings do dia"
-          while (( SECONDS < DEADLINE )); do
-            CODE=$(curl -sS -o /tmp/cat.json -w '%{http_code}' --max-time 20 \
-              https://dsb.duarte.top/push/catalogo.json || echo 000)
-            if [ "${CODE}" = "200" ]; then
-              # Confirma ao menos um briefing do dia (prefixo Brasília) com HEAD 200
-              HOJE=$(TZ=America/Sao_Paulo date +%F)
-              SLUG=$(python3 -c "import json; d=json.load(open('/tmp/cat.json')); print(next((i['slug'] for i in d.get('itens',[]) if i.get('slug','').startswith('${HOJE}-')), ''))")
-              if [ -n "${SLUG}" ]; then
-                H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -L \
-                  "https://dsb.duarte.top/briefings/${SLUG}" || echo 000)
-                echo "slug=${SLUG} head=${H}"
-                if [ "${H}" = "200" ]; then
-                  exit 0
-                fi
-              else
-                echo "Catálogo 200 sem item de ${HOJE} ainda"
-              fi
-            else
-              echo "catalogo HTTP ${CODE}"
-            fi
-            sleep 10
-          done
-          echo "Timeout aguardando site no ar"; exit 1
+          echo "Timeout aguardando Workers Builds"; exit 1
 
       - name: POST /admin/tick (evento)
         if: steps.gate.outputs.modo == 'evento' || steps.gate.outputs.modo == 'isolado'
@@ -125,24 +101,12 @@ jobs:
           fi
           BASE="${PUSH_AGENDA_URL%/}"
           if [ "${MODO}" = "isolado" ]; then
-            # Valida formato sem imprimir a chave completa
             echo "${INPUT_SOMENTE}" | grep -Eq '^sub:[0-9a-f]{64}$'
             echo "${INPUT_SLUG}" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$'
             BODY=$(python3 -c "import json,os; print(json.dumps({'origem':'evento','somente':[os.environ['INPUT_SOMENTE']],'slug':os.environ['INPUT_SLUG']}))")
+            echo "teste isolado: POST direto (Worker valida slug/no_ar/dedupe)"
           else
             BODY='{"origem":"evento"}'
-          fi
-          # Poll breve se isolado (artigo já deve estar no ar)
-          if [ "${MODO}" = "isolado" ]; then
-            DEADLINE=$((SECONDS + 120))
-            while (( SECONDS < DEADLINE )); do
-              H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -L \
-                "https://dsb.duarte.top/briefings/${INPUT_SLUG}" || echo 000)
-              echo "isolado head=${H}"
-              [ "${H}" = "200" ] && break
-              sleep 5
-            done
-            [ "${H}" = "200" ] || { echo "Slug fora do ar"; exit 1; }
           fi
           RESP=$(curl -sS -w '\nHTTP:%{http_code}' --max-time 60 \
             -X POST "${BASE}/admin/tick" \
