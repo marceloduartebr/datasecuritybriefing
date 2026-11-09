@@ -177,16 +177,90 @@ ${FONTES}
 
 const RODAPE_JS = `<script>(function(){var b=document.getElementById('tema');if(!b)return;b.addEventListener('click',function(){var r=document.documentElement;var a=r.dataset.tema||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'escuro');var n=a==='claro'?'escuro':'claro';r.dataset.tema=n;try{localStorage.setItem('dsb-auditor-tema',n);}catch(e){}});})();</script>`;
 
+function abas(atual) {
+  const item = (id, href, rotulo) => `<a href="${href}"${atual === id ? ' class="on" aria-current="page"' : ''}>${rotulo}</a>`;
+  return `<nav class="abas" aria-label="Seções do painel">${item('auditoria', '/painel', 'Auditoria')}${item('leituras', '/painel?aba=leituras', 'Leituras')}</nav>`;
+}
+
+const ROTULO_JANELA = { '24h': 'últimas 24 horas', '7d': 'últimos 7 dias', '30d': 'últimos 30 dias' };
+const fmtN = (n) => (Number(n) || 0).toLocaleString('pt-BR');
+
+function barras(obj, ordem, total) {
+  const chaves = ordem || Object.keys(obj).sort((a, b) => obj[b] - obj[a]);
+  const soma = total || chaves.reduce((t, k) => t + (obj[k] || 0), 0);
+  return `<ul class="barras">${chaves.map((k) => {
+    const v = obj[k] || 0;
+    const pct = soma ? Math.round((v / soma) * 100) : 0;
+    return `<li><div class="b-topo"><span>${esc(k)}</span><span class="b-n">${fmtN(v)} <small>${pct}%</small></span></div><div class="b-trilho"><div class="b-barra" style="width:${pct}%"></div></div></li>`;
+  }).join('')}</ul>`;
+}
+
+/** Aba "Leituras": analytics do blog (Cloudflare Web Analytics), já agregado e em cache. */
+export function renderLeituras(dados, { janela = '7d' } = {}) {
+  const jan = ROTULO_JANELA[janela] ? janela : '7d';
+  const seg = Object.keys(ROTULO_JANELA).map((k) => `<a href="/painel?aba=leituras&amp;janela=${k}"${k === jan ? ' class="on" aria-current="true"' : ''}>${k}</a>`).join('');
+  let corpo;
+  if (!dados || !dados.ok) {
+    const erro = dados && dados.erro === 'sem_token' ? 'Token de Analytics ausente (CF_ANALYTICS_TOKEN / CF_ACCOUNT_ID).' : `Não foi possível ler o Web Analytics: ${dados && dados.erro || 'erro'}.`;
+    corpo = `<section class="card"><p class="bad">${esc(erro)}</p></section>`;
+  } else {
+    const j = dados.janelas[jan] || {};
+    const quando = fmtIsoBrt(dados.geradoEm);
+    const ranking = (j.ranking || []).length
+      ? `<ol class="ranking">${j.ranking.map((p) => `<li><div class="r-txt"><a href="${SITE}/briefings/${esc(p.slug)}/" target="_blank" rel="noopener">${esc(p.titulo)}</a><div class="r-meta"><span class="tag">${esc(p.tipo)}</span><span>PT ${fmtN(p.idiomas.PT)} · ES ${fmtN(p.idiomas.ES)} · EN ${fmtN(p.idiomas.EN)}</span></div></div><div class="r-n">${fmtN(p.leituras)}</div></li>`).join('')}</ol>`
+      : '<p class="muted">Nenhuma leitura de briefing nesta janela.</p>';
+    const tipos = { 'Notícia': 0, Incidente: 0, Vulnerabilidades: 0, ...(j.porTipo || {}) };
+    const ordemTipos = ['Notícia', 'Incidente', 'Vulnerabilidades', ...Object.keys(tipos).filter((k) => !['Notícia', 'Incidente', 'Vulnerabilidades'].includes(k))];
+    const outros = (j.outrosHosts || []).length ? `<p class="muted nota">Outros: ${j.outrosHosts.map(([h, n]) => `${esc(h)} (${fmtN(n)})`).join(', ')}</p>` : '';
+    corpo = `
+  <section class="card destaque">
+    <div class="kpis">
+      <div><div class="label">Páginas vistas</div><div class="kpi">${fmtN(j.paginas)}</div></div>
+      <div><div class="label">Visitas</div><div class="kpi">${j.visitas == null ? '—' : fmtN(j.visitas)}</div></div>
+      <div><div class="label">Leituras de briefings</div><div class="kpi">${fmtN(j.leiturasPosts)}</div></div>
+      <div><div class="label">Briefings lidos</div><div class="kpi">${fmtN(j.totalPosts)}</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Mais lidos · ${esc(ROTULO_JANELA[jan])}</h2>
+    ${ranking}
+  </section>
+
+  <div class="grade grade3">
+  <section class="card"><h2>Por tipo</h2>${barras(tipos, ordemTipos)}</section>
+  <section class="card"><h2>Por idioma</h2>${barras(j.porIdioma || {}, ['PT', 'ES', 'EN'])}</section>
+  <section class="card"><h2>Por origem</h2>${barras(j.porOrigem || {}, ['LinkedIn', 'X', 'Google', 'Direto', 'Outros', 'Navegação no blog'])}${outros}</section>
+  </div>
+
+  <p class="aviso"><strong>Estimativa.</strong> Dados do Cloudflare Web Analytics com amostragem (quanto maior a janela, mais amostrado); sem bots. Ranking soma PT/ES/EN do mesmo briefing; tipo, idioma e origem contam só leituras de briefings. Atualizado ${esc(quando)}${dados.doCache ? ' (cache de até 30 min)' : ''}${dados.aviso ? ` · última tentativa falhou: ${esc(dados.aviso)}` : ''}.</p>`;
+  }
+  return `${cabeca('DSB Auditor — leituras')}
+<main>
+  ${abas('leituras')}
+  <div class="titulo">
+    <h1>Leituras do blog</h1>
+    <p class="sub">dsb.duarte.top · Cloudflare Web Analytics · horários em Brasília (BRT)</p>
+  </div>
+  <nav class="seg" aria-label="Janela">${seg}</nav>
+  ${corpo}
+</main>
+${RODAPE_JS}
+</body>
+</html>`;
+}
+
 /** HTML do painel a partir do estado já gravado (sem rede extra). */
 export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
   if (!ultimo) {
     return `${cabeca('DSB Auditor')}
-<main><div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
+<main>${abas('auditoria')}<div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
 ${RODAPE_JS}</body></html>`;
   }
   const statusGeral = ultimo.ok ? '<span class="pill ok">Tudo certo</span>' : `<span class="pill bad">${(ultimo.problemas || []).length} problema(s)</span>`;
   return `${cabeca('DSB Auditor — painel')}
 <main>
+  ${abas('auditoria')}
   <div class="titulo">
     <h1>Painel de auditoria</h1>
     <p class="sub">Status da última checagem · horários em Brasília (BRT)</p>
@@ -310,4 +384,28 @@ footer{margin-top:20px;font-size:12px;color:var(--faint)}
   tbody td{padding:0;border:0}
   tbody td.det{grid-column:1 / -1;font-size:13px}
 }
+.abas{display:flex;gap:4px;margin:0 0 16px;border-bottom:1px solid var(--border)}
+.abas a{padding:10px 14px;margin-bottom:-1px;border-bottom:2px solid transparent;color:var(--muted);text-decoration:none;font-weight:600;font-size:14px}
+.abas a:hover{color:var(--fg)}.abas a.on{color:var(--gold);border-bottom-color:var(--gold)}
+.seg{display:inline-flex;gap:2px;padding:3px;margin:0 0 4px;border:1px solid var(--border);border-radius:999px;background:var(--card)}
+.seg a{padding:6px 14px;border-radius:999px;color:var(--muted);text-decoration:none;font:600 12.5px "IBM Plex Mono",ui-monospace,monospace}
+.seg a.on{background:var(--gold-dim);color:var(--gold)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{font:700 26px/1.1 "Source Serif 4",Georgia,serif;margin-top:4px}
+.ranking{margin:0;padding:0;list-style:none;counter-reset:r}
+.ranking li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--bs);counter-increment:r}
+.ranking li:last-child{border-bottom:0}
+.ranking li::before{content:counter(r);flex:0 0 1.6rem;font:700 18px/1.3 "Source Serif 4",Georgia,serif;color:var(--gold)}
+.r-txt{flex:1;min-width:0}.r-txt a{color:var(--fg);text-decoration:none;font-weight:600;line-height:1.35}.r-txt a:hover{color:var(--gold)}
+.r-meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:5px;font-size:12px;color:var(--faint)}
+.r-n{font:700 18px/1.3 "IBM Plex Mono",ui-monospace,monospace;color:var(--fg);font-variant-numeric:tabular-nums}
+.barras{margin:0;padding:0;list-style:none}.barras li{margin:0 0 10px}
+.b-topo{display:flex;justify-content:space-between;gap:8px;font-size:13.5px}.b-n{font-variant-numeric:tabular-nums;font-weight:600}.b-n small{color:var(--faint);font-weight:500}
+.b-trilho{height:6px;margin-top:5px;border-radius:999px;background:var(--bs);overflow:hidden}.b-barra{height:100%;border-radius:999px;background:var(--gold)}
+.grade3{grid-template-columns:repeat(3,1fr)}
+.nota{font-size:12px;margin:6px 0 0}
+.aviso{margin:14px 0 0;padding:12px 14px;border:1px dashed var(--border);border-radius:12px;font-size:12.5px;color:var(--muted)}
+.aviso strong{color:var(--gold)}
+@media (max-width:860px){.grade3{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.kpis{grid-template-columns:1fr 1fr}.kpi{font-size:22px}.grade3{display:block}}
 `;

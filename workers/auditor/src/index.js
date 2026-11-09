@@ -2,7 +2,8 @@ import { autorizar, autorizarPainel } from './auth.js';
 import { capasFaltando, rodarAuditoria } from './auditoria.js';
 import { lerHistorico, lerUltimo, lerUltimoAlerta } from './armazenamento.js';
 import { slotDoTick } from './horario.js';
-import { renderPainel } from './painel.js';
+import { renderPainel, renderLeituras } from './painel.js';
+import { obterLeituras } from './leituras.js';
 import { SITE } from './constantes.js';
 import { dispararFilaPush } from './fila-push.js';
 
@@ -36,6 +37,9 @@ export async function tratar(request, env, ctx, deps = {}) {
     if (!auth.ok) {
       if (auth.status === 404) return json({ ok: false, erro: 'nao_encontrado' }, 404);
       return json({ ok: false, erro: auth.erro }, auth.status);
+    }
+    if (url.searchParams.get('aba') === 'leituras') {
+      return html(renderLeituras(await obterLeituras(env), { janela: url.searchParams.get('janela') || '7d' }));
     }
     const ultimo = await lerUltimo(env.DSB_AUDITOR);
     const ultimoAlerta = await lerUltimoAlerta(env.DSB_AUDITOR);
