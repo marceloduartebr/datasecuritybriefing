@@ -145,32 +145,52 @@ function problemasHtml(r) {
   return `<ul class="lista">${p.map((x) => `<li class="bad">${esc(x)}</li>`).join('')}</ul>`;
 }
 
-/** HTML do painel a partir do estado já gravado (sem rede extra). */
-export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
-  if (!ultimo) {
-    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSB Auditor</title>
-<link rel="icon" href="${SITE}/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" sizes="180x180" href="${SITE}/icon-180.png?v=2">
-<style>${CSS}</style></head><body><main><h1>DSB Auditor</h1><p class="muted">Ainda não houve execução.</p></main></body></html>`;
-  }
-  const statusGeral = ultimo.ok ? '<span class="ok">Tudo certo</span>' : `<span class="bad">${(ultimo.problemas || []).length} problema(s)</span>`;
+
+const FONTES = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">';
+
+const IC_LUA = '<svg class="i-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const IC_SOL = '<svg class="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+
+/** <head> com identidade DSB (mesma do blog e da DSB Queue): fontes, tema claro/escuro, favicon do blog. */
+function cabeca(titulo) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>DSB Auditor — painel</title>
+<title>${esc(titulo)}</title>
+<script>try{var t=localStorage.getItem('dsb-auditor-tema');if(t==='claro'||t==='escuro')document.documentElement.dataset.tema=t;}catch(e){}</script>
+<meta name="theme-color" content="#0b0e13" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="icon" href="${SITE}/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" sizes="180x180" href="${SITE}/icon-180.png?v=2">
+${FONTES}
 <style>${CSS}</style>
 </head>
 <body>
+<header class="topo"><div class="container">
+<a class="brand" href="/painel" aria-label="DSB Auditor — painel"><img class="mark" src="${SITE}/brand-mark-128.png" width="38" height="38" alt="" decoding="async"><span class="txt"><span class="wm">Data Security Briefing</span><small>Auditoria · DSB Auditor</small></span></a>
+<button type="button" class="btn-icone" id="tema" aria-label="Alternar tema claro/escuro" title="Tema">${IC_LUA}${IC_SOL}</button>
+</div></header>`;
+}
+
+const RODAPE_JS = `<script>(function(){var b=document.getElementById('tema');if(!b)return;b.addEventListener('click',function(){var r=document.documentElement;var a=r.dataset.tema||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'escuro');var n=a==='claro'?'escuro':'claro';r.dataset.tema=n;try{localStorage.setItem('dsb-auditor-tema',n);}catch(e){}});})();</script>`;
+
+/** HTML do painel a partir do estado já gravado (sem rede extra). */
+export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
+  if (!ultimo) {
+    return `${cabeca('DSB Auditor')}
+<main><div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
+${RODAPE_JS}</body></html>`;
+  }
+  const statusGeral = ultimo.ok ? '<span class="pill ok">Tudo certo</span>' : `<span class="pill bad">${(ultimo.problemas || []).length} problema(s)</span>`;
+  return `${cabeca('DSB Auditor — painel')}
 <main>
-  <header>
-    <h1>DSB Auditor</h1>
+  <div class="titulo">
+    <h1>Painel de auditoria</h1>
     <p class="sub">Status da última checagem · horários em Brasília (BRT)</p>
-  </header>
+  </div>
 
   <section class="card destaque">
     <div class="row">
@@ -203,6 +223,7 @@ export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
     ${listaCapas(ultimo)}
   </section>
 
+  <div class="grade">
   <section class="card">
     <h2>Fila (Notion)</h2>
     ${contagensFila(ultimo)}
@@ -212,6 +233,7 @@ export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
     <h2>Flags</h2>
     ${flagsHtml(ultimo)}
   </section>
+  </div>
 
   <section class="card">
     <h2>Último alerta enviado</h2>
@@ -220,42 +242,72 @@ export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
 
   <footer class="muted">Somente leitura · não dispara checagens nem pushes · subrequests da última execução: ${esc(ultimo.subrequests?.usadas ?? '—')}/${esc(ultimo.subrequests?.orcamento ?? '—')}</footer>
 </main>
+${RODAPE_JS}
 </body>
 </html>`;
 }
 
 const CSS = `
-:root { color-scheme: light dark; --bg:#0b1220; --card:#121a2b; --fg:#e8eefc; --muted:#9aa8c3; --ok:#3dd68c; --bad:#ff6b6b; --line:#243049; --accent:#6ea8fe; }
-@media (prefers-color-scheme: light) {
-  :root { --bg:#f4f7fb; --card:#fff; --fg:#142033; --muted:#5b6b86; --ok:#0a7a43; --bad:#c62828; --line:#d7e0ef; --accent:#1d4ed8; }
-}
-* { box-sizing: border-box; }
-body { margin:0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--fg); }
-main { max-width: 820px; margin: 0 auto; padding: 1.25rem 1rem 2.5rem; }
-header { margin-bottom: 1rem; }
-h1 { font-size: 1.35rem; margin: 0 0 .25rem; }
-h2 { font-size: 1rem; margin: 0 0 .75rem; }
-.sub, .muted { color: var(--muted); }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; margin: .85rem 0; }
-.destaque .row { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap; }
-.label { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
-.valor { font-size:1.05rem; margin:.15rem 0; }
-.status { font-size:1.05rem; font-weight:600; }
-table { width:100%; border-collapse: collapse; font-size: .92rem; }
-th, td { text-align:left; padding: .45rem .35rem; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { color: var(--muted); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .03em; }
-.det { color: var(--muted); word-break: break-word; }
-.ok { color: var(--ok); font-weight: 600; }
-.bad { color: var(--bad); font-weight: 600; }
-.na { color: var(--muted); }
-.lista { margin: .25rem 0 0; padding-left: 1.1rem; }
-.lista li { margin: .2rem 0; }
-.tag { display:inline-block; font-size:.7rem; padding:.05rem .35rem; border-radius:999px; border:1px solid var(--line); color:var(--muted); margin-right:.25rem; }
-.flags strong { color: var(--accent); }
-footer { margin-top: 1.25rem; font-size: .8rem; }
-@media (max-width: 560px) {
-  th:nth-child(3), td.det { display:none; }
-  main { padding: 1rem .75rem 2rem; }
+:root{color-scheme:dark;--bg:#0b0e13;--bg2:#10141b;--card:#171c25;--border:#2a3140;--bs:#232a36;--fg:#eef1f6;--muted:#9aa3b2;--faint:#6b7382;--gold:#d4a054;--gold-dim:#3a2e1a;--ok:#7dcca3;--ok-dim:#173226;--bad:#e59a9a;--bad-dim:#2a1818;--glow:rgba(212,160,84,.08)}
+:root[data-tema="claro"]{color-scheme:light;--bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--border:#ddd8cc;--bs:#e7e3da;--fg:#1a1f29;--muted:#545c6b;--faint:#7a8191;--gold:#9a6a1f;--gold-dim:#f4ead8;--ok:#1f7a4f;--ok-dim:#e2f3ea;--bad:#b23b3b;--bad-dim:#f8e6e6;--glow:rgba(154,106,31,.07)}
+@media (prefers-color-scheme:light){:root:not([data-tema="escuro"]){color-scheme:light;--bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--border:#ddd8cc;--bs:#e7e3da;--fg:#1a1f29;--muted:#545c6b;--faint:#7a8191;--gold:#9a6a1f;--gold-dim:#f4ead8;--ok:#1f7a4f;--ok-dim:#e2f3ea;--bad:#b23b3b;--bad-dim:#f8e6e6;--glow:rgba(154,106,31,.07)}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+body{margin:0;min-height:100dvh;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px);font:15px/1.5 "IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 420px at 12% -10%,var(--glow),transparent 55%),linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--fg)}
+.topo{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);padding-top:env(safe-area-inset-top,0px)}
+.topo .container{max-width:860px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-height:3.9rem}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;color:inherit;text-decoration:none}
+.brand img.mark{width:38px;height:38px;flex-shrink:0;object-fit:contain;display:block;background:transparent}
+.brand .txt{min-width:0}
+.brand .wm{display:block;font:700 17px/1.1 "Source Serif 4",Georgia,serif;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand small{display:block;margin-top:3px;font-size:12px;color:var(--muted);white-space:nowrap}
+.btn-icone{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:2.4rem;height:2.4rem;padding:0;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--fg);cursor:pointer}
+.btn-icone:hover{color:var(--gold);border-color:var(--gold)}
+.btn-icone svg{display:block;width:1.15rem;height:1.15rem;shape-rendering:geometricPrecision}
+.btn-icone,.brand{-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent;box-shadow:none;filter:none}
+.btn-icone .i-sol{display:none}:root[data-tema="claro"] .btn-icone .i-sol{display:block}:root[data-tema="claro"] .btn-icone .i-lua{display:none}
+@media (prefers-color-scheme:light){:root:not([data-tema="escuro"]) .btn-icone .i-sol{display:block}:root:not([data-tema="escuro"]) .btn-icone .i-lua{display:none}}
+a:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+main{max-width:860px;margin:0 auto;padding:22px 20px max(2.5rem,calc(env(safe-area-inset-bottom,0px) + 1.5rem))}
+.titulo{margin:0 0 14px}
+h1{font:700 clamp(24px,5vw,32px)/1.15 "Source Serif 4",Georgia,serif;margin:0 0 6px;letter-spacing:-.01em}
+h2{margin:0 0 12px;font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.sub,.muted{color:var(--muted)}
+.sub{margin:0;font-size:13px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin:12px 0}
+.destaque{border-color:var(--gold);box-shadow:inset 3px 0 0 var(--gold)}
+.destaque .row{display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}
+.label{font:600 10.5px "IBM Plex Mono",ui-monospace,monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+.valor{font:600 19px/1.3 "Source Serif 4",Georgia,serif;margin:4px 0}
+.status{font-size:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-weight:600}
+.pill.ok{background:var(--ok-dim);color:var(--ok)}.pill.bad{background:var(--bad-dim);color:var(--bad)}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--bs);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{color:var(--faint);font:600 10.5px "IBM Plex Mono",ui-monospace,monospace;text-transform:uppercase;letter-spacing:.1em}
+td:first-child{font-weight:500}
+.det{color:var(--muted);word-break:break-word}
+.ok{color:var(--ok);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+.na{color:var(--faint)}
+.lista{margin:4px 0 0;padding-left:1.1rem}
+.lista li{margin:4px 0}
+.lista li::marker{color:var(--gold)}
+.tag{display:inline-block;font:600 10.5px "IBM Plex Mono",ui-monospace,monospace;padding:2px 8px;border-radius:999px;background:var(--gold-dim);color:var(--gold);margin-right:4px;text-transform:uppercase;letter-spacing:.06em}
+.flags strong{color:var(--gold)}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+footer{margin-top:20px;font-size:12px;color:var(--faint)}
+@media (max-width:640px){
+  .grade{display:block}
+  .topo .container,main{padding-left:14px;padding-right:14px}
+  .brand .wm{font-size:15px}
+  thead{display:none}
+  tbody tr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 0;border-bottom:1px solid var(--bs)}
+  tbody tr:last-child{border-bottom:0}
+  tbody td{padding:0;border:0}
+  tbody td.det{grid-column:1 / -1;font-size:13px}
 }
 `;

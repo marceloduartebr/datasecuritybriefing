@@ -394,3 +394,16 @@ test('renderPainel: vazio ainda inclui favicon do blog', () => {
   assert.match(html, /rel="icon"[^>]*href="https:\/\/dsb\.duarte\.top\/favicon\.svg"/);
   assert.match(html, /apple-touch-icon[^>]*href="https:\/\/dsb\.duarte\.top\/icon-180\.png\?v=2"/);
 });
+
+test('renderPainel: identidade DSB (logo, serifada, dourado, tema claro/escuro) sem camada fixa sobre o topo', () => {
+  const html = renderPainel({ em: '2026-11-09T22:15:00Z', dataBrt: HOJE, horaBrt: '19:15', slot: '19:15', ok: true, problemas: [], flags: {} });
+  assert.match(html, /https:\/\/dsb\.duarte\.top\/brand-mark-128\.png/);
+  assert.match(html, /Source Serif 4/);
+  assert.match(html, /--gold:#d4a054/);
+  assert.match(html, /:root\[data-tema="claro"\]/);
+  assert.match(html, /id="tema"/);
+  assert.match(html, /apple-mobile-web-app-status-bar-style" content="black"/);
+  assert.doesNotMatch(html, /position:fixed|backdrop-filter\s*:|black-translucent/);
+  assert.match(html, /Tudo certo/);
+  assert.match(renderPainel(null), /class="topo"/);
+});
