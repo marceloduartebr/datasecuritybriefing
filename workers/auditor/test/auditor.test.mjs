@@ -305,12 +305,12 @@ test('painel: sem auth e sem ACCESS_* → 404; health intacto; bearer → 200 HT
   assert.match(body, /15:42/);
   assert.match(body, /ALERTAS/);
   assert.match(body, /Tudo certo/);
-  assert.match(body, /rel="icon"[^>]*href="https:\/\/dsb\.duarte\.top\/favicon\.svg"/);
-  assert.match(body, /rel="apple-touch-icon"[^>]*href="https:\/\/dsb\.duarte\.top\/icon-180\.png\?v=2"/);
-  // favicon.ico fora do Access: 302 para o ícone do blog
+  assert.match(body, /rel="icon"[^>]*href="\/pwa\/dsba\/favicon\.svg"/);
+  assert.match(body, /rel="apple-touch-icon"[^>]*href="\/pwa\/dsba\/apple-touch-icon\.png"/);
+  // favicon.ico fora do Access: 302 para o ícone do painel
   r = await tratar(new Request('https://a/favicon.ico'), env);
   assert.equal(r.status, 302);
-  assert.equal(r.headers.get('Location'), 'https://dsb.duarte.top/favicon.svg');
+  assert.equal(r.headers.get('Location'), 'https://dsb-auditor.duarte.top/pwa/dsba/favicon.ico');
   // não aceita token em query
   r = await tratar(new Request(`https://a/painel?token=${TOKEN}`), env);
   assert.equal(r.status, 404);
@@ -395,15 +395,15 @@ test('renderPainel: lista capas e flags em português', () => {
   assert.match(html, /Último alerta/);
   assert.match(html, /problema/);
   assert.match(html, /Blog ES/);
-  assert.match(html, /https:\/\/dsb\.duarte\.top\/favicon\.svg/);
-  assert.match(html, /https:\/\/dsb\.duarte\.top\/icon-180\.png\?v=2/);
+  assert.match(html, /\/pwa\/dsba\/favicon\.svg/);
+  assert.match(html, /\/pwa\/dsba\/apple-touch-icon\.png/);
 });
 
-test('renderPainel: vazio ainda inclui favicon do blog', () => {
+test('renderPainel: vazio ainda inclui o ícone do painel', () => {
   const html = renderPainel(null);
   assert.match(html, /Ainda não houve execução/);
-  assert.match(html, /rel="icon"[^>]*href="https:\/\/dsb\.duarte\.top\/favicon\.svg"/);
-  assert.match(html, /apple-touch-icon[^>]*href="https:\/\/dsb\.duarte\.top\/icon-180\.png\?v=2"/);
+  assert.match(html, /rel="icon"[^>]*href="\/pwa\/dsba\/favicon\.svg"/);
+  assert.match(html, /apple-touch-icon[^>]*href="\/pwa\/dsba\/apple-touch-icon\.png"/);
 });
 
 test('renderPainel: identidade DSB (logo, serifada, dourado, tema claro/escuro) sem camada fixa sobre o topo', () => {
@@ -432,4 +432,24 @@ test('atalho dsba.duarte.top: sempre 302 para o painel no host com Access, nunca
   }
   const ok = await tratar(new Request('https://dsb-auditor.duarte.top/health'), env);
   assert.equal(ok.status, 200);
+});
+
+test('ícones /pwa/dsba/*: públicos, content-type certo, cache; nada além de png/svg/ico', async () => {
+  const servidos = [];
+  const env = { DSB_AUDITOR: kvMem(), ASSETS: { fetch: async (req) => { servidos.push(new URL(req.url).pathname); return new URL(req.url).pathname.endsWith('nao.png') ? new Response('x', { status: 404 }) : new Response('BYTES', { headers: { 'content-type': 'text/plain' } }); } } };
+  for (const [p, tipo] of [['/pwa/dsba/apple-touch-icon.png', 'image/png'], ['/pwa/dsba/favicon.svg', 'image/svg+xml'], ['/pwa/dsba/favicon.ico', 'image/x-icon']]) {
+    const r = await tratar(new Request(`https://dsb-auditor.duarte.top${p}`), env);
+    assert.equal(r.status, 200, p);
+    assert.equal(r.headers.get('content-type'), tipo);
+    assert.match(r.headers.get('cache-control'), /public, max-age=86400/);
+  }
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/pwa/dsba/nao.png'), env)).status, 404);
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/pwa/dsba/x.js'), env)).status, 404);
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/pwa/dsba/../wrangler.jsonc'), env)).status, 404);
+  const head = await tratar(new Request('https://dsb-auditor.duarte.top/pwa/dsba/icon-512.png', { method: 'HEAD' }), env);
+  assert.equal(head.status, 200);
+  assert.equal(await head.text(), '');
+  // dsba.duarte.top continua só redirecionando
+  const d = await tratar(new Request('https://dsba.duarte.top/pwa/dsba/icon-512.png'), env);
+  assert.equal(d.status, 302);
 });

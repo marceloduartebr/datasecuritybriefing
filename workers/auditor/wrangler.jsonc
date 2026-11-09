@@ -25,6 +25,9 @@
     // Atalho: dsba.duarte.top só responde 302 para https://dsb-auditor.duarte.top/painel (ver src/index.js).
     { "pattern": "dsba.duarte.top", "custom_domain": true }
   ],
+  // Ícones do painel (public/pwa/dsba/*): servidos pelo Worker via binding ASSETS, fora do Access.
+  // run_worker_first: o código decide tudo (redirect do dsba e rotas atuais ficam como estão).
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   "observability": {
     "enabled": true,
     "logs": { "enabled": true, "head_sampling_rate": 1 },

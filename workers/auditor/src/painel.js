@@ -151,7 +151,7 @@ const FONTES = '<link rel="preconnect" href="https://fonts.googleapis.com"><link
 const IC_LUA = '<svg class="i-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
 const IC_SOL = '<svg class="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 
-/** <head> com identidade DSB (mesma do blog e da DSB Queue): fontes, tema claro/escuro, favicon do blog. */
+/** <head> com identidade DSB (mesma do blog e da DSB Queue): fontes, tema claro/escuro; ícone próprio do painel (escudo + lupa) em /pwa/dsba/. */
 function cabeca(titulo) {
   return `<!doctype html>
 <html lang="pt-BR">
@@ -163,8 +163,9 @@ function cabeca(titulo) {
 <script>try{var t=localStorage.getItem('dsb-auditor-tema');if(t==='claro'||t==='escuro')document.documentElement.dataset.tema=t;}catch(e){}</script>
 <meta name="theme-color" content="#0b0e13" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="icon" href="${SITE}/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" sizes="180x180" href="${SITE}/icon-180.png?v=2">
+<link rel="icon" href="/pwa/dsba/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/pwa/dsba/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" sizes="180x180" href="/pwa/dsba/apple-touch-icon.png">
 ${FONTES}
 <style>${CSS}</style>
 </head>

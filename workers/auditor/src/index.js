@@ -24,6 +24,21 @@ function html(body, status = 200) {
   });
 }
 
+export const ICONES_PAINEL = '/pwa/dsba';
+const TIPOS_ICONE = { png: 'image/png', svg: 'image/svg+xml', ico: 'image/x-icon' };
+
+async function iconeEstatico(request, env) {
+  if (!env.ASSETS || typeof env.ASSETS.fetch !== 'function') return json({ ok: false, erro: 'nao_encontrado' }, 404);
+  const res = await env.ASSETS.fetch(request);
+  if (!res.ok) return json({ ok: false, erro: 'nao_encontrado' }, 404);
+  const ext = new URL(request.url).pathname.split('.').pop();
+  const headers = new Headers(res.headers);
+  headers.set('Content-Type', TIPOS_ICONE[ext] || 'application/octet-stream');
+  headers.set('Cache-Control', 'public, max-age=86400');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  return new Response(request.method === 'HEAD' ? null : res.body, { status: 200, headers });
+}
+
 export async function tratar(request, env, ctx, deps = {}) {
   const url = new URL(request.url);
   // dsba.duarte.top é só um atalho: qualquer pedido vira 302 para o painel no host protegido pelo Access.
@@ -34,9 +49,14 @@ export async function tratar(request, env, ctx, deps = {}) {
   const path = url.pathname.replace(/\/$/, '') || '/';
   if (request.method === 'GET' && path === '/health') return json({ ok: true, servico: 'dsb-auditor' });
 
-  // Fora do Access (/painel): browsers pedem /favicon.ico; redireciona ao ícone do blog.
+  // Ícones do painel (escudo + lupa), públicos e fora do Access: só arquivos estáticos de public/pwa/dsba/.
+  if ((request.method === 'GET' || request.method === 'HEAD') && /^\/pwa\/dsba\/[\w.-]+\.(png|svg|ico)$/.test(url.pathname)) {
+    return iconeEstatico(request, env);
+  }
+
+  // Fora do Access (/painel): browsers pedem /favicon.ico; redireciona ao ícone do painel.
   if (request.method === 'GET' && path === '/favicon.ico') {
-    return Response.redirect(`${SITE}/favicon.svg`, 302);
+    return Response.redirect(`https://${HOST_PAINEL}${ICONES_PAINEL}/favicon.ico`, 302);
   }
 
   if (path === '/painel') {
