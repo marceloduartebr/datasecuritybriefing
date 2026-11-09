@@ -22,3 +22,9 @@ Envio em produção no Worker **`dsb-push-agenda`** (`workers/push-agenda/`).
 - Dedupe **por destinatário** no Durable Object; a rotina antiga do box (`push-dsb-novas-publica-es` / `scripts/push/apos-publicar.mjs`) permanece **pausada** e não deve ser religada sem reconciliar dedupe.
 
 Operação, travas, teste isolado e rollback: `workers/push-agenda/RUNBOOK.md`.
+
+## Auditoria e scripts
+
+- **`dsb-auditor`** (`workers/auditor/`): Worker só leitura que audita blog, capas, commits, push e fila do Notion nos horários das rotinas de aviso. `GET /status` e `GET /capas-faltando` com bearer. Alertas desligados por padrão. Ver `workers/auditor/README.md`.
+- **Guarda de capa:** `node scripts/checar-capas.mjs` (sem rede) roda no workflow `capas` e em `npm test`. Não bloqueia o Workers Builds.
+- **Remover artigo:** `node scripts/remover-artigo.mjs <slug>` (dry-run) e `--aplicar` para apagar PT/ES/EN no working tree. Notion/LinkedIn ficam como passos manuais.

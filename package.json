@@ -9,7 +9,9 @@
     "preview": "astro preview",
     "push:enviar": "node scripts/push/enviar.mjs",
     "push:apos-publicar": "node scripts/push/apos-publicar.mjs",
-    "test": "node --disable-warning=ExperimentalWarning --test src/lib/push-catalogo.test.mjs workers/push-agenda/test/*.test.mjs"
+    "test": "node --disable-warning=ExperimentalWarning --test src/lib/push-catalogo.test.mjs workers/push-agenda/test/*.test.mjs workers/auditor/test/*.test.mjs scripts/test/*.test.mjs && node scripts/checar-capas.mjs",
+    "capas:checar": "node scripts/checar-capas.mjs",
+    "artigo:remover": "node scripts/remover-artigo.mjs"
   },
   "dependencies": {
     "astro": "^5.13.0",

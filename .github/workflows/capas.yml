@@ -1,0 +1,24 @@
+# Guarda de capa sem rede: todo briefing PT/ES/EN precisa de cover em covers.duarte.top/covers.
+# Não participa do Workers Builds: um erro aqui deixa o check vermelho, mas não bloqueia o deploy.
+name: capas
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/content/**', 'scripts/checar-capas.mjs']
+  pull_request:
+    paths: ['src/content/**', 'scripts/checar-capas.mjs']
+
+permissions:
+  contents: read
+
+jobs:
+  checar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/checar-capas.mjs

@@ -1,0 +1,36 @@
+// Worker de auditoria do DSB (só leitura). Independente do site e do dsb-push-agenda.
+// - Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
+// - 1 Cron Trigger: "15,30,50 11-22 * * 1-5" (UTC). O código só roda nos 6 horários
+//   de Brasília (08:30, 09:50, 10:15, 11:15, 18:15, 19:15); os outros ticks saem sem rede.
+// - ALERTAS="off" por padrão. Envio real exige endpoint dedicado no dsb-push-agenda (pedaço seguinte)
+//   e só para a allowlist de 2 inscrições do Marcelo.
+// - NOTION liga/desliga as consultas (só leitura) à fila. Token entra como secret NOTION_TOKEN.
+// - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar), NOTION_TOKEN.
+//   Opcionais: GITHUB_TOKEN, PUSH_ADMIN_TOKEN. Nenhum valor neste arquivo.
+// - KV DSB_AUDITOR é próprio. Não usar DSB_PUSH nem nada do BND.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "dsb-auditor",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": false, "head_sampling_rate": 0 }
+  },
+  "kv_namespaces": [
+    { "binding": "DSB_AUDITOR", "id": "7656c44bffe641f191734a3b5fc1fcec" }
+  ],
+  // Service Binding só para GET /health (e /admin/status se PUSH_ADMIN_TOKEN existir). Não envia push.
+  "services": [
+    { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" }
+  ],
+  "vars": {
+    "ALERTAS": "off",
+    "NOTION": "on"
+  },
+  "triggers": {
+    "crons": ["15,30,50 11-22 * * 1-5"]
+  }
+}

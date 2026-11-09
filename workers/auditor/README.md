@@ -1,0 +1,45 @@
+# dsb-auditor
+
+Worker de auditoria do DSB, **só leitura**. Substituirá as rotinas de aviso do Grok Bot
+(Curadoria 8:30, Check fila 9:50, LinkedIn 10:15/18:15, Blog 11:15/19:15) depois de 1 semana em paralelo.
+Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
+
+- URL: `https://dsb-auditor.marceloduarte.workers.dev`
+- Cron (1 trigger): `15,30,50 11-22 * * 1-5` UTC. O código só roda em 08:30, 09:50, 10:15, 11:15, 18:15 e 19:15 (Brasília); os outros ticks saem sem rede.
+- KV próprio: `DSB_AUDITOR` (`ultimo`, `historico` com as 30 últimas). 2 gravações por execução.
+- Service Binding `PUSH_AGENDA` → `dsb-push-agenda`, só `GET /health` (e `/admin/status` se `PUSH_ADMIN_TOKEN` existir).
+
+## Endpoints
+
+| Método | Caminho | Auth | O que faz |
+|---|---|---|---|
+| GET | `/health` | pública | `{ok:true}` |
+| GET | `/status` | Bearer `AUDITOR_TOKEN` | última execução + histórico |
+| GET | `/capas-faltando` | Bearer | itens da fila (Novo/Aprovado) e briefings de hoje sem capa válida |
+| POST | `/rodar` | Bearer | roda a auditoria agora (sem alerta se `ALERTAS=off`) |
+
+## Checagens
+
+- Blog: catálogo `/push/catalogo.json`, briefings com prefixo de hoje (até 5): HEAD 200 em PT/ES/EN (`/…/briefings/<slug>/`) e capa do frontmatter (GitHub raw) com HEAD 200 em `covers.duarte.top/covers/`.
+- GitHub: últimos 5 commits de `main` (API; se 403, feed Atom público) e última execução do `push-evento`.
+- Push: `dsb-push-agenda` `/health`.
+- Notion (`NOTION=on`, secret `NOTION_TOKEN`, integração "DSB Auditor", API `2025-09-03`, data source `d69d8348-…`): itens adicionados hoje, Novo/Aprovado com capa inválida ou sem HEAD 200 (até 12), Publicado hoje sem `urn:li:` em Publish Notes. Só consultas `POST /query`.
+
+Orçamento: ≤ 45 subrequests externas por execução (Free = 50).
+
+## Chaves
+
+- `ALERTAS` (var): `off` por padrão. Mesmo `on`, o envio fica pendente até existir um endpoint de alerta dedicado no `dsb-push-agenda`, restrito à allowlist das 2 inscrições do Marcelo (`568add3d…`, `d48327b1…`). O `/admin/tick` isolado atual só manda aviso de briefing, não texto livre.
+- `NOTION` (var): `on`/`off`.
+- Secrets: `AUDITOR_TOKEN`, `NOTION_TOKEN`; opcionais `GITHUB_TOKEN`, `PUSH_ADMIN_TOKEN`, `ALERTA_SUBS`.
+
+## Operar
+
+```sh
+cd workers/auditor
+npx wrangler@4 deploy                 # publica (mantém o cron)
+npx wrangler@4 tail dsb-auditor       # logs
+node --test test/                     # testes
+```
+
+Desligar tudo: tirar `triggers.crons` (lista vazia remove o cron no deploy) ou `npx wrangler delete dsb-auditor`.
