@@ -418,3 +418,18 @@ test('renderPainel: identidade DSB (logo, serifada, dourado, tema claro/escuro) 
   assert.match(html, /Tudo certo/);
   assert.match(renderPainel(null), /class="topo"/);
 });
+
+test('atalho dsba.duarte.top: sempre 302 para o painel no host com Access, nunca serve conteúdo', async () => {
+  const env = { DSB_AUDITOR: kvMem(), AUDITOR_TOKEN: TOKEN };
+  for (const [u, alvo] of [
+    ['https://dsba.duarte.top/', 'https://dsb-auditor.duarte.top/painel'],
+    ['https://dsba.duarte.top/painel?aba=leituras', 'https://dsb-auditor.duarte.top/painel?aba=leituras'],
+    ['https://dsba.duarte.top/status', 'https://dsb-auditor.duarte.top/painel'],
+  ]) {
+    const r = await tratar(new Request(u, { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
+    assert.equal(r.status, 302, u);
+    assert.equal(r.headers.get('location'), alvo);
+  }
+  const ok = await tratar(new Request('https://dsb-auditor.duarte.top/health'), env);
+  assert.equal(ok.status, 200);
+});

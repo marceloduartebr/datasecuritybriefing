@@ -5,6 +5,9 @@ import { slotDoTick } from './horario.js';
 import { renderPainel, renderLeituras } from './painel.js';
 import { obterLeituras } from './leituras.js';
 import { SITE } from './constantes.js';
+
+export const HOST_ATALHO = 'dsba.duarte.top';
+export const HOST_PAINEL = 'dsb-auditor.duarte.top';
 import { dispararFilaPush } from './fila-push.js';
 
 function json(obj, status = 200) {
@@ -23,6 +26,11 @@ function html(body, status = 200) {
 
 export async function tratar(request, env, ctx, deps = {}) {
   const url = new URL(request.url);
+  // dsba.duarte.top é só um atalho: qualquer pedido vira 302 para o painel no host protegido pelo Access.
+  // Nada é servido neste host (nem /painel, /status etc.).
+  if (url.hostname === HOST_ATALHO) {
+    return new Response(null, { status: 302, headers: { Location: `https://${HOST_PAINEL}/painel${url.search}`, 'Cache-Control': 'no-store' } });
+  }
   const path = url.pathname.replace(/\/$/, '') || '/';
   if (request.method === 'GET' && path === '/health') return json({ ok: true, servico: 'dsb-auditor' });
 
