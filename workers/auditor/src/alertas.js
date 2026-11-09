@@ -1,5 +1,3 @@
-import { ALLOWLIST_PREFIXOS } from './constantes.js';
-
 /** Problemas que merecem aviso ao Marcelo. Pura: só olha o resultado da execução. */
 export function calcularProblemas(r) {
   const p = [];
@@ -21,22 +19,63 @@ export function calcularProblemas(r) {
   return p;
 }
 
-/** Só aceita chaves sub:<64 hex> cujo hash começa com um prefixo da allowlist. */
-export function filtrarAllowlist(chaves) {
-  return (Array.isArray(chaves) ? chaves : []).filter(
-    (c) => typeof c === 'string' && /^sub:[0-9a-f]{64}$/.test(c) && ALLOWLIST_PREFIXOS.some((pre) => c.startsWith(`sub:${pre}`)),
-  );
+/** Monta o alerta (texto livre curto). null = nada a enviar. */
+export function montarAlerta(r, env = {}) {
+  const n = r.problemas.length;
+  if (n > 0) {
+    const linhas = r.problemas.slice(0, 4).map((p) => `• ${p}`);
+    if (n > 4) linhas.push(`• +${n - 4} outro(s)`);
+    return { titulo: `DSB: ${n} problema(s) às ${r.horaBrt}`, texto: linhas.join('\n').slice(0, 400) };
+  }
+  if (r.slot === '19:15' && env.ALERTA_OK_DIARIO === 'on') {
+    const pub = r.blog ? r.blog.total : 0;
+    return { titulo: 'DSB: tudo certo hoje', texto: `${pub} briefing(s) no blog, capas e páginas ok.` };
+  }
+  return null;
+}
+
+function assinatura(alerta) {
+  return `${alerta.titulo.replace(/ às \d\d:\d\d$/, '')}|${alerta.texto}`;
 }
 
 /**
- * Canal de alerta. Pedaço 1: desligado por padrão (ALERTAS != 'on').
- * O caminho isolado atual do dsb-push-agenda (/admin/tick com `somente`) só envia o aviso de um briefing,
- * não texto livre. O envio real depende de um endpoint dedicado de alerta (próximo pedaço).
+ * Canal de alerta: POST /admin/alerta do dsb-push-agenda via Service Binding, com ALERTA_TOKEN.
+ * Desligado por padrão (ALERTAS != 'on'). Destinos não saem daqui: a allowlist fica no dsb-push-agenda.
+ * Não repete o mesmo conjunto de problemas no mesmo dia (KV `alerta:ultimo`).
  */
-export async function enviarAlertas(env, problemas) {
-  if (env.ALERTAS !== 'on') return { enviado: false, motivo: 'alertas_off', problemas: problemas.length };
-  if (!problemas.length) return { enviado: false, motivo: 'sem_problemas' };
-  const destinos = filtrarAllowlist(String(env.ALERTA_SUBS || '').split(',').map((s) => s.trim()));
-  if (!destinos.length) return { enviado: false, motivo: 'sem_destino_allowlist' };
-  return { enviado: false, motivo: 'endpoint_alerta_pendente', destinos: destinos.length };
+export async function enviarAlertas(env, r) {
+  const alerta = montarAlerta(r, env);
+  if (env.ALERTAS !== 'on') return { enviado: false, motivo: 'alertas_off', problemas: r.problemas.length };
+  if (!alerta) return { enviado: false, motivo: 'sem_problemas' };
+  if (!env.PUSH_AGENDA || typeof env.PUSH_AGENDA.fetch !== 'function') return { enviado: false, motivo: 'sem_binding' };
+  if (!env.ALERTA_TOKEN) return { enviado: false, motivo: 'sem_token' };
+  const sig = assinatura(alerta);
+  const kv = env.DSB_AUDITOR;
+  if (kv && r.slot !== 'manual') {
+    try {
+      const ult = await kv.get('alerta:ultimo', 'json');
+      if (ult && ult.data === r.dataBrt && ult.sig === sig) return { enviado: false, motivo: 'repetido' };
+    } catch {
+      /* segue */
+    }
+  }
+  let res;
+  try {
+    res = await env.PUSH_AGENDA.fetch('https://dsb-push-agenda/admin/alerta', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.ALERTA_TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify(alerta),
+    });
+  } catch {
+    return { enviado: false, motivo: 'rede' };
+  }
+  let j = null;
+  try {
+    j = await res.json();
+  } catch {
+    j = null;
+  }
+  const enviado = !!(res.ok && j && j.enviados > 0);
+  if (enviado && kv) await kv.put('alerta:ultimo', JSON.stringify({ data: r.dataBrt, sig }));
+  return { enviado, http: res.status, enviados: j ? j.enviados ?? 0 : 0, destinos: j && Array.isArray(j.destinos) ? j.destinos : [] };
 }

@@ -1,6 +1,7 @@
 import { autorizarAdmin } from './auth.js';
 import { logEvento } from './log.js';
 import { normalizarIsolado } from './logica.js';
+import { autorizarAlerta, enviarAlerta, validarAlerta } from './alerta.js';
 
 const LIMITE = 262144;
 
@@ -29,12 +30,31 @@ async function lerCorpo(request) {
   }
 }
 
-export async function tratarPedido(request, env, agenda) {
+export async function tratarPedido(request, env, agenda, deps = {}) {
   const path = new URL(request.url).pathname.replace(/\/$/, '') || '/';
   if (request.method === 'GET' && path === '/health') {
     return json({ ok: true, servico: 'dsb-push-agenda' });
   }
   if (!path.startsWith('/admin/')) return json({ ok: false, erro: 'nao_encontrado' }, 404);
+
+  // Alerta operacional: token próprio (ALERTA_TOKEN), só allowlist fixa do Marcelo. ADMIN_TOKEN não vale aqui.
+  if (path === '/admin/alerta') {
+    if (request.method !== 'POST') return json({ ok: false, erro: 'metodo' }, 405);
+    const authA = await autorizarAlerta(request, env);
+    if (!authA.ok) {
+      logEvento('alerta', { resultado: authA.status === 503 ? 'nao_configurado' : 'negado' });
+      return json({ ok: false, erro: authA.erro }, authA.status);
+    }
+    const lidoA = await lerCorpo(request);
+    if (lidoA.erro) return json({ ok: false, erro: lidoA.erro }, lidoA.status);
+    const v = validarAlerta(lidoA.corpo);
+    if (v.erro) return json({ ok: false, erro: v.erro }, 400);
+    try {
+      return json(await (deps.enviarAlerta || enviarAlerta)(env, v.payload));
+    } catch {
+      return json({ ok: false, erro: 'interno' }, 500);
+    }
+  }
 
   const auth = await autorizarAdmin(request, env);
   if (!auth.ok) {

@@ -29,7 +29,7 @@ export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual',
   };
   r.problemas = calcularProblemas(r);
   r.ok = r.problemas.length === 0;
-  r.alerta = await enviarAlertas(env, r.problemas);
+  r.alerta = await enviarAlertas(env, r);
   r.subrequests = { usadas: rede.estado.usadas, orcamento: rede.estado.orcamento, estourou: rede.estado.estourou };
   await gravarExecucao(env.DSB_AUDITOR, r);
   return r;

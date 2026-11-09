@@ -240,3 +240,11 @@ npm test
 ```
 
 Os testes usam `node:sqlite` e WebCrypto. Não há rede de push. O script do bot não é chamado.
+
+## Alerta operacional (`POST /admin/alerta`)
+
+- Token próprio `ALERTA_TOKEN` (secret aqui e no `dsb-auditor`). `ADMIN_TOKEN` não abre essa rota e `ALERTA_TOKEN` não abre as outras.
+- Corpo: `{ "titulo": "...", "texto": "...", "url": "/opcional" }`. Qualquer outro campo (destino, `somente`…) dá 400. `url` só de `dsb.duarte.top`.
+- Destinos: allowlist fixa em `src/alerta.js` (`568add3d…`, `d48327b1…`); cada prefixo precisa casar com exatamente 1 chave `sub:` no KV. Inscrição expirada é só relatada, nunca apagada.
+- Resposta: `{ ok, enviados, destinos: [{ destino: "sub:568add3d…", classe, status }] }`.
+- Quem chama: `dsb-auditor` pelo Service Binding, só com `ALERTAS=on`.

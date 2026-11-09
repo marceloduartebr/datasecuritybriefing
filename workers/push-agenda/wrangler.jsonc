@@ -10,7 +10,9 @@
 //   ou se a chave SQLite "envio" não for "on" (padrão: ausente = off).
 // - Fan-out ao KV inteiro exige ainda a chave SQLite "fanout" = "on" (padrão: ausente = off).
 //   Com fanout off, o cron responde fanout_desligado e não grava destinatários.
-// - O par VAPID e o ADMIN_TOKEN entram como secrets. Não há valor neste arquivo.
+// - O par VAPID, o ADMIN_TOKEN e o ALERTA_TOKEN entram como secrets. Não há valor neste arquivo.
+// - POST /admin/alerta (ALERTA_TOKEN): texto livre só para a allowlist fixa de 2 inscrições do Marcelo
+//   (src/alerta.js). Não faz fan-out, não grava nem apaga no KV, não mexe no dedupe dos briefings.
 //
 // FONTE DE VERDADE OPERACIONAL
 // 1. Envio: chave SQLite `envio` (admin /admin/envio). Deploy deste arquivo NÃO apaga essa chave.

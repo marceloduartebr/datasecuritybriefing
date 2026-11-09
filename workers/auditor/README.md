@@ -29,9 +29,9 @@ Orçamento: ≤ 45 subrequests externas por execução (Free = 50).
 
 ## Chaves
 
-- `ALERTAS` (var): `off` por padrão. Mesmo `on`, o envio fica pendente até existir um endpoint de alerta dedicado no `dsb-push-agenda`, restrito à allowlist das 2 inscrições do Marcelo (`568add3d…`, `d48327b1…`). O `/admin/tick` isolado atual só manda aviso de briefing, não texto livre.
+- `ALERTAS` (var): `off` por padrão. Com `on`, uma execução com problemas chama `POST /admin/alerta` do `dsb-push-agenda` pelo Service Binding, com o secret `ALERTA_TOKEN`. Os destinos não saem do auditor: a allowlist (2 inscrições do Marcelo) fica fixa no `dsb-push-agenda`. O mesmo conjunto de problemas não se repete no mesmo dia (KV `alerta:ultimo`). `ALERTA_OK_DIARIO=on` (var opcional) manda um "tudo certo" às 19:15.
 - `NOTION` (var): `on`/`off`.
-- Secrets: `AUDITOR_TOKEN`, `NOTION_TOKEN`; opcionais `GITHUB_TOKEN`, `PUSH_ADMIN_TOKEN`, `ALERTA_SUBS`.
+- Secrets: `AUDITOR_TOKEN`, `NOTION_TOKEN`, `ALERTA_TOKEN`; opcionais `GITHUB_TOKEN`, `PUSH_ADMIN_TOKEN`.
 
 ## Operar
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { slotDoTick, emBrasilia } from '../src/horario.js';
 import { capaValida, urlsIdiomas, resumirPagina, commitsDoAtom, checarPush } from '../src/checagens.js';
-import { calcularProblemas, enviarAlertas, filtrarAllowlist } from '../src/alertas.js';
+import { calcularProblemas, enviarAlertas, montarAlerta } from '../src/alertas.js';
 import { capasFaltando, rodarAuditoria } from '../src/auditoria.js';
 import { tratar } from '../src/index.js';
 import { criarRede } from '../src/rede.js';
@@ -70,18 +70,38 @@ test('capa válida só em covers.duarte.top/covers', () => {
   assert.deepEqual(urlsIdiomas('s').en, 'https://dsb.duarte.top/en/briefings/s/');
 });
 
-test('allowlist recusa qualquer inscrição fora dos 2 prefixos', () => {
-  const ok = `sub:568add3d${'0'.repeat(56)}`;
-  const fora = `sub:ffffffff${'0'.repeat(56)}`;
-  assert.deepEqual(filtrarAllowlist([ok, fora, 'lixo']), [ok]);
+const R_PROB = { problemas: ['Blog: x capa http'], slot: '11:15', horaBrt: '11:15', dataBrt: HOJE, blog: { total: 1 } };
+
+test('alertas off por padrão: não chama o binding mesmo com problemas', async () => {
+  let chamou = false;
+  const svc = { fetch: async () => { chamou = true; return new Response('{}'); } };
+  const r = await enviarAlertas({ PUSH_AGENDA: svc, ALERTA_TOKEN: 't' }, R_PROB);
+  assert.equal(r.motivo, 'alertas_off');
+  assert.equal(chamou, false);
 });
 
-test('alertas off por padrão, mesmo com problemas', async () => {
-  const r = await enviarAlertas({}, ['x']);
-  assert.equal(r.enviado, false);
-  assert.equal(r.motivo, 'alertas_off');
-  const on = await enviarAlertas({ ALERTAS: 'on', ALERTA_SUBS: `sub:568add3d${'1'.repeat(56)}` }, ['x']);
-  assert.equal(on.enviado, false); // endpoint dedicado ainda não existe
+test('alertas on: POST /admin/alerta com ALERTA_TOKEN, sem destino no corpo; não repete no mesmo dia', async () => {
+  const pedidos = [];
+  const svc = { fetch: async (url, init) => { pedidos.push([String(url), init]); return new Response(JSON.stringify({ ok: true, enviados: 2, destinos: [{ destino: 'sub:568add3d…', classe: 'ok' }] }), { status: 200 }); } };
+  const kv = kvMem();
+  const env = { ALERTAS: 'on', PUSH_AGENDA: svc, ALERTA_TOKEN: 'tok', DSB_AUDITOR: kv };
+  const r = await enviarAlertas(env, R_PROB);
+  assert.equal(r.enviado, true);
+  assert.equal(pedidos[0][0], 'https://dsb-push-agenda/admin/alerta');
+  assert.equal(pedidos[0][1].headers.Authorization, 'Bearer tok');
+  const corpo = JSON.parse(pedidos[0][1].body);
+  assert.deepEqual(Object.keys(corpo).sort(), ['texto', 'titulo']);
+  const r2 = await enviarAlertas(env, { ...R_PROB, slot: '18:15', horaBrt: '18:15' });
+  assert.equal(r2.motivo, 'repetido');
+  assert.equal(pedidos.length, 1);
+});
+
+test('montarAlerta: problema vira alerta; OK diário só às 19:15 com ALERTA_OK_DIARIO=on', () => {
+  assert.match(montarAlerta(R_PROB).titulo, /1 problema/);
+  const ok = { problemas: [], slot: '19:15', horaBrt: '19:15', blog: { total: 3 } };
+  assert.equal(montarAlerta(ok), null);
+  assert.equal(montarAlerta(ok, { ALERTA_OK_DIARIO: 'on' }).titulo, 'DSB: tudo certo hoje');
+  assert.equal(montarAlerta({ ...ok, slot: '18:15' }, { ALERTA_OK_DIARIO: 'on' }), null);
 });
 
 test('auditoria sem Notion: grava ultimo/historico e não chama Notion nem envia', async () => {

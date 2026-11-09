@@ -17,6 +17,4 @@ export const TETO_CAPAS_FILA = 12;
 export const ORCAMENTO = 45;
 export const TIMEOUT_MS = 8000;
 
-/** Allowlist de inscrições do Marcelo (prefixo do hash sub:<64 hex>). Nada fora disso recebe alerta. */
-export const ALLOWLIST_PREFIXOS = ['568add3d', 'd48327b1'];
 export const HISTORICO_MAX = 30;

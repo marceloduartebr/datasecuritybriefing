@@ -2,10 +2,10 @@
 // - Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
 // - 1 Cron Trigger: "15,30,50 11-22 * * 1-5" (UTC). O código só roda nos 6 horários
 //   de Brasília (08:30, 09:50, 10:15, 11:15, 18:15, 19:15); os outros ticks saem sem rede.
-// - ALERTAS="off" por padrão. Envio real exige endpoint dedicado no dsb-push-agenda (pedaço seguinte)
-//   e só para a allowlist de 2 inscrições do Marcelo.
+// - ALERTAS="off" por padrão. Com "on", problemas viram POST /admin/alerta no dsb-push-agenda
+//   (Service Binding + secret ALERTA_TOKEN); a allowlist de 2 inscrições do Marcelo fica fixa lá.
 // - NOTION liga/desliga as consultas (só leitura) à fila. Token entra como secret NOTION_TOKEN.
-// - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar), NOTION_TOKEN.
+// - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar), NOTION_TOKEN, ALERTA_TOKEN.
 //   Opcionais: GITHUB_TOKEN, PUSH_ADMIN_TOKEN. Nenhum valor neste arquivo.
 // - KV DSB_AUDITOR é próprio. Não usar DSB_PUSH nem nada do BND.
 {
@@ -22,7 +22,7 @@
   "kv_namespaces": [
     { "binding": "DSB_AUDITOR", "id": "7656c44bffe641f191734a3b5fc1fcec" }
   ],
-  // Service Binding só para GET /health (e /admin/status se PUSH_ADMIN_TOKEN existir). Não envia push.
+  // Service Binding: GET /health, /admin/status (se PUSH_ADMIN_TOKEN existir) e POST /admin/alerta (só com ALERTAS=on).
   "services": [
     { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" }
   ],
