@@ -29,7 +29,7 @@ Orçamento: ≤ 45 subrequests externas por execução (Free = 50).
 
 ## Chaves
 
-- `ALERTAS` (var): `off` por padrão. Com `on`, uma execução com problemas chama `POST /admin/alerta` do `dsb-push-agenda` pelo Service Binding, com o secret `ALERTA_TOKEN`. Os destinos não saem do auditor: a allowlist (2 inscrições do Marcelo) fica fixa no `dsb-push-agenda`. O mesmo conjunto de problemas não se repete no mesmo dia (KV `alerta:ultimo`). `ALERTA_OK_DIARIO=on` (var opcional) manda um "tudo certo" às 19:15.
+- `ALERTAS` (var): `on` (ligado em 09/11/2026). Com `on`, uma execução com problemas chama `POST /admin/alerta` do `dsb-push-agenda` pelo Service Binding, com o secret `ALERTA_TOKEN`. Os destinos não saem do auditor: a allowlist (2 inscrições do Marcelo) fica fixa no `dsb-push-agenda`. O mesmo conjunto de problemas não se repete no mesmo dia (KV `alerta:ultimo`). `ALERTA_OK_DIARIO=on` manda um "tudo certo" às 19:15 (só nesse slot; no máx. 1×/dia pela mesma chave KV).
 - `NOTION` (var): `on`/`off`.
 - Secrets: `AUDITOR_TOKEN`, `NOTION_TOKEN`, `ALERTA_TOKEN`; opcionais `GITHUB_TOKEN`, `PUSH_ADMIN_TOKEN`.
 
