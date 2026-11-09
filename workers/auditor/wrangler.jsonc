@@ -6,7 +6,8 @@
 //   (Service Binding + secret ALERTA_TOKEN); a allowlist de 2 inscrições do Marcelo fica fixa lá.
 //   OK diário "tudo certo" só no slot 19:15 BRT, no máx. 1×/dia (KV alerta:ultimo).
 // - NOTION liga/desliga as consultas (só leitura) à fila. Token entra como secret NOTION_TOKEN.
-// - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar, /painel), NOTION_TOKEN, ALERTA_TOKEN.
+// - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar, /painel), NOTION_TOKEN, ALERTA_TOKEN,
+//   FILA_INTERNO_TOKEN (gatilho dos avisos da fila no dsb-fila; ver src/fila-push.js).
 // - Vars ACCESS_TEAM + ACCESS_AUD: validam Cf-Access-Jwt-Assertion no /painel.
 //   ACCESS_TEAM = https://<time>.cloudflareaccess.com (issuer completo). ACCESS_AUD = AUD tag do app.
 //   Sem elas, /painel só aceita bearer (sem auth → 404). Não colocar secrets/tokens neste arquivo.
@@ -31,7 +32,9 @@
   ],
   // Service Binding: GET /health, /admin/status (se PUSH_ADMIN_TOKEN existir) e POST /admin/alerta (só com ALERTAS=on).
   "services": [
-    { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" }
+    { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" },
+    // FILA: a cada tick do cron, POST /interno/checar-novos no dsb-fila (avisos push da fila; secret FILA_INTERNO_TOKEN).
+    { "binding": "FILA", "service": "dsb-fila" }
   ],
   "vars": {
     "ALERTAS": "on",
