@@ -604,6 +604,11 @@ export async function executarTick(db, opts) {
         const atual = lerMeta(db, 'janela_ate');
         if (!atual || Date.parse(ate) > Date.parse(atual)) gravarMeta(db, 'janela_ate', ate);
       }
+    } else if (opts.origem === 'evento') {
+      // Disparo pós-deploy: janela a partir de agora (sem programado do cron).
+      const ate = new Date(agoraMs + (opts.janelaMs ?? JANELA_ATRASO_MS)).toISOString();
+      const atual = lerMeta(db, 'janela_ate');
+      if (!atual || Date.parse(ate) > Date.parse(atual)) gravarMeta(db, 'janela_ate', ate);
     }
     const janelaAte = lerMeta(db, 'janela_ate');
     const dentroJanela = Boolean(janelaAte && agoraMs <= Date.parse(janelaAte));

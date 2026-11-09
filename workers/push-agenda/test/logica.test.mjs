@@ -375,6 +375,32 @@ test('publicação futura no mesmo dia não sai antes da hora', async () => {
   assert.equal(naHora.enviados, 1);
 });
 
+test('origem evento abre janela de 20 min; admin não abre', async () => {
+  const dbEvento = banco();
+  const agora = new Date('2026-11-07T16:00:00.000Z');
+  const { opts: optsEvento, chamadas: cEvento } = base(dbEvento, {
+    origem: 'evento',
+    agora,
+    catalogo: async () => ({ itens: [] }),
+  });
+  const rEvento = await executarTick(dbEvento, optsEvento);
+  assert.equal(cEvento.length, 0);
+  assert.equal(rEvento.continuar, true);
+  assert.equal(rEvento.esperarMs, 5 * 60 * 1000);
+  assert.equal(lerStatus(dbEvento).janelaAte, '2026-11-07T16:20:00.000Z');
+
+  const dbAdmin = banco();
+  const { opts: optsAdmin, chamadas: cAdmin } = base(dbAdmin, {
+    origem: 'admin',
+    agora,
+    catalogo: async () => ({ itens: [] }),
+  });
+  const rAdmin = await executarTick(dbAdmin, optsAdmin);
+  assert.equal(cAdmin.length, 0);
+  assert.equal(rAdmin.continuar, false);
+  assert.equal(lerStatus(dbAdmin).janelaAte, null);
+});
+
 test('cutoff ignora o que já passou e a importação é idempotente', async () => {
   const db = banco();
   const agora = new Date('2026-11-07T15:00:00.000Z');

@@ -54,7 +54,8 @@ export async function tratarPedido(request, env, agenda) {
     if (path === '/admin/tick') {
       const isolado = normalizarIsolado(lido.corpo.somente, lido.corpo.slug);
       if (isolado.erro) return json({ ok: false, erro: isolado.erro, enviou: false }, 400);
-      const pedido = { origem: 'admin' };
+      // Só 'evento' altera a origem; qualquer outro valor (ou ausência) permanece 'admin'.
+      const pedido = { origem: lido.corpo.origem === 'evento' ? 'evento' : 'admin' };
       if (isolado.chaves) {
         pedido.somente = isolado.chaves;
         pedido.slug = isolado.slug;

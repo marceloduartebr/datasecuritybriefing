@@ -134,4 +134,38 @@ test('envio só aceita booleano e tick admin não recebe relógio do cliente', a
   );
   assert.equal(tick.status, 200);
   assert.deepEqual(visto, { origem: 'admin' });
+
+  const tickEvento = await tratarPedido(
+    pedido('/admin/tick', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origem: 'evento' }),
+    }),
+    env,
+    {
+      tick: async (pedidoTick) => {
+        visto = pedidoTick;
+        return { ok: true, motivo: 'desligado', enviou: false };
+      },
+    },
+  );
+  assert.equal(tickEvento.status, 200);
+  assert.deepEqual(visto, { origem: 'evento' });
+
+  const tickOutro = await tratarPedido(
+    pedido('/admin/tick', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origem: 'cron' }),
+    }),
+    env,
+    {
+      tick: async (pedidoTick) => {
+        visto = pedidoTick;
+        return { ok: true, motivo: 'desligado', enviou: false };
+      },
+    },
+  );
+  assert.equal(tickOutro.status, 200);
+  assert.deepEqual(visto, { origem: 'admin' });
 });

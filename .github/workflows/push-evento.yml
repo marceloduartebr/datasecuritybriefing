@@ -1,0 +1,154 @@
+# Disparo event-driven do Web Push DSB após o site no ar.
+# Produção (fan-out) só com vars.EVENTO_PUSH == 'on'.
+# Teste isolado: workflow_dispatch com inputs somente + slug (1 destinatário).
+# Nunca ecoar ADMIN_TOKEN nem PUSH_AGENDA_URL.
+name: push-evento
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      somente:
+        description: 'Chave KV sub:<64 hex> do destinatário do teste isolado'
+        required: false
+        type: string
+      slug:
+        description: 'Slug AAAA-MM-DD-… já no ar para o teste isolado'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: push-evento-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Gate e máscaras
+        id: gate
+        env:
+          EVENTO_PUSH: ${{ vars.EVENTO_PUSH }}
+          INPUT_SOMENTE: ${{ inputs.somente }}
+          INPUT_SLUG: ${{ inputs.slug }}
+        run: |
+          set -euo pipefail
+          if [ -n "${{ secrets.ADMIN_TOKEN }}" ]; then
+            echo "::add-mask::${{ secrets.ADMIN_TOKEN }}"
+          fi
+          if [ -n "${{ secrets.PUSH_AGENDA_URL }}" ]; then
+            echo "::add-mask::${{ secrets.PUSH_AGENDA_URL }}"
+          fi
+          MODO=skip
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ -n "${INPUT_SOMENTE}" ] && [ -n "${INPUT_SLUG}" ]; then
+            MODO=isolado
+          elif [ "${EVENTO_PUSH:-}" = "on" ]; then
+            MODO=evento
+          fi
+          echo "modo=${MODO}" >> "$GITHUB_OUTPUT"
+          if [ "${MODO}" = "skip" ]; then
+            echo "EVENTO_PUSH off e sem teste isolado — nada a fazer."
+            exit 0
+          fi
+
+      - name: Esperar Workers Builds + página no ar
+        if: steps.gate.outputs.modo == 'evento'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          DEADLINE=$((SECONDS + 900))
+          echo "Aguardando check Workers Builds: datasecuritybriefing em ${SHA}"
+          while (( SECONDS < DEADLINE )); do
+            STATE=$(gh api "repos/${REPO}/commits/${SHA}/check-runs" \
+              --jq '.check_runs[] | select(.name=="Workers Builds: datasecuritybriefing") | {status,conclusion}' \
+              | head -n 1 || true)
+            echo "check: ${STATE:-nenhum}"
+            if echo "${STATE}" | grep -q '"conclusion":"success"'; then
+              break
+            fi
+            if echo "${STATE}" | grep -qE '"conclusion":"(failure|cancelled|timed_out)"'; then
+              echo "Workers Builds falhou"; exit 1
+            fi
+            sleep 15
+          done
+          if ! echo "${STATE:-}" | grep -q '"conclusion":"success"'; then
+            echo "Timeout aguardando Workers Builds"; exit 1
+          fi
+          echo "Poll HEAD /push/catalogo.json e briefings do dia"
+          while (( SECONDS < DEADLINE )); do
+            CODE=$(curl -sS -o /tmp/cat.json -w '%{http_code}' --max-time 20 \
+              https://dsb.duarte.top/push/catalogo.json || echo 000)
+            if [ "${CODE}" = "200" ]; then
+              # Confirma ao menos um briefing do dia (prefixo Brasília) com HEAD 200
+              HOJE=$(TZ=America/Sao_Paulo date +%F)
+              SLUG=$(python3 -c "import json; d=json.load(open('/tmp/cat.json')); print(next((i['slug'] for i in d.get('itens',[]) if i.get('slug','').startswith('${HOJE}-')), ''))")
+              if [ -n "${SLUG}" ]; then
+                H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -I \
+                  "https://dsb.duarte.top/briefings/${SLUG}" || echo 000)
+                echo "slug=${SLUG} head=${H}"
+                if [ "${H}" = "200" ]; then
+                  exit 0
+                fi
+              else
+                echo "Catálogo 200 sem item de ${HOJE} ainda"
+              fi
+            else
+              echo "catalogo HTTP ${CODE}"
+            fi
+            sleep 10
+          done
+          echo "Timeout aguardando site no ar"; exit 1
+
+      - name: POST /admin/tick (evento)
+        if: steps.gate.outputs.modo == 'evento' || steps.gate.outputs.modo == 'isolado'
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          PUSH_AGENDA_URL: ${{ secrets.PUSH_AGENDA_URL }}
+          MODO: ${{ steps.gate.outputs.modo }}
+          INPUT_SOMENTE: ${{ inputs.somente }}
+          INPUT_SLUG: ${{ inputs.slug }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::${ADMIN_TOKEN}"
+          echo "::add-mask::${PUSH_AGENDA_URL}"
+          if [ -z "${ADMIN_TOKEN}" ] || [ -z "${PUSH_AGENDA_URL}" ]; then
+            echo "Secrets ADMIN_TOKEN / PUSH_AGENDA_URL ausentes"; exit 1
+          fi
+          BASE="${PUSH_AGENDA_URL%/}"
+          if [ "${MODO}" = "isolado" ]; then
+            # Valida formato sem imprimir a chave completa
+            echo "${INPUT_SOMENTE}" | grep -Eq '^sub:[0-9a-f]{64}$'
+            echo "${INPUT_SLUG}" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$'
+            BODY=$(python3 -c "import json,os; print(json.dumps({'origem':'evento','somente':[os.environ['INPUT_SOMENTE']],'slug':os.environ['INPUT_SLUG']}))")
+          else
+            BODY='{"origem":"evento"}'
+          fi
+          # Poll breve se isolado (artigo já deve estar no ar)
+          if [ "${MODO}" = "isolado" ]; then
+            DEADLINE=$((SECONDS + 120))
+            while (( SECONDS < DEADLINE )); do
+              H=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -I \
+                "https://dsb.duarte.top/briefings/${INPUT_SLUG}" || echo 000)
+              echo "isolado head=${H}"
+              [ "${H}" = "200" ] && break
+              sleep 5
+            done
+            [ "${H}" = "200" ] || { echo "Slug fora do ar"; exit 1; }
+          fi
+          RESP=$(curl -sS -w '\nHTTP:%{http_code}' --max-time 60 \
+            -X POST "${BASE}/admin/tick" \
+            -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+            -H 'content-type: application/json' \
+            -d "${BODY}")
+          echo "${RESP}" | python3 -c "import sys,re; t=sys.stdin.read(); print(re.sub(r'sub:[0-9a-f]{64}', lambda m: 'sub:'+m.group(0)[4:12]+'…'+m.group(0)[-8:], t))"
+          CODE=$(echo "${RESP}" | sed -n 's/^HTTP://p' | tail -n1)
+          [ "${CODE}" = "200" ] || exit 1
