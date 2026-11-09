@@ -7,9 +7,10 @@
 //   OK diário "tudo certo" só no slot 19:15 BRT, no máx. 1×/dia (KV alerta:ultimo).
 // - NOTION liga/desliga as consultas (só leitura) à fila. Token entra como secret NOTION_TOKEN.
 // - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar, /painel), NOTION_TOKEN, ALERTA_TOKEN.
-// - Vars opcionais ACCESS_TEAM + ACCESS_AUD: validam Cf-Access-Jwt-Assertion no /painel.
-//   Sem elas, /painel só aceita bearer (sem auth → 404). Não colocar AUD/token neste arquivo.
-//   Opcionais: GITHUB_TOKEN, PUSH_ADMIN_TOKEN. Nenhum valor neste arquivo.
+// - Vars ACCESS_TEAM + ACCESS_AUD: validam Cf-Access-Jwt-Assertion no /painel.
+//   ACCESS_TEAM = https://<time>.cloudflareaccess.com (issuer completo). ACCESS_AUD = AUD tag do app.
+//   Sem elas, /painel só aceita bearer (sem auth → 404). Não colocar secrets/tokens neste arquivo.
+//   Opcionais: GITHUB_TOKEN, PUSH_ADMIN_TOKEN.
 // - KV DSB_AUDITOR é próprio. Não usar DSB_PUSH nem nada do BND.
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
@@ -32,7 +33,9 @@
   "vars": {
     "ALERTAS": "on",
     "ALERTA_OK_DIARIO": "on",
-    "NOTION": "on"
+    "NOTION": "on",
+    "ACCESS_TEAM": "https://royal-lake-6796.cloudflareaccess.com",
+    "ACCESS_AUD": "96689ab8700a02984d0f69327ef111ce08d4f26a8b625e87c90c0d530ec17379"
   },
   "triggers": {
     "crons": ["15,30,50 11-22 * * 1-5"]

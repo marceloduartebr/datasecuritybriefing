@@ -51,6 +51,6 @@ HTML mobile-friendly em português, horários em Brasília. Lê só o KV (`ultim
 
 **Proteção (antes do Cloudflare Access):** a página responde **404** sem autenticação. Com Bearer `AUDITOR_TOKEN` (header `Authorization`, nunca query/cookie) libera para checagens internas.
 
-**Com Access:** defina as vars `ACCESS_TEAM` (`https://<time>.cloudflareaccess.com`) e `ACCESS_AUD` (AUD tag do app). O Worker valida o header `Cf-Access-Jwt-Assertion` contra o JWKS do time. Bearer continua válido.
+**Com Access:** vars `ACCESS_TEAM` (`https://<time>.cloudflareaccess.com`) e `ACCESS_AUD` (AUD tag do app). O Worker valida o header `Cf-Access-Jwt-Assertion` contra o JWKS do time. Bearer continua válido.
 
-Access funciona em `*.workers.dev` (Zero Trust free): no dashboard do Worker → **Settings → Domains & Routes → Enable Cloudflare Access**, ou app self-hosted em Zero Trust apontando para `dsb-auditor.marceloduarte.workers.dev/painel`. Depois envie o team domain e o AUD para gravar as vars.
+App self-hosted Zero Trust no path `/painel` do hostname `dsb-auditor.marceloduarte.workers.dev` (time `royal-lake-6796`). Login por One-time PIN. Não cobrir o host inteiro — `/health`, `/status`, `/capas-faltando` e `/rodar` precisam ficar públicos para o cron e as checagens da box.
