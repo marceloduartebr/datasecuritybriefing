@@ -25,6 +25,7 @@ const imageUrl = image
   ? (image.startsWith('http') ? image : new URL(image, Astro.site ?? 'https://dsb.duarte.top').href)
   : new URL('/og.jpg', Astro.site ?? 'https://dsb.duarte.top').href;
 const defaultOg = !image;
+const buildId = process.env.DSB_BUILD_ID || 'dev';
 const ogLocale = locale === 'pt' ? 'pt_BR' : locale === 'es' ? 'es' : 'en';
 const hrefLang = alternates(path);
 const htmlLang = localeHtml[locale];
@@ -82,6 +83,7 @@ const navProps = {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="dsb-build" content={buildId} />
     <script is:inline>
       (function () {
         try {
@@ -263,9 +265,65 @@ const navProps = {
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(update);
       })();
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+        (function () {
+          const sw = navigator.serviceWorker;
+          const meta = document.querySelector('meta[name="dsb-build"]');
+          const build = meta ? meta.getAttribute('content') : '';
+          const CHAVE = 'dsb-recarga';
+          // No máximo uma recarga automática a cada 30 s (evita laço).
+          const podeRecarregar = () => {
+            try {
+              const t = Number(sessionStorage.getItem(CHAVE) || 0);
+              if (Date.now() - t < 30000) return false;
+              sessionStorage.setItem(CHAVE, String(Date.now()));
+            } catch {}
+            return true;
+          };
+          let registro = null;
+          let ultimaChecagem = 0;
+          const checar = () => {
+            if (Date.now() - ultimaChecagem < 30000) return;
+            ultimaChecagem = Date.now();
+            // O app do iOS volta suspenso sem recarregar: busca SW novo e compara o build da página com o do site.
+            const atualizar = registro ? registro.update().catch(() => {}) : Promise.resolve();
+            atualizar
+              .then(() => {
+                if (!build || build === 'dev') return null;
+                return fetch('/version.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null));
+              })
+              .then((v) => {
+                if (!v || !v.build || v.build === build) return;
+                // SW novo a caminho: quem recarrega é o controllerchange, depois de ativar.
+                if (registro && (registro.installing || registro.waiting)) return;
+                // Uma recarga por build novo: se a página continuar velha, não insiste.
+                try {
+                  if (sessionStorage.getItem('dsb-recarga-build') === v.build) return;
+                  sessionStorage.setItem('dsb-recarga-build', v.build);
+                } catch {}
+                if (podeRecarregar()) location.reload();
+              })
+              .catch(() => {});
+          };
+          const tinhaControle = !!sw.controller;
+          sw.addEventListener('controllerchange', () => {
+            // Primeira instalação não recarrega; troca de versão recarrega uma vez.
+            if (tinhaControle && document.visibilityState === 'visible' && podeRecarregar()) location.reload();
+          });
+          window.addEventListener('load', () => {
+            sw.register('/sw.js', { updateViaCache: 'none' })
+              .then((r) => {
+                registro = r;
+                checar();
+              })
+              .catch(() => {});
+          });
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checar();
+          });
+          window.addEventListener('pageshow', (e) => {
+            if (e.persisted) checar();
+          });
+        })();
       }
       (function () {
         const dialog = document.getElementById('qr-dialog');

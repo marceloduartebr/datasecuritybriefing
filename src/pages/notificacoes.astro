@@ -248,7 +248,7 @@ const REGIOES = [
   async function reg() {
     return (
       (await navigator.serviceWorker.getRegistration()) ||
-      navigator.serviceWorker.register('/sw.js')
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
     );
   }
   async function upsert(sub) {
