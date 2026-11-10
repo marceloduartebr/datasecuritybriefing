@@ -1,4 +1,8 @@
-import { ORCAMENTO } from './constantes.js';
+import { ORCAMENTO, REPO } from './constantes.js';
+import { checarQuadrados, DIAS_RECENTES } from './quadrado.js';
+import { capaValida } from './checagens.js';
+import { lerFrontmatter, prefixoDoSlug } from '../../../src/lib/push-catalogo.mjs';
+import { lerTexto } from './rede.js';
 import { checarBlog, checarCommits, checarNotion, checarPush, criarChecadorCapa } from './checagens.js';
 import { calcularProblemas, enviarAlertas } from './alertas.js';
 import { emBrasilia } from './horario.js';
@@ -15,6 +19,7 @@ export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual',
     checarPush(env),
   ]);
   const notion = await checarNotion(rede, env, b.data, checarCapa);
+  const quadrado = await checarQuadrados(rede, env.DSB_AUDITOR, alvosQuadrado(checarCapa.vistas ? checarCapa.vistas() : [], blog, b.data), { capaValida, lerFrontmatter, lerTexto });
   const r = {
     versao: 1,
     em: agora.toISOString(),
@@ -26,6 +31,7 @@ export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual',
     github,
     push,
     notion,
+    quadrado,
   };
   r.problemas = calcularProblemas(r);
   r.ok = r.problemas.length === 0;
@@ -49,4 +55,18 @@ export function capasFaltando(r) {
     total: itens.length,
     itens,
   };
+}
+
+/** Fila primeiro (pega a capa antes de publicar), depois blog de hoje, depois publicações dos últimos dias. */
+export function alvosQuadrado(vistas, blog, hoje) {
+  const fila = vistas.filter((v) => v.origem === 'fila');
+  const deHoje = vistas.filter((v) => v.origem === 'blog');
+  const jaTem = new Set(deHoje.map((v) => v.slug));
+  const limite = new Date(`${hoje}T12:00:00Z`);
+  limite.setUTCDate(limite.getUTCDate() - (DIAS_RECENTES - 1));
+  const desde = limite.toISOString().slice(0, 10);
+  const recentes = ((blog && blog.catalogo) || [])
+    .filter((i) => i && i.slug && !jaTem.has(i.slug) && (prefixoDoSlug(i.slug) || '') >= desde && (prefixoDoSlug(i.slug) || '') <= hoje)
+    .map((i) => ({ origem: 'blog', slug: i.slug, mdUrl: `https://raw.githubusercontent.com/${REPO}/main/src/content/briefings/${i.slug}.md` }));
+  return [...fila, ...deHoje, ...recentes];
 }

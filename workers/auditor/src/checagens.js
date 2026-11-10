@@ -26,17 +26,22 @@ export function urlsIdiomas(slug) {
 
 async function headOk(rede, url) {
   const res = await rede.pedir(url, { method: 'HEAD', redirect: 'manual' });
-  return { ok: res.status === 200, status: res.status || 0 };
+  return { ok: res.status === 200, status: res.status || 0, etag: (res.headers && res.headers.get && res.headers.get('etag')) || null };
 }
 
 /** Cache por execução para não repetir HEAD da mesma capa. */
 export function criarChecadorCapa(rede) {
   const cache = new Map();
-  return async (url) => {
+  const vistas = []; // capas que passaram no HEAD, com quem as usa (para a checagem do quadrado escuro)
+  const checar = async (url, rotulo) => {
     if (!capaValida(url)) return { ok: false, status: 0, motivo: url ? 'host_invalido' : 'sem_capa' };
-    if (!cache.has(url)) cache.set(url, headOk(rede, url).then((r) => ({ ...r, motivo: r.ok ? null : 'http' })));
-    return cache.get(url);
+    if (!cache.has(url)) cache.set(url, headOk(rede, url).then(({ etag, ...r }) => ({ ...r, motivo: r.ok ? null : 'http', etag })));
+    const { etag, ...r } = await cache.get(url);
+    if (r.ok && rotulo) vistas.push({ url, versao: etag, ...rotulo });
+    return r;
   };
+  checar.vistas = () => vistas.slice();
+  return checar;
 }
 
 /** Briefings de hoje no blog: catálogo público + HEAD PT/ES/EN + capa do frontmatter (GitHub raw). */
@@ -54,7 +59,7 @@ export async function checarBlog(rede, hoje, checarCapa) {
     ]);
     const fm = md.ok ? lerFrontmatter(await lerTexto(md)) : null;
     const cover = fm && fm.cover ? fm.cover : null;
-    const capa = await checarCapa(cover);
+    const capa = await checarCapa(cover, { origem: 'blog', slug: item.slug });
     return {
       slug: item.slug,
       titulo: item.titulo,
@@ -64,13 +69,16 @@ export async function checarBlog(rede, hoje, checarCapa) {
       ok: pt.ok && es.ok && en.ok && capa.ok,
     };
   }));
-  return {
+  const ret = {
     ok: itens.every((i) => i.ok),
     total: deHoje.length,
     checados: itens.length,
     truncado: deHoje.length > alvo.length,
     itens,
   };
+  // Slugs dos últimos dias (fora do JSON do /status): alvo da checagem do quadrado escuro.
+  Object.defineProperty(ret, 'catalogo', { value: cat.itens || [], enumerable: false });
+  return ret;
 }
 
 /** Extrai até 5 commits do feed Atom público do GitHub (sem API, sem token). */
@@ -223,7 +231,7 @@ export async function checarNotion(rede, env, hoje, checarCapa) {
   const alvo = fila.paginas.slice(0, TETO_CAPAS_FILA);
   const semCapa = [];
   for (const p of alvo) {
-    const r = await checarCapa(p.imageUrl);
+    const r = await checarCapa(p.imageUrl, { origem: 'fila', id: p.id, topic: p.topic });
     if (!r.ok) semCapa.push({ id: p.id, topic: p.topic, status: p.status, imageUrl: p.imageUrl, motivo: r.motivo, http: r.status });
   }
   const semUrn = publicados.paginas.filter((p) => !p.temUrn && !p.somenteBlog).map((p) => ({ id: p.id, topic: p.topic, tipo: p.tipo }));

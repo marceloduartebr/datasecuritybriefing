@@ -52,6 +52,15 @@ function checagens(r) {
     rows.push(linha('Capas (blog)', capas, capas ? 'todas ok' : falhas.filter((f) => f.includes('capa')).join('; ')));
   }
 
+  const qd = r.quadrado;
+  if (qd && qd.ativo) {
+    const pos = qd.positivas || [];
+    const det = pos.length
+      ? pos.map((q) => (q.origem === 'fila' ? `fila: ${(q.topic || q.id || '').slice(0, 60)}` : q.slug)).join('; ')
+      : `${qd.checadas} checada(s)` + (qd.pendentes ? ` · ${qd.pendentes} na próxima rodada` : '');
+    rows.push(linha('Capas (escudo sem quadrado)', pos.length === 0, det));
+  }
+
   const gh = r.github || {};
   rows.push(linha(
     'Commits',

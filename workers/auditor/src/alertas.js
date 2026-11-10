@@ -9,6 +9,9 @@ export function calcularProblemas(r) {
   }
   if (r.push && !r.push.ok) p.push('Push: dsb-push-agenda sem /health');
   if (r.github && r.github.pushEvento && r.github.pushEvento.conclusao === 'failure') p.push(`Action push-evento falhou (${r.github.pushEvento.sha})`);
+  for (const q of (r.quadrado && r.quadrado.positivas) || []) {
+    p.push(`Capa: quadrado escuro atrás do escudo — ${q.origem === 'fila' ? (q.topic || q.id || '').slice(0, 60) : q.slug}`);
+  }
   const n = r.notion || {};
   if (n.ativo && !n.ok) p.push(`Notion: ${n.erro}`);
   if (n.ativo && n.ok) {
