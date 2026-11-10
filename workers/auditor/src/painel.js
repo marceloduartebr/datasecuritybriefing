@@ -21,6 +21,7 @@ function fmtIsoBrt(iso) {
 }
 
 function badge(ok, labelOk = 'OK', labelBad = 'Problema') {
+  if (ok === 'alerta') return '<span class="warn">Alerta</span>';
   if (ok === true) return `<span class="ok">${esc(labelOk)}</span>`;
   if (ok === false) return `<span class="bad">${esc(labelBad)}</span>`;
   return `<span class="na">—</span>`;
@@ -86,14 +87,17 @@ function checagens(r) {
   } else if (!n.ok) {
     rows.push(linha('Notion (fila)', false, n.erro || 'erro'));
   } else {
+    const sc = n.semCapa || [];
+    const scAlerta = sc.filter((c) => c.severidade === 'alerta').length;
+    const scProb = sc.length - scAlerta;
     const det = [
       `${n.novosHoje?.total ?? 0} adicionados hoje`,
       `${n.novosHoje?.aindaNovo ?? 0} ainda Novo`,
-      `${(n.semCapa || []).length} sem capa`,
+      `${sc.length} sem capa` + (sc.length ? ` (${scAlerta} alerta, ${scProb} problema)` : ''),
       `${n.publicadosHoje ?? 0} publicados`,
       `${(n.publicadosSemUrn || []).length} sem URN`,
     ].join(' · ');
-    const okN = (n.semCapa || []).length === 0 && (n.publicadosSemUrn || []).length === 0;
+    const okN = scProb === 0 && (n.publicadosSemUrn || []).length === 0 ? (scAlerta ? 'alerta' : true) : false;
     rows.push(linha('Notion (fila)', okN, det));
   }
   return rows.join('\n');
@@ -118,7 +122,10 @@ function listaCapas(r) {
   if (!cf.ok) return '<p class="muted">Sem execução.</p>';
   if (!cf.total) return '<p class="ok">Nenhuma capa faltando.</p>';
   const itens = (cf.itens || []).map((i) => {
-    if (i.origem === 'fila') return `<li><span class="tag">fila</span> ${esc(i.topic || i.id)} — ${esc(i.motivo || 'sem capa')}</li>`;
+    if (i.origem === 'fila') {
+      const sev = i.severidade === 'alerta' ? ' <span class="warn">Alerta</span>' : ' <span class="bad">Problema</span>';
+      return `<li><span class="tag">fila</span> ${esc(i.topic || i.id)} — ${esc(i.motivo || 'sem capa')}${sev}</li>`;
+    }
     return `<li><span class="tag">blog</span> ${esc(i.slug)} — ${esc(i.motivo || 'sem capa')}</li>`;
   }).join('');
   return `<p>${cf.total} item(ns)${cf.truncado ? ' (lista truncada)' : ''}:</p><ul class="lista">${itens}</ul>`;
@@ -146,6 +153,12 @@ function alertaHtml(ultimoAlerta, r) {
     return `<p class="ok">Enviado nesta execução (${esc(a.motivo || 'ok')}).</p>`;
   }
   return `<p class="muted">Nenhum alerta enviado ainda hoje. Última execução: ${esc(a.motivo || '—')}.</p>`;
+}
+
+function alertasHtml(r) {
+  const a = r.alertas || [];
+  if (!a.length) return '<p class="muted">Nenhum alerta na última execução.</p>';
+  return `<p class="muted">Item sem capa vira problema só depois das 09:50 de dia útil, se já estava na fila antes da rodada das 09:30.</p><ul class="lista">${a.map((x) => `<li class="warn">${esc(x)}</li>`).join('')}</ul>`;
 }
 
 function problemasHtml(r) {
@@ -267,7 +280,9 @@ export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
 <main>${abas('auditoria')}<div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
 ${RODAPE_JS}</body></html>`;
   }
-  const statusGeral = ultimo.ok ? '<span class="pill ok">Tudo certo</span>' : `<span class="pill bad">${(ultimo.problemas || []).length} problema(s)</span>`;
+  const nAlertas = (ultimo.alertas || []).length;
+  const statusGeral = (ultimo.ok ? '<span class="pill ok">Tudo certo</span>' : `<span class="pill bad">${(ultimo.problemas || []).length} problema(s)</span>`)
+    + (nAlertas ? ` <span class="pill warn">${nAlertas} alerta(s)</span>` : '');
   return `${cabeca('DSB Auditor — painel')}
 <main>
   ${abas('auditoria')}
@@ -303,6 +318,11 @@ ${RODAPE_JS}</body></html>`;
   </section>
 
   <section class="card">
+    <h2>Alertas</h2>
+    ${alertasHtml(ultimo)}
+  </section>
+
+  <section class="card">
     <h2>Capas faltando</h2>
     ${listaCapas(ultimo)}
   </section>
@@ -332,9 +352,9 @@ ${RODAPE_JS}
 }
 
 const CSS = `
-:root{color-scheme:dark;--bg:#0b0e13;--bg2:#10141b;--card:#171c25;--border:#2a3140;--bs:#232a36;--fg:#eef1f6;--muted:#9aa3b2;--faint:#6b7382;--gold:#d4a054;--gold-dim:#3a2e1a;--ok:#7dcca3;--ok-dim:#173226;--bad:#e59a9a;--bad-dim:#2a1818;--glow:rgba(212,160,84,.08)}
-:root[data-tema="claro"]{color-scheme:light;--bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--border:#ddd8cc;--bs:#e7e3da;--fg:#1a1f29;--muted:#545c6b;--faint:#7a8191;--gold:#9a6a1f;--gold-dim:#f4ead8;--ok:#1f7a4f;--ok-dim:#e2f3ea;--bad:#b23b3b;--bad-dim:#f8e6e6;--glow:rgba(154,106,31,.07)}
-@media (prefers-color-scheme:light){:root:not([data-tema="escuro"]){color-scheme:light;--bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--border:#ddd8cc;--bs:#e7e3da;--fg:#1a1f29;--muted:#545c6b;--faint:#7a8191;--gold:#9a6a1f;--gold-dim:#f4ead8;--ok:#1f7a4f;--ok-dim:#e2f3ea;--bad:#b23b3b;--bad-dim:#f8e6e6;--glow:rgba(154,106,31,.07)}}
+:root{color-scheme:dark;--bg:#0b0e13;--bg2:#10141b;--card:#171c25;--border:#2a3140;--bs:#232a36;--fg:#eef1f6;--muted:#9aa3b2;--faint:#6b7382;--gold:#d4a054;--gold-dim:#3a2e1a;--ok:#7dcca3;--ok-dim:#173226;--bad:#e59a9a;--bad-dim:#2a1818;--warn:#e8c15a;--warn-dim:#33290f;--glow:rgba(212,160,84,.08)}
+:root[data-tema="claro"]{color-scheme:light;--bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--border:#ddd8cc;--bs:#e7e3da;--fg:#1a1f29;--muted:#545c6b;--faint:#7a8191;--gold:#9a6a1f;--gold-dim:#f4ead8;--ok:#1f7a4f;--ok-dim:#e2f3ea;--bad:#b23b3b;--bad-dim:#f8e6e6;--warn:#8a6200;--warn-dim:#fbf0cf;--glow:rgba(154,106,31,.07)}
+@media (prefers-color-scheme:light){:root:not([data-tema="escuro"]){color-scheme:light;--bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--border:#ddd8cc;--bs:#e7e3da;--fg:#1a1f29;--muted:#545c6b;--faint:#7a8191;--gold:#9a6a1f;--gold-dim:#f4ead8;--ok:#1f7a4f;--ok-dim:#e2f3ea;--bad:#b23b3b;--bad-dim:#f8e6e6;--warn:#8a6200;--warn-dim:#fbf0cf;--glow:rgba(154,106,31,.07)}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
 body{margin:0;min-height:100dvh;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px);font:15px/1.5 "IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 420px at 12% -10%,var(--glow),transparent 55%),linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--fg)}
@@ -366,7 +386,7 @@ h2{margin:0 0 12px;font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-s
 .valor{font:600 19px/1.3 "Source Serif 4",Georgia,serif;margin:4px 0}
 .status{font-size:14px}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-weight:600}
-.pill.ok{background:var(--ok-dim);color:var(--ok)}.pill.bad{background:var(--bad-dim);color:var(--bad)}
+.pill.ok{background:var(--ok-dim);color:var(--ok)}.pill.bad{background:var(--bad-dim);color:var(--bad)}.pill.warn{background:var(--warn-dim);color:var(--warn)}
 .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--bs);vertical-align:top}
@@ -376,6 +396,7 @@ td:first-child{font-weight:500}
 .det{color:var(--muted);word-break:break-word}
 .ok{color:var(--ok);font-weight:600}
 .bad{color:var(--bad);font-weight:600}
+.warn{color:var(--warn);font-weight:600}
 .na{color:var(--faint)}
 .lista{margin:4px 0 0;padding-left:1.1rem}
 .lista li{margin:4px 0}

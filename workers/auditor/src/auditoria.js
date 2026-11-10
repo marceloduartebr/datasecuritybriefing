@@ -4,7 +4,8 @@ import { capaValida } from './checagens.js';
 import { lerFrontmatter, prefixoDoSlug } from '../../../src/lib/push-catalogo.mjs';
 import { lerTexto } from './rede.js';
 import { checarBlog, checarCommits, checarNotion, checarPush, criarChecadorCapa } from './checagens.js';
-import { calcularProblemas, enviarAlertas } from './alertas.js';
+import { calcularAlertas, calcularProblemas, enviarAlertas } from './alertas.js';
+import { severidadeSemCapa } from './severidade-capa.js';
 import { emBrasilia } from './horario.js';
 import { criarRede } from './rede.js';
 import { gravarExecucao } from './armazenamento.js';
@@ -33,7 +34,10 @@ export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual',
     notion,
     quadrado,
   };
+  // Fila sem capa: alerta até passar a rodada de capas do dia útil (ver severidade-capa.js).
+  if (notion && notion.ok) for (const c of notion.semCapa || []) c.severidade = severidadeSemCapa(c.entrouEm, agora);
   r.problemas = calcularProblemas(r);
+  r.alertas = calcularAlertas(r);
   r.ok = r.problemas.length === 0;
   r.alerta = await enviarAlertas(env, r);
   r.subrequests = { usadas: rede.estado.usadas, orcamento: rede.estado.orcamento, estourou: rede.estado.estourou };
@@ -45,7 +49,7 @@ export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual',
 export function capasFaltando(r) {
   if (!r) return { ok: false, erro: 'sem_execucao', itens: [] };
   const itens = [];
-  for (const c of (r.notion && r.notion.semCapa) || []) itens.push({ origem: 'fila', id: c.id, topic: c.topic, status: c.status, imageUrl: c.imageUrl, motivo: c.motivo });
+  for (const c of (r.notion && r.notion.semCapa) || []) itens.push({ origem: 'fila', id: c.id, topic: c.topic, status: c.status, imageUrl: c.imageUrl, motivo: c.motivo, severidade: c.severidade || 'problema' });
   for (const i of (r.blog && r.blog.itens) || []) if (!i.capa.ok) itens.push({ origem: 'blog', slug: i.slug, imageUrl: i.capa.url, motivo: i.capa.motivo });
   return {
     ok: true,

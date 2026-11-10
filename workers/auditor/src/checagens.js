@@ -185,6 +185,8 @@ export function resumirPagina(p) {
     status: pr.Status && pr.Status.select ? pr.Status.select.name : null,
     tipo: pr.Tipo && pr.Tipo.select ? pr.Tipo.select.name : null,
     imageUrl: pr['Image URL'] ? pr['Image URL'].url : null,
+    // Quando entrou na fila (severidade de "sem capa"): Added At, senão created_time da página.
+    entrouEm: (pr['Added At'] && pr['Added At'].date && pr['Added At'].date.start) || p.created_time || null,
     temUrn: /urn:li:/i.test(texto(pr['Publish Notes'])),
     // Publicado só no blog (sem LinkedIn): marcador 'Somente blog' / 'somente-blog' no Publish Notes.
     somenteBlog: /somente[\s-]+blog/i.test(texto(pr['Publish Notes'])),
@@ -214,7 +216,7 @@ export async function checarNotion(rede, env, hoje, checarCapa) {
     consultar(rede, tok, { or: [
       { property: 'Status', select: { equals: 'Aprovado' } },
       { property: 'Status', select: { equals: 'Novo' } },
-    ] }, ['Topic', 'Status', 'Tipo', 'Image URL']),
+    ] }, ['Topic', 'Status', 'Tipo', 'Image URL', 'Added At']),
     consultar(rede, tok, { and: [
       { property: 'Status', select: { equals: 'Publicado' } },
       { property: 'Published At', date: { on_or_after: desde } },
@@ -232,7 +234,7 @@ export async function checarNotion(rede, env, hoje, checarCapa) {
   const semCapa = [];
   for (const p of alvo) {
     const r = await checarCapa(p.imageUrl, { origem: 'fila', id: p.id, topic: p.topic });
-    if (!r.ok) semCapa.push({ id: p.id, topic: p.topic, status: p.status, imageUrl: p.imageUrl, motivo: r.motivo, http: r.status });
+    if (!r.ok) semCapa.push({ id: p.id, topic: p.topic, status: p.status, imageUrl: p.imageUrl, motivo: r.motivo, http: r.status, entrouEm: p.entrouEm });
   }
   const semUrn = publicados.paginas.filter((p) => !p.temUrn && !p.somenteBlog).map((p) => ({ id: p.id, topic: p.topic, tipo: p.tipo }));
   return {

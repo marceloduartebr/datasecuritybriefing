@@ -15,11 +15,21 @@ export function calcularProblemas(r) {
   const n = r.notion || {};
   if (n.ativo && !n.ok) p.push(`Notion: ${n.erro}`);
   if (n.ativo && n.ok) {
-    for (const c of n.semCapa) p.push(`Fila: sem capa — ${c.topic.slice(0, 60)}`);
+    for (const c of n.semCapa) if ((c.severidade || 'problema') === 'problema') p.push(`Fila: sem capa — ${c.topic.slice(0, 60)}`);
     for (const u of n.publicadosSemUrn) p.push(`LinkedIn: Publicado sem URN — ${u.topic.slice(0, 60)}`);
     if (r.slot === '08:30' && n.novosHoje.total === 0) p.push('Curadoria: nenhum item adicionado hoje até 08:30');
   }
   return p;
+}
+
+/** Alertas (amarelo no painel): não disparam push nem estragam o "tudo certo". Pura. */
+export function calcularAlertas(r) {
+  const a = [];
+  const n = r.notion || {};
+  if (n.ativo && n.ok) {
+    for (const c of n.semCapa || []) if (c.severidade === 'alerta') a.push(`Fila: sem capa (aguarda a rodada de capas) — ${String(c.topic || c.id || '').slice(0, 60)}`);
+  }
+  return a;
 }
 
 /** Monta o alerta (texto livre curto). null = nada a enviar. */
@@ -32,7 +42,8 @@ export function montarAlerta(r, env = {}) {
   }
   if (r.slot === '19:15' && env.ALERTA_OK_DIARIO === 'on') {
     const pub = r.blog ? r.blog.total : 0;
-    return { titulo: 'DSB: tudo certo hoje', texto: `${pub} briefing(s) no blog, capas e páginas ok.` };
+    const na = (r.alertas || []).length;
+    return { titulo: 'DSB: tudo certo hoje', texto: `${pub} briefing(s) no blog, capas e páginas ok.${na ? ` ${na} alerta(s): sem capa aguardando a rodada das 09:30.` : ''}` };
   }
   return null;
 }
