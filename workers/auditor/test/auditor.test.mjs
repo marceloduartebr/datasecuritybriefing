@@ -414,7 +414,8 @@ test('renderPainel: identidade DSB (logo, serifada, dourado, tema claro/escuro) 
   assert.match(html, /:root\[data-tema="claro"\]/);
   assert.match(html, /id="tema"/);
   assert.match(html, /apple-mobile-web-app-status-bar-style" content="black"/);
-  assert.doesNotMatch(html, /position:fixed|backdrop-filter\s*:|black-translucent/);
+  // Única regra fixed permitida: a pílula do puxar-para-atualizar (criada só no gesto, abaixo do topo).
+  assert.doesNotMatch(html.replace(/\.ptr\{position:fixed;/, '.ptr{'), /position:fixed|backdrop-filter\s*:|black-translucent/);
   assert.match(html, /Tudo certo/);
   assert.match(renderPainel(null), /class="topo"/);
 });

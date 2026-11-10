@@ -198,6 +198,36 @@ ${FONTES}
 </div></header>`;
 }
 
+// Só no app instalado (standalone + toque). Pílula criada no gesto e removida depois, abaixo do topo
+// (z-index 10 < 20), sem camada fixa em repouso: não reintroduz o esmaecido do topo no iOS.
+// Também recompõe o topo ao voltar ao primeiro plano (will-change + translateZ(0) por 2 quadros), sem reload.
+const PTR_JS = `<script>(function(){
+var sa=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+if(!sa)return;
+var tp=document.querySelector('.topo'),pend=false;
+function recompor(){if(!tp||pend)return;pend=true;tp.style.willChange='transform';tp.style.transform='translateZ(0)';
+ requestAnimationFrame(function(){requestAnimationFrame(function(){tp.style.transform='';tp.style.willChange='';pend=false;});});}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')recompor();});
+addEventListener('pageshow',function(e){if(e.persisted)recompor();});addEventListener('focus',recompor);
+if(!('ontouchstart' in window))return;
+var LIMIAR=56,inicio=0,puxando=false,ultimo=0,ocupado=false,pil=null;
+function noTopo(){return (window.scrollY||document.documentElement.scrollTop||0)<=0;}
+function mostra(px,atualizando){ultimo=px;
+ if(!pil){pil=document.createElement('div');pil.className='ptr';pil.setAttribute('role','status');pil.innerHTML='<span class="ptr-ring" aria-hidden="true"></span><span class="ptr-label"></span>';document.body.appendChild(pil);}
+ pil.classList.toggle('is-visible',px>4||atualizando);pil.classList.toggle('is-refreshing',atualizando);
+ pil.style.transform='translate(-50%,'+Math.min(px,64)+'px)';
+ pil.lastChild.textContent=atualizando?'Atualizando…':(px>=LIMIAR?'Solte para atualizar':'Puxe para atualizar');}
+function some(){if(ocupado)return;if(pil){pil.remove();pil=null;}ultimo=0;}
+function vai(){ocupado=true;mostra(56,true);setTimeout(function(){location.reload();},120);}
+addEventListener('touchstart',function(e){if(ocupado||!noTopo()||e.touches.length!==1)return;var t=e.target;
+ if(t&&t.closest&&t.closest('input,textarea,select,button,summary,dialog'))return;inicio=e.touches[0].clientY;puxando=true;ultimo=0;},{passive:true});
+addEventListener('touchmove',function(e){if(!puxando||ocupado)return;var dy=e.touches[0].clientY-inicio;
+ if(dy<4||!noTopo()){if(ultimo)some();return;}var p=dy*0.6;mostra(p,false);if(e.cancelable&&p>8)e.preventDefault();},{passive:false});
+addEventListener('touchend',function(){if(!puxando)return;puxando=false;if(ultimo>=LIMIAR)vai();else some();},{passive:true});
+addEventListener('touchcancel',function(){puxando=false;some();},{passive:true});
+addEventListener('pageshow',function(e){if(e.persisted){ocupado=false;some();}});
+})();</script>`;
+
 const RODAPE_JS = `<script>(function(){var b=document.getElementById('tema');if(!b)return;b.addEventListener('click',function(){var r=document.documentElement;var a=r.dataset.tema||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'escuro');var n=a==='claro'?'escuro':'claro';r.dataset.tema=n;try{localStorage.setItem('dsb-auditor-tema',n);}catch(e){}});})();</script>`;
 
 function abas(atual) {
@@ -268,7 +298,7 @@ export function renderLeituras(dados, { janela = '7d' } = {}) {
   <nav class="seg" aria-label="Janela">${seg}</nav>
   ${corpo}
 </main>
-${RODAPE_JS}
+${RODAPE_JS}${PTR_JS}
 </body>
 </html>`;
 }
@@ -278,7 +308,7 @@ export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
   if (!ultimo) {
     return `${cabeca('DSB Auditor')}
 <main>${abas('auditoria')}<div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
-${RODAPE_JS}</body></html>`;
+${RODAPE_JS}${PTR_JS}</body></html>`;
   }
   const nAlertas = (ultimo.alertas || []).length;
   const statusGeral = (ultimo.ok ? '<span class="pill ok">Tudo certo</span>' : `<span class="pill bad">${(ultimo.problemas || []).length} problema(s)</span>`)
@@ -346,7 +376,7 @@ ${RODAPE_JS}</body></html>`;
 
   <footer class="muted">Somente leitura · não dispara checagens nem pushes · subrequests da última execução: ${esc(ultimo.subrequests?.usadas ?? '—')}/${esc(ultimo.subrequests?.orcamento ?? '—')}</footer>
 </main>
-${RODAPE_JS}
+${RODAPE_JS}${PTR_JS}
 </body>
 </html>`;
 }
@@ -357,7 +387,10 @@ const CSS = `
 @media (prefers-color-scheme:light){:root:not([data-tema="escuro"]){color-scheme:light;--bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--border:#ddd8cc;--bs:#e7e3da;--fg:#1a1f29;--muted:#545c6b;--faint:#7a8191;--gold:#9a6a1f;--gold-dim:#f4ead8;--ok:#1f7a4f;--ok-dim:#e2f3ea;--bad:#b23b3b;--bad-dim:#f8e6e6;--warn:#8a6200;--warn-dim:#fbf0cf;--glow:rgba(154,106,31,.07)}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
-body{margin:0;min-height:100dvh;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px);font:15px/1.5 "IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 420px at 12% -10%,var(--glow),transparent 55%),linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--fg)}
+body{margin:0;min-height:100dvh;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px);font:15px/1.5 "IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 420px at 12% -10%,var(--glow),transparent 55%),linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--fg);overscroll-behavior-y:contain}
+.ptr{position:fixed;top:calc(env(safe-area-inset-top,0px) + 4.5rem);left:50%;z-index:10;display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--gold);font-size:12px;font-weight:600;letter-spacing:.04em;white-space:nowrap;transform:translate(-50%,-8px);opacity:0;pointer-events:none;transition:opacity .16s ease}
+.ptr.is-visible{opacity:1}.ptr-ring{width:14px;height:14px;border:2px solid var(--gold-dim);border-top-color:var(--gold);border-radius:50%;flex-shrink:0}
+.ptr.is-refreshing .ptr-ring{animation:ptr-spin .7s linear infinite}@keyframes ptr-spin{to{transform:rotate(360deg)}}
 .topo{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);padding-top:env(safe-area-inset-top,0px)}
 .topo .container{max-width:860px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center;gap:1rem;min-height:3.9rem}
 .brand{display:flex;align-items:center;gap:10px;min-width:0;color:inherit;text-decoration:none}
