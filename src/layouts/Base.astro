@@ -341,6 +341,31 @@ const navProps = {
         });
       })();
       (function () {
+        // iOS (app instalado): ao voltar de suspenso, o topo fixo às vezes fica esmaecido
+        // até um repaint (puxar ou fechar o app resolve). Recompõe a camada do topo ao voltar
+        // ao primeiro plano, sem recarregar e sem mudar o visual final.
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        const topo = document.querySelector('.topo');
+        if (!standalone || !topo) return;
+        let pendente = false;
+        const recompor = () => {
+          if (pendente) return;
+          pendente = true;
+          topo.style.willChange = 'transform';
+          topo.style.transform = 'translateZ(0)';
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            topo.style.transform = '';
+            topo.style.willChange = '';
+            pendente = false;
+          }));
+        };
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') recompor();
+        });
+        window.addEventListener('pageshow', (e) => { if (e.persisted) recompor(); });
+        window.addEventListener('focus', recompor);
+      })();
+      (function () {
         const bar = document.querySelector('.ptr');
         const labelEl = bar && bar.querySelector('.ptr-label');
         if (!bar || !labelEl) return;
