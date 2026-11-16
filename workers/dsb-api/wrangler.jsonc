@@ -1,0 +1,28 @@
+// dsb-api: regras da fila do DSB sobre o D1 (fonte da verdade depois do cutover).
+// - Sem rota pública e sem cron próprio (limite de 5 crons da conta no plano free):
+//   * apps (dsb-fila, dsb-auditor) chamam por Service Binding com o header x-interno-token (secret INTERNO_TOKEN);
+//   * agentes chamam com Bearer próprio: secrets TOKEN_GROK e TOKEN_CLAUDE (o ator vem do token, não do corpo).
+//   * a varredura de pendências (POST /varrer) é disparada pelo cron do dsb-auditor e ao fim de cada job.
+// - Fase de testes: binding DB aponta para a base dsb-staging. No cutover, trocar para a base de produção.
+// - Secrets: INTERNO_TOKEN, TOKEN_GROK, TOKEN_CLAUDE (mínimo 24 caracteres). Nunca colocar tokens aqui.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "dsb-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": false, "head_sampling_rate": 0 }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dsb-staging",
+      "database_id": "808d3914-2df5-4da9-aab7-1f19d51001d2",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
