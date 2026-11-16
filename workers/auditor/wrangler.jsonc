@@ -14,6 +14,10 @@
 //   Sem elas, /painel só aceita bearer (sem auth → 404). Não colocar secrets/tokens neste arquivo.
 //   Opcionais: GITHUB_TOKEN, PUSH_ADMIN_TOKEN.
 // - KV DSB_AUDITOR é próprio. Não usar DSB_PUSH nem nada do BND.
+// - env.stg = dsb-auditor-stg on dsba-stg.duarte.top/painel (deploy with --env stg): DATA_SOURCE=api reads the
+//   D1 queue and issues from dsb-api-stg (Service Binding API, secret INTERNAL_TOKEN) and runs POST /sweep.
+//   No cron (account limit) and no KV: RUN_ON_VIEW=on runs the audit when the panel opens. ALERTAS off,
+//   NOTION off, no FILA binding. Same Access app "DSB Auditor Panel" (same AUD).
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "dsb-auditor",
@@ -53,5 +57,32 @@
   },
   "triggers": {
     "crons": ["15,30,50 11-22 * * 1-5"]
+  },
+  "env": {
+    "stg": {
+      "name": "dsb-auditor-stg",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        { "pattern": "dsba-stg.duarte.top", "custom_domain": true }
+      ],
+      "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+      "kv_namespaces": [],
+      "services": [
+        { "binding": "API", "service": "dsb-api-stg" },
+        { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" }
+      ],
+      "vars": {
+        "DATA_SOURCE": "api",
+        "RUN_ON_VIEW": "on",
+        "ALERTAS": "off",
+        "ALERTA_OK_DIARIO": "off",
+        "NOTION": "off",
+        "ACCESS_TEAM": "https://royal-lake-6796.cloudflareaccess.com",
+        "ACCESS_AUD": "96689ab8700a02984d0f69327ef111ce08d4f26a8b625e87c90c0d530ec17379",
+        "CF_ACCOUNT_ID": "33755e61c66edcba424c5cf9a1f9e676"
+      },
+      "triggers": { "crons": [] }
+    }
   }
 }

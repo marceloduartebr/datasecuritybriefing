@@ -18,6 +18,8 @@ export function calcularProblemas(r) {
     for (const c of n.semCapa) if ((c.severidade || 'problema') === 'problema') p.push(`Fila: sem capa — ${c.topic.slice(0, 60)}`);
     for (const u of n.publicadosSemUrn) p.push(`LinkedIn: Publicado sem URN — ${u.topic.slice(0, 60)}`);
     if (r.slot === '08:30' && n.novosHoje.total === 0) p.push('Curadoria: nenhum item adicionado hoje até 08:30');
+    // STG (dsb-api): open issues with severity error/critical are problems.
+    for (const i of n.issues || []) if (i.severity === 'error' || i.severity === 'critical') p.push(`Issue #${i.id} (${i.stage}): ${String(i.summary).slice(0, 80)}`);
   }
   return p;
 }
@@ -28,6 +30,8 @@ export function calcularAlertas(r) {
   const n = r.notion || {};
   if (n.ativo && n.ok) {
     for (const c of n.semCapa || []) if (c.severidade === 'alerta') a.push(`Fila: sem capa (aguarda a rodada de capas) — ${String(c.topic || c.id || '').slice(0, 60)}`);
+    const warnings = (n.issues || []).filter((i) => i.severity === 'warning').length;
+    if (warnings) a.push(`${warnings} open warning issue(s) in dsb-api`);
   }
   return a;
 }

@@ -9,6 +9,7 @@ import { severidadeSemCapa } from './severidade-capa.js';
 import { emBrasilia } from './horario.js';
 import { criarRede } from './rede.js';
 import { gravarExecucao } from './armazenamento.js';
+import { usesApi, checarFilaApi } from './fila-api.js';
 
 export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual', fetchImpl = fetch } = {}) {
   const rede = criarRede(fetchImpl, ORCAMENTO);
@@ -19,7 +20,7 @@ export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual',
     checarCommits(rede, env.GITHUB_TOKEN),
     checarPush(env),
   ]);
-  const notion = await checarNotion(rede, env, b.data, checarCapa);
+  const notion = usesApi(env) ? await checarFilaApi(env, b.data, checarCapa) : await checarNotion(rede, env, b.data, checarCapa);
   const quadrado = await checarQuadrados(rede, env.DSB_AUDITOR, alvosQuadrado(checarCapa.vistas ? checarCapa.vistas() : [], blog, b.data), { capaValida, lerFrontmatter, lerTexto });
   const r = {
     versao: 1,
@@ -27,7 +28,7 @@ export async function rodarAuditoria(env, { agora = new Date(), slot = 'manual',
     dataBrt: b.data,
     horaBrt: b.hhmm,
     slot,
-    flags: { alertas: env.ALERTAS === 'on' ? 'on' : 'off', okDiario: env.ALERTA_OK_DIARIO === 'on' ? 'on' : 'off', notion: env.NOTION === 'on' ? 'on' : 'off' },
+    flags: { alertas: env.ALERTAS === 'on' ? 'on' : 'off', okDiario: env.ALERTA_OK_DIARIO === 'on' ? 'on' : 'off', notion: env.NOTION === 'on' ? 'on' : 'off', fonte: usesApi(env) ? 'api' : 'notion' },
     blog,
     github,
     push,

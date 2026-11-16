@@ -36,7 +36,10 @@ export async function listPosts(db, params) {
   const limit = Math.min(Math.max(Number(params.get('limit')) || 100, 1), 500);
   const r = await db
     .prepare(
-      `SELECT v.*, p.source_url, p.source_name, p.added_by, p.added_at, p.approved_at, p.follow_up_of
+      `SELECT v.*, p.source_url, p.source_name, p.added_by, p.added_at, p.approved_at, p.follow_up_of,
+              p.image_source, p.post_text, p.approval_notes, p.discard_reason,
+              (SELECT b.published_at FROM publications b
+                WHERE b.post_id = p.id AND b.channel = 'blog' AND b.lang = 'pt' AND b.status = 'published') AS blog_published_at
        FROM v_post_channels v JOIN posts p ON p.id = v.id
        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
        ORDER BY CASE p.status WHEN 'approved' THEN 0 WHEN 'new' THEN 1 WHEN 'published' THEN 2 ELSE 3 END,

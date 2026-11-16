@@ -69,7 +69,12 @@ export async function tratar(request, env, ctx, deps = {}) {
     if (url.searchParams.get('aba') === 'leituras') {
       return html(renderLeituras(await obterLeituras(env), { janela: url.searchParams.get('janela') || '7d' }));
     }
-    const ultimo = await lerUltimo(env.DSB_AUDITOR);
+    let ultimo = await lerUltimo(env.DSB_AUDITOR);
+    // STG has no cron (account cron limit): RUN_ON_VIEW=on runs the audit when the panel is opened
+    // and the last run is older than 5 min (or ?run=1). Alerts stay off there (ALERTAS=off).
+    if (env.RUN_ON_VIEW === 'on' && (!ultimo || url.searchParams.get('run') === '1' || Date.now() - Date.parse(ultimo.em) > 5 * 60_000)) {
+      ultimo = await rodarAuditoria(env, { slot: 'view', ...deps });
+    }
     const ultimoAlerta = await lerUltimoAlerta(env.DSB_AUDITOR);
     return html(renderPainel(ultimo, { ultimoAlerta }));
   }

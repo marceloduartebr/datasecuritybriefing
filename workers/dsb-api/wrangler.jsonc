@@ -6,7 +6,10 @@
 //   * agents call https://dsb-api.duarte.top with their own Bearer: secrets TOKEN_GROK and TOKEN_CLAUDE
 //     (the actor comes from the token, not the body);
 //   * the issue sweep (POST /sweep) is triggered by the dsb-auditor cron and at the end of each job.
-// - Test phase: binding DB points to dsb-staging. At cutover, switch it to the production database.
+// - Environments: top level = dsb-api (production; binding DB still on dsb-staging until cutover, then the
+//   production database). env.stg = dsb-api-stg on dsb-api-stg.duarte.top, always on dsb-staging
+//   (deploy with --env stg). Used by dsb-queue-stg and dsb-auditor-stg. Its secrets come from the
+//   Pass entries "DSB API STG - INTERNAL_TOKEN / TOKEN_GROK / TOKEN_CLAUDE", never the production ones.
 // - Secrets: INTERNAL_TOKEN, TOKEN_GROK, TOKEN_CLAUDE (at least 24 characters). Never put tokens here.
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
@@ -30,5 +33,23 @@
       "database_id": "808d3914-2df5-4da9-aab7-1f19d51001d2",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "env": {
+    "stg": {
+      "name": "dsb-api-stg",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        { "pattern": "dsb-api-stg.duarte.top", "custom_domain": true }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "dsb-staging",
+          "database_id": "808d3914-2df5-4da9-aab7-1f19d51001d2",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }

@@ -82,10 +82,11 @@ function checagens(r) {
   rows.push(linha('Push /health', !!push.ok, push.ok ? `HTTP ${push.health || 200}` : (push.erro || `HTTP ${push.health || '?'}`)));
 
   const n = r.notion || {};
+  const rotulo = n.fonte === 'api' ? 'D1 queue (dsb-api-stg)' : 'Notion (fila)';
   if (!n.ativo) {
     rows.push(linha('Notion (fila)', null, 'desligado'));
   } else if (!n.ok) {
-    rows.push(linha('Notion (fila)', false, n.erro || 'erro'));
+    rows.push(linha(rotulo, false, n.erro || 'erro'));
   } else {
     const sc = n.semCapa || [];
     const scAlerta = sc.filter((c) => c.severidade === 'alerta').length;
@@ -98,14 +99,30 @@ function checagens(r) {
       `${(n.publicadosSemUrn || []).length} sem URN`,
     ].join(' · ');
     const okN = scProb === 0 && (n.publicadosSemUrn || []).length === 0 ? (scAlerta ? 'alerta' : true) : false;
-    rows.push(linha('Notion (fila)', okN, det));
+    rows.push(linha(rotulo, okN, det));
   }
   return rows.join('\n');
+}
+
+const SEV_ORDER = { critical: 0, error: 1, warning: 2, info: 3 };
+function issuesHtml(r) {
+  const n = r.notion || {};
+  if (n.fonte !== 'api') return '';
+  if (!n.ok) return `<section class="card"><h2>Issues (dsb-api-stg)</h2><p class="bad">${esc(n.erro || 'error')}</p></section>`;
+  const list = [...(n.issues || [])].sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9));
+  const counts = {};
+  for (const i of list) counts[i.severity] = (counts[i.severity] || 0) + 1;
+  const cls = { critical: 'bad', error: 'bad', warning: 'warn', info: 'muted' };
+  const head = ['critical', 'error', 'warning', 'info'].map((s) => `${s}: <strong>${counts[s] || 0}</strong>`).join(' · ');
+  const sw = n.sweep ? `<p class="muted">Sweep: ${esc(n.sweep.checks)} checks, ${esc(n.sweep.opened_or_seen)} opened or seen, ${esc(n.sweep.resolved)} resolved${(n.sweep.failures || []).length ? `, <span class="bad">${n.sweep.failures.length} failed</span>` : ''}.</p>` : '';
+  const items = list.slice(0, 60).map((i) => `<li><span class="${cls[i.severity] || ''}">${esc(i.severity)}</span> <span class="tag">${esc(i.stage)}</span> #${esc(i.id)}${i.post_id ? ` · post ${esc(i.post_id)}` : ''} — ${esc(i.summary)}${i.occurrences > 1 ? ` <span class="muted">×${esc(i.occurrences)}</span>` : ''}${i.suggested_action ? `<br><span class="muted">${esc(i.suggested_action)}</span>` : ''}</li>`).join('');
+  return `<section class="card"><h2>Issues (dsb-api-stg)</h2><p>${list.length} open · ${head}</p>${sw}${list.length ? `<ul class="lista">${items}</ul>${list.length > 60 ? `<p class="muted">+${list.length - 60} more</p>` : ''}` : '<p class="ok">No open issues.</p>'}</section>`;
 }
 
 function contagensFila(r) {
   const n = r.notion || {};
   if (!n.ativo) return '<p class="muted">Notion desligado.</p>';
+  if (n.fonte === 'api' && !n.ok) return `<p class="bad">dsb-api: ${esc(n.erro || 'error')}</p>`;
   if (!n.ok) return `<p class="bad">Notion: ${esc(n.erro || 'erro')}</p>`;
   const tipos = n.aprovadosPorTipo || {};
   const tipoLinhas = Object.keys(tipos).sort().map((t) => `<li><strong>${esc(t)}</strong>: ${tipos[t]}</li>`).join('') || '<li>—</li>';
@@ -352,6 +369,8 @@ ${RODAPE_JS}${PTR_JS}</body></html>`;
     ${alertasHtml(ultimo)}
   </section>
 
+  ${issuesHtml(ultimo)}
+
   <section class="card">
     <h2>Capas faltando</h2>
     ${listaCapas(ultimo)}
@@ -359,7 +378,7 @@ ${RODAPE_JS}${PTR_JS}</body></html>`;
 
   <div class="grade">
   <section class="card">
-    <h2>Fila (Notion)</h2>
+    <h2>${ultimo.notion && ultimo.notion.fonte === 'api' ? 'Fila (D1 · STG)' : 'Fila (Notion)'}</h2>
     ${contagensFila(ultimo)}
   </section>
 
