@@ -66,10 +66,33 @@ test('API down or not configured is reported, not thrown', async () => {
 test('STG panel shows the STG badge in the title and the header; production does not', () => {
   const r = { em: new Date().toISOString(), ok: true, problemas: [], alertas: [], flags: {} };
   const stg = renderPainel(r, { ambiente: 'stg' });
-  assert.match(stg, /<title>DSB Auditor STG — painel<\/title>/);
+  assert.match(stg, /<title>DSB Auditor STG — panel<\/title>/);
   assert.match(stg, /<b class="stg">STG<\/b> D1 via dsb-api-stg · DSB Auditor/);
   const prod = renderPainel(r);
   assert.match(prod, /<title>DSB Auditor — painel<\/title>/);
   assert.doesNotMatch(prod, /class="stg"/);
   assert.match(renderPainel(null, { ambiente: 'stg' }), /<title>DSB Auditor STG<\/title>/);
+});
+
+test('STG panel: English interface (content kept) and an issue filter; production stays Portuguese', () => {
+  const r = {
+    em: new Date().toISOString(), dataBrt: '2026-11-16', horaBrt: '19:47', slot: 'view', ok: false, flags: {},
+    blog: { total: 1, itens: [{ slug: '2026-11-16-x', paginas: { pt: 200, es: 404, en: 200 }, capa: { ok: false, motivo: 'http_404' } }] },
+    github: { ok: true, commits: [1] }, push: { ok: true },
+    notion: { ativo: true, ok: true, fonte: 'api', novosHoje: { total: 2, aindaNovo: 1 }, aprovadosPorTipo: {}, fila: { total: 3 },
+      semCapa: [{ id: '3', topic: 'Vazamento na Prefeitura', motivo: 'sem capa', severidade: 'alerta' }], publicadosHoje: 1, publicadosSemUrn: [],
+      issues: [{ id: 7, severity: 'error', stage: 'cover', summary: 'Approved without a cover' }, { id: 8, severity: 'warning', stage: 'load', summary: 'Slug repeated' }] }
+  };
+  r.problemas = calcularProblemas(r);
+  r.alertas = calcularAlertas(r);
+  const en = renderPainel(r, { ambiente: 'stg' });
+  for (const s of ['<h1>Audit panel</h1>', '<h2>Checks</h2>', '<h2>Problems</h2>', '<h2>Missing covers</h2>', '2 added today', '1 still new', 'Queue: no cover (waiting for the cover round)', '<html lang="en">'])
+    assert.ok(en.includes(s), s);
+  for (const s of ['Painel de auditoria', 'Checagens', 'adicionados hoje', 'Nenhum', 'última execução']) assert.ok(!en.includes(s), s);
+  assert.ok(en.includes('Vazamento na Prefeitura'), 'content stays as written');
+  assert.match(en, /<select data-f="sev">.*<option value="error">error \(1\)<\/option>/s);
+  assert.match(en, /<select data-f="stage">.*<option value="cover">cover \(1\)<\/option>.*<option value="load">load \(1\)<\/option>/s);
+  assert.match(en, /<li data-sev="warning" data-stage="load">/);
+  const pt = renderPainel(r);
+  assert.ok(pt.includes('<h1>Painel de auditoria</h1>') && pt.includes('<html lang="pt-BR">'));
 });

@@ -1,6 +1,7 @@
 import { capasFaltando } from './auditoria.js';
 import { emBrasilia } from './horario.js';
 import { SITE } from './constantes.js';
+import { toEnglish } from './i18n.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -104,6 +105,20 @@ function checagens(r) {
   return rows.join('\n');
 }
 
+// Issue filter: client-side, preset and kept in the address (?sev=&stage=) so a filtered view can be linked.
+const ISSUES_JS = `<script>(function(){
+var box=document.getElementById('issues-filtro'),lista=document.getElementById('issues-lista'),n=document.getElementById('issues-n');
+if(!box||!lista)return;var sel={sev:box.querySelector('[data-f=sev]'),stage:box.querySelector('[data-f=stage]')};
+var q=new URLSearchParams(location.search);
+['sev','stage'].forEach(function(k){var v=q.get(k);if(v&&sel[k].querySelector('option[value="'+v.replace(/"/g,'')+'"]'))sel[k].value=v;});
+function aplica(){var s=sel.sev.value,st=sel.stage.value,c=0;
+ lista.querySelectorAll('li').forEach(function(li){var ok=(!s||li.dataset.sev===s)&&(!st||li.dataset.stage===st);li.hidden=!ok;if(ok)c++;});
+ n.textContent=c+' shown';var u=new URL(location.href);
+ ['sev','stage'].forEach(function(k){if(sel[k].value)u.searchParams.set(k,sel[k].value);else u.searchParams.delete(k);});
+ u.searchParams.delete('run');history.replaceState(null,'',u.pathname+u.search+u.hash);}
+sel.sev.addEventListener('change',aplica);sel.stage.addEventListener('change',aplica);aplica();
+})();</script>`;
+
 const SEV_ORDER = { critical: 0, error: 1, warning: 2, info: 3 };
 function issuesHtml(r) {
   const n = r.notion || {};
@@ -115,8 +130,16 @@ function issuesHtml(r) {
   const cls = { critical: 'bad', error: 'bad', warning: 'warn', info: 'muted' };
   const head = ['critical', 'error', 'warning', 'info'].map((s) => `${s}: <strong>${counts[s] || 0}</strong>`).join(' · ');
   const sw = n.sweep ? `<p class="muted">Sweep: ${esc(n.sweep.checks)} checks, ${esc(n.sweep.opened_or_seen)} opened or seen, ${esc(n.sweep.resolved)} resolved${(n.sweep.failures || []).length ? `, <span class="bad">${n.sweep.failures.length} failed</span>` : ''}.</p>` : '';
-  const items = list.slice(0, 60).map((i) => `<li><span class="${cls[i.severity] || ''}">${esc(i.severity)}</span> <span class="tag">${esc(i.stage)}</span> #${esc(i.id)}${i.post_id ? ` · post ${esc(i.post_id)}` : ''} — ${esc(i.summary)}${i.occurrences > 1 ? ` <span class="muted">×${esc(i.occurrences)}</span>` : ''}${i.suggested_action ? `<br><span class="muted">${esc(i.suggested_action)}</span>` : ''}</li>`).join('');
-  return `<section class="card"><h2>Issues (dsb-api-stg)</h2><p>${list.length} open · ${head}</p>${sw}${list.length ? `<ul class="lista">${items}</ul>${list.length > 60 ? `<p class="muted">+${list.length - 60} more</p>` : ''}` : '<p class="ok">No open issues.</p>'}</section>`;
+  const items = list.map((i) => `<li data-sev="${esc(i.severity)}" data-stage="${esc(i.stage)}"><span class="${cls[i.severity] || ''}">${esc(i.severity)}</span> <span class="tag">${esc(i.stage)}</span> #${esc(i.id)}${i.post_id ? ` · post ${esc(i.post_id)}` : ''} — ${esc(i.summary)}${i.occurrences > 1 ? ` <span class="muted">×${esc(i.occurrences)}</span>` : ''}${i.suggested_action ? `<br><span class="muted">${esc(i.suggested_action)}</span>` : ''}</li>`).join('');
+  const stages = [...new Set(list.map((i) => i.stage))].sort();
+  const opt = (v, label, n) => `<option value="${esc(v)}">${esc(label)}${n == null ? '' : ` (${n})`}</option>`;
+  const nStage = (st) => list.filter((i) => i.stage === st).length;
+  const filtro = list.length
+    ? `<div class="filtro-issues" id="issues-filtro"><label>Severity <select data-f="sev">${opt('', 'All')}${['critical', 'error', 'warning', 'info'].filter((s) => counts[s]).map((s) => opt(s, s, counts[s])).join('')}</select></label>
+<label>Stage <select data-f="stage">${opt('', 'All')}${stages.map((st) => opt(st, st, nStage(st))).join('')}</select></label>
+<span class="muted" id="issues-n">${list.length} shown</span></div>`
+    : '';
+  return `<section class="card" id="issues"><h2>Issues (dsb-api-stg)</h2><p>${list.length} open · ${head}</p>${sw}${list.length ? `${filtro}<ul class="lista" id="issues-lista">${items}</ul>${ISSUES_JS}` : '<p class="ok">No open issues.</p>'}</section>`;
 }
 
 function contagensFila(r) {
@@ -267,7 +290,12 @@ function barras(obj, ordem, total) {
 }
 
 /** Aba "Leituras": analytics do blog (Cloudflare Web Analytics), já agregado e em cache. */
-export function renderLeituras(dados, { janela = '7d', ambiente = '' } = {}) {
+export function renderLeituras(dados, opts = {}) {
+  const html = renderLeiturasPt(dados, opts);
+  return opts.ambiente === 'stg' ? toEnglish(html) : html;
+}
+
+function renderLeiturasPt(dados, { janela = '7d', ambiente = '' } = {}) {
   const jan = ROTULO_JANELA[janela] ? janela : '7d';
   const seg = Object.keys(ROTULO_JANELA).map((k) => `<a href="/painel?aba=leituras&amp;janela=${k}"${k === jan ? ' class="on" aria-current="true"' : ''}>${k}</a>`).join('');
   let corpo;
@@ -322,7 +350,12 @@ ${RODAPE_JS}${PTR_JS}
 }
 
 /** HTML do painel a partir do estado já gravado (sem rede extra). */
-export function renderPainel(ultimo, { ultimoAlerta = null, ambiente = '' } = {}) {
+export function renderPainel(ultimo, opts = {}) {
+  const html = renderPainelPt(ultimo, opts);
+  return opts.ambiente === 'stg' ? toEnglish(html) : html;
+}
+
+function renderPainelPt(ultimo, { ultimoAlerta = null, ambiente = '' } = {}) {
   if (!ultimo) {
     return `${cabeca('DSB Auditor', ambiente)}
 <main>${abas('auditoria')}<div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
@@ -418,6 +451,9 @@ body{margin:0;min-height:100dvh;padding:0 env(safe-area-inset-right,0px) 0 env(s
 .brand .txt{min-width:0}
 .brand .wm{display:block;font:700 17px/1.1 "Source Serif 4",Georgia,serif;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brand small{display:block;margin-top:3px;font-size:12px;color:var(--muted);white-space:nowrap}
+.filtro-issues{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:8px 0 4px;font-size:13px;color:var(--muted)}
+.lista li[hidden]{display:none!important}
+.filtro-issues select{margin-left:6px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit}
 .stg{display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:#f0a070;color:#1a140b;font-weight:700;letter-spacing:.06em}
 :root[data-tema="claro"] .stg{background:#a5501c;color:#fff}
 @media (prefers-color-scheme:light){:root:not([data-tema="escuro"]) .stg{background:#a5501c;color:#fff}}
