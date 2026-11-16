@@ -8,3 +8,9 @@ Usada na fase de testes (dsb-staging) e repetida no cutover. Idempotente: apaga 
 4. Rodar `POST /varrer` no dsb-api.
 
 `notion.json` e `carga.json` têm conteúdo da fila: não versionar.
+
+## Backfill do X
+
+5. Coletar a timeline da @DSBriefing em `x_timeline.json` (ver `x_casar.py`).
+6. `python3 x_casar.py` → `x_match.json` (tweet ↔ briefing pelo título do cartão).
+7. `CF_D1=… python3 gravar_x.py` → X publicado com a URL do tweet; blog anterior a 28/10/2026 vira X pulado; o resto fica na fila do X. Religa a verificação `x_atrasado`.
