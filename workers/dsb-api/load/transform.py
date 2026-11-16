@@ -3,8 +3,11 @@
 Rules (decisions of 2026-11-16):
 - D1 status is editorial: published = PT blog article published (or skipped).
 - Notion "Publicado" + Blog URL with a file in the repo -> blog pt/es/en published.
-- Blog URL without a file in the repo -> the post was pulled back before the migration (competitors rule, confirmed
-  2026-11-16): status removed, blog and LinkedIn rows removed (also deleted there). "linkedin-only" -> blog skipped.
+- Notion Status "Removed" (or a Blog URL without a file in the repo) -> the post was pulled back: status removed, with
+  the reason and date taken from the "Removido ..." note in Publish Notes. A channel still live (blog file present, or
+  LinkedIn without "Removido do LinkedIn" in the notes) loads as removal_pending, so the removal_pending check raises it.
+  A missing blog file on a post not marked Removed is reported (load_removed_post) to set the status in Notion.
+  "linkedin-only" -> blog skipped.
 - LinkedIn URN in Publish Notes -> linkedin publication published; no URN -> published without URL + issue.
 - Keys: CVEs (Topic + Post Text; Briefing MD only when there is no other key) and the normalized URL unless generic.
 - Key collision: Hospital Clinico U. Chile -> follow_up_of; others -> the key stays with the oldest post + issue.
@@ -25,7 +28,7 @@ GENERIC = [
 FOLLOW_UPS = {'hospital-clinico-uchile-imagenologia': 'hospital-clinico-uchile-imagem'}
 TRACKING = re.compile(r'^(utm_.*|fbclid|gclid|mc_cid|mc_eid|ref|ref_src|igshid|si|s)$', re.I)
 
-STATUS = {'Novo': 'new', 'Aprovado': 'approved', 'Publicado': 'published', 'Descartado': 'discarded'}
+STATUS = {'Novo': 'new', 'Aprovado': 'approved', 'Publicado': 'published', 'Descartado': 'discarded', 'Removed': 'removed'}
 TYPE = {'Incidente': 'incident', 'Notícia': 'news', 'Vulnerabilidades': 'vulnerability'}
 PRIORITY = {'Normal': 'normal', 'Alta': 'high'}
 ADDED_BY = {'user': 'user', 'assistant_research': 'research', 'Grok_Assistant': 'grok', 'Claude_Assistant': 'claude'}
@@ -143,7 +146,9 @@ for pid, r in enumerate(rows, start=1):
               action='Set the country of the post')
 
     # blog publications
-    removed = False
+    removed = False                      # blog file gone from the repo
+    notion_removed = status == 'removed'  # Status = Removed in Notion
+    live = 'removal_pending' if notion_removed else 'published'
     if blog == 'linkedin-only':
         pubs.append(dict(post_id=pid, channel='blog', lang='pt', status='skipped', url=None, external_id=None, published_at=None,
                          last_error='linkedin-only: promotion of the blog itself, no page'))
@@ -157,28 +162,31 @@ for pid, r in enumerate(rows, start=1):
             arq = cand[0] if len(cand) == 1 else arq
         if arq in files['pt']:
             base = arq[:-3]
-            pubs.append(dict(post_id=pid, channel='blog', lang='pt', status='published', url=f'{SITE}/briefings/{base}',
+            pubs.append(dict(post_id=pid, channel='blog', lang='pt', status=live, url=f'{SITE}/briefings/{base}',
                              external_id=None, published_at=pub_at, last_error=None))
             for l in ('es', 'en'):
                 if arq in files[l]:
-                    pubs.append(dict(post_id=pid, channel='blog', lang=l, status='published', url=f'{SITE}/{l}/briefings/{base}',
+                    pubs.append(dict(post_id=pid, channel='blog', lang=l, status=live, url=f'{SITE}/{l}/briefings/{base}',
                                      external_id=None, published_at=pub_at, last_error=None))
         else:
             removed = True
             pubs.append(dict(post_id=pid, channel='blog', lang='pt', status='removed', url=blog, external_id=None, published_at=pub_at,
                              last_error=None))
-            issue(f'removed_before_migration:{pid}', 'load_removed_post', 'info',
-                  f'Recorded as removed (blog article deleted from the repository before the migration): {r["Topic"][:120]}', pid,
-                  {'blog_url': blog})
+            if not notion_removed:
+                issue(f'removed_before_migration:{pid}', 'load_removed_post', 'info',
+                      f'Recorded as removed (blog article deleted from the repository): {r["Topic"][:120]}', pid,
+                      {'blog_url': blog}, 'Set Status = Removed in Notion with the "Removido ..." note in Publish Notes')
 
     # LinkedIn (Publicado in Notion = it went out on LinkedIn)
     urn = re.search(r'urn:li:(?:share|ugcPost|activity):[0-9A-Za-z]+', notes)
+    li_removed = removed or bool(re.search(r'removid[oa] do linkedin', notes, re.I))
+    li_status = 'removed' if li_removed else live
     if urn:
-        pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status='removed' if removed else 'published',
+        pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status=li_status,
                          url=f'https://www.linkedin.com/feed/update/{urn.group(0)}', external_id=urn.group(0),
                          published_at=pub_at or added_at, last_error=None))
-    elif removed:
-        pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status='removed', url=None, external_id=None,
+    elif removed or notion_removed:
+        pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status=li_status, url=None, external_id=None,
                          published_at=pub_at, last_error=None))
     elif status == 'published':
         pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status='published', url=None, external_id=None,
@@ -187,11 +195,15 @@ for pid, r in enumerate(rows, start=1):
               f'Published in Notion without a LinkedIn URN: {r["Topic"][:120]}', pid, {'publish_notes': notes[:300]},
               'Find the post on LinkedIn and record its URL, or mark it as not published')
 
-    if removed:
-        # Published then pulled back (in Notion it may show Publicado or Descartado): removed in D1.
-        # Reason confirmed by Marcelo on 2026-11-16 for the 4 pre-migration removals.
+    if removed or notion_removed:
+        # Published then pulled back: reason and date from the "Removido ..." note in Publish Notes when present.
+        note = re.search(r'Removid[oa][^|]*', notes)
+        when = re.search(r'em (\d{2})/(\d{2})/(\d{4})', note.group(0)) if note else None
         status = posts[-1]['status'] = 'removed'
-        posts[-1]['removal_reason'] = 'Concorrente BigID: removed before the D1 migration (blog, LinkedIn and X deleted)'
+        posts[-1]['removal_reason'] = (note.group(0).strip()[:500] if note
+                                       else 'Marked Removed in Notion (no reason in Publish Notes)' if notion_removed
+                                       else 'Blog article deleted from the repository (no reason recorded)')
+        posts[-1]['removed_at'] = f'{when.group(3)}-{when.group(2)}-{when.group(1)}' if when else None
         posts[-1]['discard_reason'] = None
     events.append(dict(post_id=pid, to_status=status, notes=f'initial Notion load (Status={notion_status})'))
 

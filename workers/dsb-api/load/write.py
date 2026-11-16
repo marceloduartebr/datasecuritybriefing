@@ -75,7 +75,7 @@ if __name__ == '__main__':
     print('3) inserting')
     post_cols = ['id', 'notion_id', 'topic', 'status', 'type', 'country', 'priority', 'item_order', 'source_name', 'source_url', 'slug',
                  'briefing_md', 'post_text', 'image_source', 'image_url', 'added_by', 'added_at', 'approved_at', 'approval_notes',
-                 'discard_reason', 'removal_reason']
+                 'discard_reason', 'removal_reason', 'removed_at']
     insert('posts', post_cols, c['posts'])
     for p in c['posts']:
         if p['follow_up_of']:
