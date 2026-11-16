@@ -22,11 +22,12 @@ Data Security Briefing queue rules on Cloudflare D1. After cutover it is the onl
 | LinkedIn, X and translations require the PT blog article to be published | `POST /publications` |
 | One publication per post, channel and language (two agents never publish the same post) | `UNIQUE` on `publications` |
 | BigID competitors: single list and editorial rule read by every agent | `competitors` + `GET /competitors` |
+| Pulling a published post back (`removed`): only the queue app (internal token), with a reason; every live channel becomes `removal_pending` until the takedown confirms it; a removed post is never published again and keeps its dedup keys | `POST /posts/:id/status`, `GET /queue/removals`, `POST /publications/:id/result` |
 
 ## Values
 
-- Post `status`: `new`, `approved`, `published`, `discarded`. `type`: `incident`, `news`, `vulnerability`. `priority`: `normal`, `high`.
-- Publication `status`: `pending`, `published`, `failed`, `skipped`. `channel`: `blog`, `linkedin`, `x`. `lang`: `pt`, `es`, `en`.
+- Post `status`: `new`, `approved`, `published`, `discarded`, `removed`. `type`: `incident`, `news`, `vulnerability`. `priority`: `normal`, `high`.
+- Publication `status`: `pending`, `published`, `failed`, `skipped`, `removal_pending`, `removed`. `channel`: `blog`, `linkedin`, `x`. `lang`: `pt`, `es`, `en`.
 - Issue `status`: `open`, `in_progress`, `resolved`, `ignored`. `severity`: `info`, `warning`, `error`, `critical`.
 
 ## Issues
@@ -73,3 +74,12 @@ npx wrangler secret put TOKEN_GROK
 npx wrangler secret put TOKEN_CLAUDE
 npx wrangler deploy
 ```
+
+## Removal (takedown)
+
+1. The queue app sets `removed` with the reason (`POST /posts/:id/status {to: removed, reason}`, internal token only; agents get `removal_not_allowed` and report a `removal_suggested` issue instead).
+2. Every channel row still `published` becomes `removal_pending` (`GET /queue/removals`).
+3. The takedown records each channel: `POST /publications/:id/result {status: removed}` or `{status: removal_failed, error}`.
+4. The `removal_pending` health check raises an issue for a channel still live after 1 h or after a failed attempt.
+
+On STG the queue app runs the takedown as a dry run (nothing is deleted, the note says so). The live executors (blog commit of the PT/ES/EN files, LinkedIn through Composio, X by hand in the browser) are connected at cutover.

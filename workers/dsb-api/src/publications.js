@@ -27,6 +27,7 @@ export async function claim(db, body, session) {
   if (channel !== 'blog' && lang !== 'pt') throw new ApiError(422, 'invalid_value', 'LinkedIn and X only have lang pt');
 
   const post = await getPost(db, postId, { full: false });
+  if (post.status === 'removed') throw new ApiError(409, 'post_removed', `Post #${postId} was removed (${post.removal_reason}); it is not published again`);
   if (channel === 'blog' && lang === 'pt') {
     if (post.status !== 'approved') throw new ApiError(409, 'not_approved', `Post is ${post.status}; the blog only publishes approved posts`, { current_status: post.status });
     if (post.image_source === 'none' || !post.image_url) throw new ApiError(409, 'missing_cover', 'Post has no cover on covers.duarte.top');
@@ -72,6 +73,7 @@ export async function claim(db, body, session) {
 export async function complete(db, id, body, session) {
   const pub = await db.prepare('SELECT * FROM publications WHERE id = ?1').bind(id).first();
   if (!pub) throw new ApiError(404, 'not_found', 'Publication not found');
+  if (pub.status === 'removal_pending') return completeRemoval(db, pub, body, session);
   if (pub.status !== 'pending') throw new ApiError(409, 'publication_not_pending', `Publication is ${pub.status}; only pending can be completed`);
   const status = body.status;
   if (!['published', 'failed', 'skipped'].includes(status)) throw new ApiError(422, 'invalid_value', 'status must be published, failed or skipped');
@@ -120,4 +122,26 @@ export async function complete(db, id, body, session) {
   if (!res[0].meta || !res[0].meta.changes) throw new ApiError(409, 'conflict', 'The publication changed while it was being completed; read it again');
   const updated = await db.prepare('SELECT * FROM publications WHERE id = ?1').bind(id).first();
   return { publication: updated, post_published: publishesPost && !!(res[1].meta && res[1].meta.changes) };
+}
+
+/**
+ * Takedown result for a removal_pending row: removed (the content is gone from the channel) or
+ * removal_failed (with error: stays removal_pending, attempts + 1, the removal_pending check raises it).
+ */
+async function completeRemoval(db, pub, body, session) {
+  const status = body.status;
+  if (!['removed', 'removal_failed'].includes(status)) throw new ApiError(422, 'invalid_value', 'For a pending takedown, status must be removed or removal_failed');
+  const error = typeof body.error === 'string' && body.error.trim() ? body.error.trim().slice(0, 2000) : null;
+  if (status === 'removal_failed' && !error) throw new ApiError(422, 'field_required', 'removal_failed requires error (the reason)');
+  const r = await db
+    .prepare(
+      status === 'removed'
+        ? `UPDATE publications SET status = 'removed', removed_at = ?2, last_error = ?3, agent = ?4 WHERE id = ?1 AND status = 'removal_pending' RETURNING *`
+        : `UPDATE publications SET attempts = attempts + 1, last_error = ?3, agent = ?4 WHERE id = ?1 AND status = 'removal_pending' RETURNING *`
+    )
+    .bind(pub.id, nowIso(), error, session.actor)
+    .first();
+  if (!r) throw new ApiError(409, 'conflict', 'The publication changed while the takedown was recorded; read it again');
+  const left = await db.prepare(`SELECT COUNT(*) AS n FROM publications WHERE post_id = ?1 AND status = 'removal_pending'`).bind(pub.post_id).first();
+  return { publication: r, takedown_complete: left.n === 0 };
 }

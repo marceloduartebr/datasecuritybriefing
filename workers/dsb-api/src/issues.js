@@ -91,7 +91,9 @@ function suggestedAction(code) {
       blog_not_published: 'Publish the PT blog article before the derived channel',
       invalid_transition: 'Check the current status of the post before changing it',
       cover_host_invalid: 'Upload the cover to covers.duarte.top',
-      publication_already_claimed: 'Another job already claimed or completed this publication; do not repeat it'
+      publication_already_claimed: 'Another job already claimed or completed this publication; do not repeat it',
+      removal_not_allowed: 'Only the queue app removes published posts; report the post as an issue (kind removal_suggested)',
+      post_removed: 'The post was removed; do not publish it on any channel'
     }[code] || 'Check the data sent and retry the operation'
   );
 }

@@ -37,7 +37,7 @@ export async function listPosts(db, params) {
   const r = await db
     .prepare(
       `SELECT v.*, p.source_url, p.source_name, p.added_by, p.added_at, p.approved_at, p.follow_up_of,
-              p.image_source, p.post_text, p.approval_notes, p.discard_reason,
+              p.image_source, p.post_text, p.approval_notes, p.discard_reason, p.removal_reason, p.removed_at,
               (SELECT b.published_at FROM publications b
                 WHERE b.post_id = p.id AND b.channel = 'blog' AND b.lang = 'pt' AND b.status = 'published') AS blog_published_at
        FROM v_post_channels v JOIN posts p ON p.id = v.id
@@ -221,6 +221,7 @@ export async function changeStatus(db, id, body, session) {
   }
   const notes = typeof body.notes === 'string' ? body.notes.trim().slice(0, 1000) : null;
   const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 500) : '';
+  if (to === 'removed') return removePost(db, current, reason, session);
   if (to === 'discarded' && !reason) throw new ApiError(422, 'reason_required', 'Discarding requires a reason');
   const now = nowIso();
   const newOrder =
@@ -248,6 +249,36 @@ export async function changeStatus(db, id, body, session) {
   ]);
   if (!upd.meta || !upd.meta.changes) throw new ApiError(409, 'conflict', 'The post changed while it was being updated; read it again', { current_status: current.status });
   return getPost(db, id);
+}
+
+/**
+ * Pulls a published post back. Only the user (queue app, internal token) can do it and it needs a reason.
+ * Every channel row still published becomes removal_pending; the takedown confirms each one
+ * (POST /publications/:id/result {status: removed}). Dedup keys stay, so the subject is not curated again.
+ */
+async function removePost(db, current, reason, session) {
+  if (session.agent !== 'user') {
+    throw new ApiError(403, 'removal_not_allowed', 'Only the queue app can remove a published post; report it as an issue instead');
+  }
+  if (!reason) throw new ApiError(422, 'reason_required', 'Removing requires a reason');
+  const now = nowIso();
+  const [upd] = await db.batch([
+    db
+      .prepare(`UPDATE posts SET status = 'removed', removed_at = ?2, removal_reason = ?3 WHERE id = ?1 AND status = 'published'`)
+      .bind(current.id, now, reason),
+    db
+      .prepare(`UPDATE publications SET status = 'removal_pending', attempts = 0, last_error = NULL, agent = ?2
+                WHERE post_id = ?1 AND status = 'published' AND (SELECT status FROM posts WHERE id = ?1) = 'removed'`)
+      .bind(current.id, session.actor),
+    db
+      .prepare(
+        `INSERT INTO post_events (post_id, from_status, to_status, actor, notes)
+         SELECT ?1, 'published', 'removed', ?2, ?3 WHERE (SELECT status FROM posts WHERE id = ?1) = 'removed'`
+      )
+      .bind(current.id, session.actor, reason)
+  ]);
+  if (!upd.meta || !upd.meta.changes) throw new ApiError(409, 'conflict', 'The post changed while it was being removed; read it again', { current_status: current.status });
+  return getPost(db, current.id);
 }
 
 /** Reorders the posts of one status (new or approved) in the order of the ids sent: 1..n. */
@@ -315,5 +346,18 @@ export async function channelQueue(db, channel, limit = 20) {
       .all();
     return r.results || [];
   }
-  throw new ApiError(404, 'not_found', 'Unknown channel (blog, linkedin, x, translations)');
+  if (channel === 'removals') {
+    const r = await db
+      .prepare(
+        `SELECT pub.id AS publication_id, pub.post_id, pub.channel, pub.lang, pub.url, pub.external_id, pub.attempts,
+                pub.last_error, p.topic, p.slug, p.removal_reason, p.removed_at
+         FROM publications pub JOIN posts p ON p.id = pub.post_id
+         WHERE pub.status = 'removal_pending'
+         ORDER BY p.removed_at, pub.post_id, CASE pub.channel WHEN 'blog' THEN 0 WHEN 'linkedin' THEN 1 ELSE 2 END, pub.lang
+         LIMIT ${lim}`
+      )
+      .all();
+    return r.results || [];
+  }
+  throw new ApiError(404, 'not_found', 'Unknown channel (blog, linkedin, x, translations, removals)');
 }

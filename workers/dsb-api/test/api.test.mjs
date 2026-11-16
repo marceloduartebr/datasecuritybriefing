@@ -245,3 +245,46 @@ test('input errors: invalid JSON, unknown route, invalid slug, invalid type', as
   assert.equal((await call('POST', '/posts', base({ slug: 'With Accent é' }))).body.error, 'invalid_slug');
   assert.equal((await call('POST', '/posts', base({ type: 'Incidente' }))).body.error, 'invalid_value');
 });
+
+test('removal: only the queue app, with a reason; channels go removal_pending, takedown confirms each one', async () => {
+  const { call } = setup();
+  const id = (await call('POST', '/posts', base())).body.post.id;
+  await call('POST', `/posts/${id}/status`, { to: 'approved' });
+  await call('PATCH', `/posts/${id}`, { image_source: 'og', image_url: COVER });
+  const pub = (await call('POST', '/publications', { post_id: id, channel: 'blog' })).body.publication;
+  await call('POST', `/publications/${pub.id}/result`, { status: 'published', url: 'https://dsb.duarte.top/briefings/2026-11-16-test-incident' });
+  const li = (await call('POST', '/publications', { post_id: id, channel: 'linkedin' })).body.publication;
+  await call('POST', `/publications/${li.id}/result`, { status: 'published', url: 'https://www.linkedin.com/feed/update/urn:li:share:9' });
+
+  const agent = await call('POST', `/posts/${id}/status`, { to: 'removed', reason: 'Concorrente BigID' }, { token: TOKENS.TOKEN_GROK });
+  assert.equal(agent.status, 403);
+  assert.equal(agent.body.error, 'removal_not_allowed');
+  assert.equal((await call('POST', `/posts/${id}/status`, { to: 'removed' }, { internal: true })).body.error, 'reason_required');
+
+  const rm = await call('POST', `/posts/${id}/status`, { to: 'removed', reason: 'Concorrente BigID' }, { internal: true });
+  assert.equal(rm.status, 200, JSON.stringify(rm.body));
+  assert.equal(rm.body.post.status, 'removed');
+  assert.equal(rm.body.post.removal_reason, 'Concorrente BigID');
+  assert.deepEqual(rm.body.post.publications.map((p) => [p.channel, p.status]), [['blog', 'removal_pending'], ['linkedin', 'removal_pending']]);
+
+  const q = (await call('GET', '/queue/removals')).body.items;
+  assert.deepEqual(q.map((i) => i.channel), ['blog', 'linkedin']);
+  assert.equal((await call('GET', '/queue/x')).body.items.length, 0, 'a removed post is never queued for X');
+  assert.equal((await call('POST', '/publications', { post_id: id, channel: 'x' })).body.error, 'post_removed');
+  assert.equal((await call('POST', `/posts/${id}/status`, { to: 'new' }, { internal: true })).body.error, 'invalid_transition');
+
+  const fail = await call('POST', `/publications/${q[1].publication_id}/result`, { status: 'removal_failed', error: 'Composio 500' }, { internal: true });
+  assert.equal(fail.body.publication.status, 'removal_pending');
+  assert.equal(fail.body.publication.attempts, 1);
+  await call('POST', '/sweep', {});
+  const iss = (await call('GET', '/issues?source=health&stage=linkedin')).body.items;
+  assert.equal(iss[0].kind, 'removal_pending');
+
+  assert.equal((await call('POST', `/publications/${q[0].publication_id}/result`, { status: 'removed' }, { internal: true })).body.takedown_complete, false);
+  const last = await call('POST', `/publications/${q[1].publication_id}/result`, { status: 'removed' }, { internal: true });
+  assert.equal(last.body.takedown_complete, true);
+  assert.ok(last.body.publication.removed_at);
+  await call('POST', '/sweep', {});
+  assert.equal((await call('GET', '/issues?source=health&stage=linkedin')).body.items.length, 0, 'the takedown issue resolves itself');
+  assert.equal((await call('GET', '/queue/removals')).body.items.length, 0);
+});

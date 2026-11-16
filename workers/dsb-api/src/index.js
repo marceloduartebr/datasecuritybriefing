@@ -15,12 +15,13 @@ import { listCompetitors } from './competitors.js';
  *  POST  /posts                            creates a new post (dedup by key; follow_up_of)
  *  GET   /posts/:id
  *  PATCH /posts/:id                        edits allowed fields
- *  POST  /posts/:id/status                 {to, notes, reason, star}
+ *  POST  /posts/:id/status                 {to, notes, reason, star}; to=removed only via the internal token
  *  POST  /posts/:id/keys                   {cves, url} — fixes "missing key"
  *  POST  /posts/reorder                    {status, ids}
- *  GET   /queue/:channel                   blog | linkedin | x | translations
+ *  GET   /queue/:channel                   blog | linkedin | x | translations | removals (pending takedowns)
  *  POST  /publications                     claim {post_id, channel, lang}
  *  POST  /publications/:id/result          {status: published|failed|skipped, url, error, external_id, body, published_at}
+ *                                          on a removal_pending row: {status: removed|removal_failed, error}
  *  GET   /issues?status=&severity=&stage=&source=&kind=&post_id=&limit=
  *  GET   /issues/summary
  *  POST  /issues                           agent report {fingerprint, kind, severity, stage, summary, …}
@@ -91,6 +92,7 @@ async function dispatch({ route, db, url, body, id, session }) {
     case 'GET /queue/linkedin':
     case 'GET /queue/x':
     case 'GET /queue/translations':
+    case 'GET /queue/removals':
       return { body: { items: await channelQueue(db, route.split('/').pop(), q.get('limit')) } };
     case 'POST /publications':
       return { body: { publication: await claim(db, body, session) }, status: 201 };

@@ -1,6 +1,6 @@
 import { ApiError } from './http.js';
 
-export const STATUSES = ['new', 'approved', 'published', 'discarded'];
+export const STATUSES = ['new', 'approved', 'published', 'discarded', 'removed'];
 export const TYPES = ['incident', 'news', 'vulnerability'];
 export const COUNTRIES = ['BR', 'MX', 'AR', 'CL', 'PE', 'PY', 'UY', 'CO', 'US', 'EU', 'LATAM', 'Global'];
 export const PRIORITIES = ['normal', 'high'];
@@ -10,12 +10,17 @@ export const LANGS = ['pt', 'es', 'en'];
 export const ADDED_BY = ['user', 'research', 'grok', 'claude'];
 export const COVERS_PREFIX = 'https://covers.duarte.top/covers/';
 
-/** Manual status transitions. "published" is only set by the PT blog publication (see publications.js). */
+/**
+ * Manual status transitions. "published" is only set by the PT blog publication (see publications.js).
+ * "removed" pulls a published post back: only the user (internal token, i.e. the queue app) can set it, it requires
+ * a reason, and every published channel row becomes removal_pending until the takedown is confirmed. Terminal.
+ */
 export const TRANSITIONS = {
   new: ['approved', 'discarded'],
   approved: ['new', 'discarded'],
   discarded: ['new'],
-  published: []
+  published: ['removed'],
+  removed: []
 };
 
 const TRACKING_PARAMS = /^(utm_.*|fbclid|gclid|mc_cid|mc_eid|ref|ref_src|igshid|si|s)$/i;

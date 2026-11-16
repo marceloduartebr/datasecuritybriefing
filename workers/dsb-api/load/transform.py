@@ -3,7 +3,8 @@
 Rules (decisions of 2026-11-16):
 - D1 status is editorial: published = PT blog article published (or skipped).
 - Notion "Publicado" + Blog URL with a file in the repo -> blog pt/es/en published.
-- Blog URL without a file in the repo -> blog skipped (removed from the site); "linkedin-only" -> blog skipped.
+- Blog URL without a file in the repo -> the post was pulled back before the migration (competitors rule, confirmed
+  2026-11-16): status removed, blog and LinkedIn rows removed (also deleted there). "linkedin-only" -> blog skipped.
 - LinkedIn URN in Publish Notes -> linkedin publication published; no URN -> published without URL + issue.
 - Keys: CVEs (Topic + Post Text; Briefing MD only when there is no other key) and the normalized URL unless generic.
 - Key collision: Hospital Clinico U. Chile -> follow_up_of; others -> the key stays with the oldest post + issue.
@@ -142,6 +143,7 @@ for pid, r in enumerate(rows, start=1):
               action='Set the country of the post')
 
     # blog publications
+    removed = False
     if blog == 'linkedin-only':
         pubs.append(dict(post_id=pid, channel='blog', lang='pt', status='skipped', url=None, external_id=None, published_at=None,
                          last_error='linkedin-only: promotion of the blog itself, no page'))
@@ -162,18 +164,22 @@ for pid, r in enumerate(rows, start=1):
                     pubs.append(dict(post_id=pid, channel='blog', lang=l, status='published', url=f'{SITE}/{l}/briefings/{base}',
                                      external_id=None, published_at=pub_at, last_error=None))
         else:
-            pubs.append(dict(post_id=pid, channel='blog', lang='pt', status='skipped', url=blog, external_id=None, published_at=None,
-                             last_error='Page no longer exists in the blog repository (removed)'))
-            issue(f'blog_removed:{pid}', 'load_blog_removed', 'warning',
-                  f'Blog URL points to an article missing from the repository: {r["Topic"][:120]}', pid, {'blog_url': blog},
-                  'Confirm the removal was intentional (e.g. the competitors rule)')
+            removed = True
+            pubs.append(dict(post_id=pid, channel='blog', lang='pt', status='removed', url=blog, external_id=None, published_at=pub_at,
+                             last_error=None))
+            issue(f'removed_before_migration:{pid}', 'load_removed_post', 'info',
+                  f'Recorded as removed (blog article deleted from the repository before the migration): {r["Topic"][:120]}', pid,
+                  {'blog_url': blog})
 
     # LinkedIn (Publicado in Notion = it went out on LinkedIn)
     urn = re.search(r'urn:li:(?:share|ugcPost|activity):[0-9A-Za-z]+', notes)
     if urn:
-        pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status='published',
+        pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status='removed' if removed else 'published',
                          url=f'https://www.linkedin.com/feed/update/{urn.group(0)}', external_id=urn.group(0),
                          published_at=pub_at or added_at, last_error=None))
+    elif removed:
+        pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status='removed', url=None, external_id=None,
+                         published_at=pub_at, last_error=None))
     elif status == 'published':
         pubs.append(dict(post_id=pid, channel='linkedin', lang='pt', status='published', url=None, external_id=None,
                          published_at=pub_at, last_error=None))
@@ -181,6 +187,12 @@ for pid, r in enumerate(rows, start=1):
               f'Published in Notion without a LinkedIn URN: {r["Topic"][:120]}', pid, {'publish_notes': notes[:300]},
               'Find the post on LinkedIn and record its URL, or mark it as not published')
 
+    if removed:
+        # Published then pulled back (in Notion it may show Publicado or Descartado): removed in D1.
+        # Reason confirmed by Marcelo on 2026-11-16 for the 4 pre-migration removals.
+        status = posts[-1]['status'] = 'removed'
+        posts[-1]['removal_reason'] = 'Concorrente BigID: removed before the D1 migration (blog, LinkedIn and X deleted)'
+        posts[-1]['discard_reason'] = None
     events.append(dict(post_id=pid, to_status=status, notes=f'initial Notion load (Status={notion_status})'))
 
     # dedup keys

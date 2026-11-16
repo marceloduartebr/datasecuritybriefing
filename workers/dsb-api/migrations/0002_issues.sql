@@ -151,6 +151,16 @@ SELECT 'approval_backlog:' || p.type AS fingerprint, 'approval_backlog' AS kind,
        'Drain one post of this type per slot until it is back to 2' AS suggested_action
 FROM posts p WHERE p.status = 'approved' GROUP BY p.type HAVING COUNT(*) >= 3;
 
+CREATE VIEW v_hc_removal_pending AS
+SELECT 'removal_pending:' || pub.id AS fingerprint, 'removal_pending' AS kind,
+       CASE WHEN pub.attempts >= 3 THEN 'critical' ELSE 'error' END AS severity, pub.channel AS stage,
+       pub.post_id AS post_id, pub.id AS publication_id,
+       'Removed post still live on ' || pub.channel || '/' || pub.lang || ' (' || pub.attempts || ' attempt(s))'
+         || IFNULL(': ' || pub.last_error, '') AS summary,
+       'Run the takedown again from the queue app; on X delete the tweet and confirm it there' AS suggested_action
+FROM publications pub
+WHERE pub.status = 'removal_pending' AND (pub.attempts > 0 OR julianday('now') - julianday(pub.updated_at) > 1.0 / 24);
+
 CREATE VIEW v_hc_job_stuck AS
 SELECT 'job_stuck:' || j.id AS fingerprint, 'job_stuck' AS kind, 'error' AS severity,
        'job' AS stage, NULL AS post_id, NULL AS publication_id,
@@ -179,6 +189,7 @@ INSERT INTO health_checks(name, view_name, description) VALUES
   ('missing_dedup_key',      'v_hc_missing_dedup_key',      'Active post without a dedup key'),
   ('stale_approval',         'v_hc_stale_approval',         'Approved more than 7 days ago'),
   ('approval_backlog',       'v_hc_approval_backlog',       '3 or more approved posts of the same type'),
+  ('removal_pending',        'v_hc_removal_pending',        'Removed post still live on a channel'),
   ('job_stuck',              'v_hc_job_stuck',              'Job running for more than 1 h'),
   ('job_failed',             'v_hc_job_failed',             'Job finished with an error (last 7 days)');
 

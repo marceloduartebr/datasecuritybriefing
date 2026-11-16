@@ -5,13 +5,14 @@
 -- a continuation of a subject enters only as `follow_up_of` of the original.
 -- D1 enforces foreign keys by default. D1 limits long LIKE patterns, so URL checks use substr/instr.
 
--- 1. Posts (editorial status only: published = PT blog article published or skipped)
+-- 1. Posts (editorial status only: published = PT blog article published or skipped;
+--    removed = pulled back after publication: every channel row goes to removal_pending, then removed)
 CREATE TABLE posts (
   id             INTEGER PRIMARY KEY,
   notion_id      TEXT UNIQUE,                 -- 32-hex id of the source Notion page; NULL for posts born in D1
   topic          TEXT NOT NULL,
   status         TEXT NOT NULL DEFAULT 'new'
-                 CHECK (status IN ('new','approved','published','discarded')),
+                 CHECK (status IN ('new','approved','published','discarded','removed')),
   type           TEXT NOT NULL
                  CHECK (type IN ('incident','news','vulnerability')),
   country        TEXT
@@ -30,12 +31,15 @@ CREATE TABLE posts (
   approved_at    TEXT,
   approval_notes TEXT,
   discard_reason TEXT,
+  removed_at     TEXT,
+  removal_reason TEXT,
   follow_up_of   INTEGER REFERENCES posts(id),
   created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   CHECK ((image_source = 'none' AND image_url IS NULL)
       OR (image_source <> 'none' AND image_url IS NOT NULL)),
-  CHECK (follow_up_of IS NULL OR follow_up_of <> id)
+  CHECK (follow_up_of IS NULL OR follow_up_of <> id),
+  CHECK (status <> 'removed' OR removal_reason IS NOT NULL)
 );
 CREATE INDEX ix_posts_status_order ON posts(status, item_order);
 CREATE INDEX ix_posts_type_status  ON posts(type, status);
@@ -73,11 +77,12 @@ CREATE TABLE publications (
   post_id      INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   channel      TEXT NOT NULL CHECK (channel IN ('blog','linkedin','x')),
   lang         TEXT NOT NULL DEFAULT 'pt' CHECK (lang IN ('pt','es','en')),
-  status       TEXT NOT NULL CHECK (status IN ('pending','published','failed','skipped')),
+  status       TEXT NOT NULL CHECK (status IN ('pending','published','failed','skipped','removal_pending','removed')),
   url          TEXT,                          -- article, LinkedIn post or tweet
   external_id  TEXT,                          -- urn:li:share:… or tweet id
   body         TEXT,                          -- text actually published on the channel
   published_at TEXT,
+  removed_at   TEXT,                          -- when the takedown was confirmed on the channel
   attempts     INTEGER NOT NULL DEFAULT 0,
   last_error   TEXT,
   agent        TEXT,
