@@ -62,3 +62,14 @@ test('API down or not configured is reported, not thrown', async () => {
   assert.equal(n.ok, false);
   assert.match(n.erro, /unauthorized/);
 });
+
+test('STG panel shows the STG badge in the title and the header; production does not', () => {
+  const r = { em: new Date().toISOString(), ok: true, problemas: [], alertas: [], flags: {} };
+  const stg = renderPainel(r, { ambiente: 'stg' });
+  assert.match(stg, /<title>DSB Auditor STG — painel<\/title>/);
+  assert.match(stg, /<b class="stg">STG<\/b> D1 via dsb-api-stg · DSB Auditor/);
+  const prod = renderPainel(r);
+  assert.match(prod, /<title>DSB Auditor — painel<\/title>/);
+  assert.doesNotMatch(prod, /class="stg"/);
+  assert.match(renderPainel(null, { ambiente: 'stg' }), /<title>DSB Auditor STG<\/title>/);
+});

@@ -9,6 +9,7 @@ import { SITE } from './constantes.js';
 export const HOST_ATALHO = 'dsba.duarte.top';
 export const HOST_PAINEL = 'dsb-auditor.duarte.top';
 import { dispararFilaPush } from './fila-push.js';
+import { usesApi } from './fila-api.js';
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -67,7 +68,7 @@ export async function tratar(request, env, ctx, deps = {}) {
       return json({ ok: false, erro: auth.erro }, auth.status);
     }
     if (url.searchParams.get('aba') === 'leituras') {
-      return html(renderLeituras(await obterLeituras(env), { janela: url.searchParams.get('janela') || '7d' }));
+      return html(renderLeituras(await obterLeituras(env), { janela: url.searchParams.get('janela') || '7d', ambiente: usesApi(env) ? 'stg' : '' }));
     }
     let ultimo = await lerUltimo(env.DSB_AUDITOR);
     // STG has no cron (account cron limit): RUN_ON_VIEW=on runs the audit when the panel is opened
@@ -76,7 +77,7 @@ export async function tratar(request, env, ctx, deps = {}) {
       ultimo = await rodarAuditoria(env, { slot: 'view', ...deps });
     }
     const ultimoAlerta = await lerUltimoAlerta(env.DSB_AUDITOR);
-    return html(renderPainel(ultimo, { ultimoAlerta }));
+    return html(renderPainel(ultimo, { ultimoAlerta, ambiente: usesApi(env) ? 'stg' : '' }));
   }
 
   if (!['/status', '/capas-faltando', '/rodar'].includes(path)) return json({ ok: false, erro: 'nao_encontrado' }, 404);

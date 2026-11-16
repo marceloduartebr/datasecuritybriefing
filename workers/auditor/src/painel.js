@@ -191,14 +191,15 @@ const IC_LUA = '<svg class="i-lua" viewBox="0 0 24 24" fill="none" stroke="curre
 const IC_SOL = '<svg class="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 
 /** <head> com identidade DSB (mesma do blog e da DSB Queue): fontes, tema claro/escuro; ícone próprio do painel (escudo + lupa) em /pwa/dsba/. */
-function cabeca(titulo) {
+function cabeca(titulo, ambiente = '') {
+  const stg = ambiente === 'stg';
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>${esc(titulo)}</title>
+<title>${esc(stg ? titulo.replace(/^DSB Auditor/, 'DSB Auditor STG') : titulo)}</title>
 <script>try{var t=localStorage.getItem('dsb-auditor-tema');if(t==='claro'||t==='escuro')document.documentElement.dataset.tema=t;}catch(e){}</script>
 <meta name="theme-color" content="#0b0e13" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -210,7 +211,7 @@ ${FONTES}
 </head>
 <body>
 <header class="topo"><div class="container">
-<a class="brand" href="/painel" aria-label="DSB Auditor — painel"><img class="mark" src="${SITE}/brand-mark-128.png" width="38" height="38" alt="" decoding="async"><span class="txt"><span class="wm">Data Security Briefing</span><small>Auditoria · DSB Auditor</small></span></a>
+<a class="brand" href="/painel" aria-label="DSB Auditor — painel"><img class="mark" src="${SITE}/brand-mark-128.png" width="38" height="38" alt="" decoding="async"><span class="txt"><span class="wm">Data Security Briefing</span><small>${stg ? '<b class="stg">STG</b> D1 via dsb-api-stg · DSB Auditor' : 'Auditoria · DSB Auditor'}</small></span></a>
 <button type="button" class="btn-icone" id="tema" aria-label="Alternar tema claro/escuro" title="Tema">${IC_LUA}${IC_SOL}</button>
 </div></header>`;
 }
@@ -266,7 +267,7 @@ function barras(obj, ordem, total) {
 }
 
 /** Aba "Leituras": analytics do blog (Cloudflare Web Analytics), já agregado e em cache. */
-export function renderLeituras(dados, { janela = '7d' } = {}) {
+export function renderLeituras(dados, { janela = '7d', ambiente = '' } = {}) {
   const jan = ROTULO_JANELA[janela] ? janela : '7d';
   const seg = Object.keys(ROTULO_JANELA).map((k) => `<a href="/painel?aba=leituras&amp;janela=${k}"${k === jan ? ' class="on" aria-current="true"' : ''}>${k}</a>`).join('');
   let corpo;
@@ -305,7 +306,7 @@ export function renderLeituras(dados, { janela = '7d' } = {}) {
 
   <p class="aviso"><strong>Estimativa.</strong> Dados do Cloudflare Web Analytics com amostragem (quanto maior a janela, mais amostrado); sem bots. Ranking soma PT/ES/EN do mesmo briefing; tipo, idioma e origem contam só leituras de briefings. Atualizado ${esc(quando)}${dados.doCache ? ' (cache de até 30 min)' : ''}${dados.aviso ? ` · última tentativa falhou: ${esc(dados.aviso)}` : ''}.</p>`;
   }
-  return `${cabeca('DSB Auditor — leituras')}
+  return `${cabeca('DSB Auditor — leituras', ambiente)}
 <main>
   ${abas('leituras')}
   <div class="titulo">
@@ -321,16 +322,16 @@ ${RODAPE_JS}${PTR_JS}
 }
 
 /** HTML do painel a partir do estado já gravado (sem rede extra). */
-export function renderPainel(ultimo, { ultimoAlerta = null } = {}) {
+export function renderPainel(ultimo, { ultimoAlerta = null, ambiente = '' } = {}) {
   if (!ultimo) {
-    return `${cabeca('DSB Auditor')}
+    return `${cabeca('DSB Auditor', ambiente)}
 <main>${abas('auditoria')}<div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
 ${RODAPE_JS}${PTR_JS}</body></html>`;
   }
   const nAlertas = (ultimo.alertas || []).length;
   const statusGeral = (ultimo.ok ? '<span class="pill ok">Tudo certo</span>' : `<span class="pill bad">${(ultimo.problemas || []).length} problema(s)</span>`)
     + (nAlertas ? ` <span class="pill warn">${nAlertas} alerta(s)</span>` : '');
-  return `${cabeca('DSB Auditor — painel')}
+  return `${cabeca('DSB Auditor — painel', ambiente)}
 <main>
   ${abas('auditoria')}
   <div class="titulo">
@@ -417,6 +418,9 @@ body{margin:0;min-height:100dvh;padding:0 env(safe-area-inset-right,0px) 0 env(s
 .brand .txt{min-width:0}
 .brand .wm{display:block;font:700 17px/1.1 "Source Serif 4",Georgia,serif;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brand small{display:block;margin-top:3px;font-size:12px;color:var(--muted);white-space:nowrap}
+.stg{display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:#f0a070;color:#1a140b;font-weight:700;letter-spacing:.06em}
+:root[data-tema="claro"] .stg{background:#a5501c;color:#fff}
+@media (prefers-color-scheme:light){:root:not([data-tema="escuro"]) .stg{background:#a5501c;color:#fff}}
 .btn-icone{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:2.4rem;height:2.4rem;padding:0;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--fg);cursor:pointer}
 .btn-icone:hover{color:var(--gold);border-color:var(--gold)}
 .btn-icone svg{display:block;width:1.15rem;height:1.15rem;shape-rendering:geometricPrecision}
