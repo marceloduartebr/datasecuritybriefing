@@ -4,7 +4,8 @@ Regras da fila do Data Security Briefing sobre o Cloudflare D1. Depois do cutove
 
 ## Acesso
 
-- Sem rota pública e sem cron próprio (a conta está no limite de crons do plano free).
+- Domínio `dsb-api.duarte.top`, usado só pelos agentes. Sem token válido, 401; sem secrets configurados, 503.
+- Sem cron próprio (a conta está no limite de crons do plano free).
 - Apps: Service Binding com header `x-interno-token` (secret `INTERNO_TOKEN`) e `x-ator` (e-mail do Access ou nome do app).
 - Agentes: `Authorization: Bearer` com `TOKEN_GROK` ou `TOKEN_CLAUDE`. O ator e o `added_by` vêm do token, não do corpo.
 - Sem nenhum secret configurado, tudo responde 503.
