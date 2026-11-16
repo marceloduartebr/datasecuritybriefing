@@ -10,7 +10,8 @@ Rules (decisions of 2026-11-16):
   "linkedin-only" -> blog skipped.
 - LinkedIn URN in Publish Notes -> linkedin publication published; no URN -> published without URL + issue.
 - Keys: CVEs (Topic + Post Text; Briefing MD only when there is no other key) and the normalized URL unless generic.
-- Key collision: Hospital Clinico U. Chile -> follow_up_of; others -> the key stays with the oldest post + issue.
+- Key collision: Hospital Clinico U. Chile -> follow_up_of; a repeated CVE -> the newer post is a follow-up of the
+  older one (decision of 2026-11-16); a repeated URL -> the key stays with the oldest post + issue.
 - Nothing is dropped silently: every special case becomes an issue (source=agent, stage=load).
 - Notion values are mapped to the English enums below; an unknown value stops the load.
 """
@@ -91,6 +92,7 @@ def issue(fp, kind, sev, summary, post_id=None, detail=None, action=None):
 rows.sort(key=lambda r: (iso(r.get('date:Added At:start')) or r['createdTime'], r['url']))
 
 posts, keys, pubs, events = [], [], [], []
+by_id = {}         # post_id -> post (for follow-up roots)
 owner = {}         # key -> post_id
 by_slug = {}       # slug -> post_id
 used_slugs = set()
@@ -141,6 +143,7 @@ for pid, r in enumerate(rows, start=1):
         added_by=mapped(ADDED_BY, r.get('Added By') or 'user', 'Added By'), added_at=added_at,
         approved_at=iso(r.get('date:Approved At:start')),
         approval_notes=r.get('Approval Notes') or None, discard_reason=discard, follow_up_of=None))
+    by_id[pid] = posts[-1]
     if not r.get('Pais'):
         issue(f'missing_country:{pid}', 'load_missing_country', 'info', f'Post without a country in Notion: {r["Topic"][:120]}', pid,
               action='Set the country of the post')
@@ -218,9 +221,18 @@ for pid, r in enumerate(rows, start=1):
     if fu_target and fu_target in by_slug:
         posts[-1]['follow_up_of'] = by_slug[fu_target]
     for kind, k in ks:
+        if k in owner and kind == 'cve' and posts[-1]['follow_up_of'] is None:
+            # Same CVE as an earlier post: a continuation of that story (follow-up of the chain's root).
+            r0 = owner[k]
+            while by_id[r0]['follow_up_of']:
+                r0 = by_id[r0]['follow_up_of']
+            posts[-1]['follow_up_of'] = r0
         if k in owner:
             fu = posts[-1]['follow_up_of']
-            if fu is not None and owner[k] == fu:
+            r1 = owner[k]
+            while by_id[r1]['follow_up_of']:
+                r1 = by_id[r1]['follow_up_of']
+            if fu is not None and (owner[k] == fu or r1 == fu):
                 continue  # continuation of the same story: the key stays with the original
             issue(f'key_collision:{k}:{pid}', 'load_key_collision', 'warning',
                   f'Key {k} already belongs to post #{owner[k]}; not recorded for #{pid} ({r["Topic"][:80]})', pid,
