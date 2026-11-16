@@ -1,4 +1,4 @@
-async function iguais(a, b) {
+async function equal(a, b) {
   const enc = new TextEncoder();
   const [x, y] = await Promise.all([
     crypto.subtle.digest('SHA-256', enc.encode(a)),
@@ -11,32 +11,32 @@ async function iguais(a, b) {
   return d === 0;
 }
 
-const valido = (s) => typeof s === 'string' && s.length >= 24;
+const usable = (s) => typeof s === 'string' && s.length >= 24;
 
 /**
- * Quem está chamando:
- * - Service Binding dos apps: header x-interno-token = INTERNO_TOKEN; ator = x-ator (e-mail do Access ou nome do app).
- * - Agentes: Bearer TOKEN_GROK → Grok_Assistant; Bearer TOKEN_CLAUDE → Claude_Assistant.
- * Sem nenhum secret configurado: 503 (nunca aberto). Token em query string ou cookie não é aceito.
+ * Who is calling:
+ * - App service bindings: header x-internal-token = INTERNAL_TOKEN; actor = x-actor (Access e-mail or app name).
+ * - Agents: Bearer TOKEN_GROK → grok; Bearer TOKEN_CLAUDE → claude.
+ * No secret configured: 503 (never open). Tokens in query strings or cookies are not accepted.
  */
-export async function autenticar(request, env) {
-  const interno = env && env.INTERNO_TOKEN;
+export async function authenticate(request, env) {
+  const internal = env && env.INTERNAL_TOKEN;
   const grok = env && env.TOKEN_GROK;
   const claude = env && env.TOKEN_CLAUDE;
-  if (!valido(interno) && !valido(grok) && !valido(claude)) {
-    return { ok: false, status: 503, erro: 'nao_configurado' };
+  if (!usable(internal) && !usable(grok) && !usable(claude)) {
+    return { ok: false, status: 503, error: 'not_configured' };
   }
 
-  const hInterno = request.headers.get('x-interno-token');
-  if (hInterno && valido(interno) && (await iguais(hInterno, interno))) {
-    const ator = (request.headers.get('x-ator') || 'app').slice(0, 120);
-    return { ok: true, ator, agente: 'user', via: 'interno' };
+  const hInternal = request.headers.get('x-internal-token');
+  if (hInternal && usable(internal) && (await equal(hInternal, internal))) {
+    const actor = (request.headers.get('x-actor') || 'app').slice(0, 120);
+    return { ok: true, actor, agent: 'user', via: 'internal' };
   }
 
   const m = /^Bearer\s+(\S+)$/.exec(request.headers.get('Authorization') || '');
   if (m) {
-    if (valido(grok) && (await iguais(m[1], grok))) return { ok: true, ator: 'Grok_Assistant', agente: 'Grok_Assistant', via: 'token' };
-    if (valido(claude) && (await iguais(m[1], claude))) return { ok: true, ator: 'Claude_Assistant', agente: 'Claude_Assistant', via: 'token' };
+    if (usable(grok) && (await equal(m[1], grok))) return { ok: true, actor: 'grok', agent: 'grok', via: 'token' };
+    if (usable(claude) && (await equal(m[1], claude))) return { ok: true, actor: 'claude', agent: 'claude', via: 'token' };
   }
-  return { ok: false, status: 401, erro: 'nao_autorizado' };
+  return { ok: false, status: 401, error: 'unauthorized' };
 }

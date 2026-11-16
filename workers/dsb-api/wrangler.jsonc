@@ -1,12 +1,13 @@
-// dsb-api: regras da fila do DSB sobre o D1 (fonte da verdade depois do cutover).
-// - Domínio dsb-api.duarte.top só para os agentes; sem token válido tudo responde 401 (503 sem secrets).
-//   Sem cron próprio (limite de 5 crons da conta no plano free):
-//   * apps (dsb-fila, dsb-auditor) chamam por Service Binding com o header x-interno-token (secret INTERNO_TOKEN);
-//   * agentes chamam https://dsb-api.duarte.top com Bearer próprio: secrets TOKEN_GROK e TOKEN_CLAUDE
-//     (o ator vem do token, não do corpo).
-//   * a varredura de pendências (POST /varrer) é disparada pelo cron do dsb-auditor e ao fim de cada job.
-// - Fase de testes: binding DB aponta para a base dsb-staging. No cutover, trocar para a base de produção.
-// - Secrets: INTERNO_TOKEN, TOKEN_GROK, TOKEN_CLAUDE (mínimo 24 caracteres). Nunca colocar tokens aqui.
+// dsb-api: DSB queue rules on D1 (source of truth after cutover).
+// - Domain dsb-api.duarte.top for the agents only; without a valid token everything answers 401 (503 without secrets).
+//   No cron of its own (the account is at the 5-cron limit of the free plan):
+//   * apps (dsb-fila, dsb-auditor) call through a Service Binding with header x-internal-token (secret INTERNAL_TOKEN)
+//     and x-actor;
+//   * agents call https://dsb-api.duarte.top with their own Bearer: secrets TOKEN_GROK and TOKEN_CLAUDE
+//     (the actor comes from the token, not the body);
+//   * the issue sweep (POST /sweep) is triggered by the dsb-auditor cron and at the end of each job.
+// - Test phase: binding DB points to dsb-staging. At cutover, switch it to the production database.
+// - Secrets: INTERNAL_TOKEN, TOKEN_GROK, TOKEN_CLAUDE (at least 24 characters). Never put tokens here.
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "dsb-api",

@@ -1,32 +1,31 @@
--- DSB · schema v2 (D1) — blog no centro; LinkedIn e X derivam do blog publicado
--- Base de testes: dsb-staging (808d3914-2df5-4da9-aab7-1f19d51001d2)
--- Decisões: dedup por post_keys (CVE ou URL) + follow_up_of; descartado = bloqueio macio;
---           publicações por canal/idioma em publications.
+-- DSB · 0001 — core schema (D1)
+-- The blog is the center: a post is published when its PT blog article is published;
+-- LinkedIn and X are derived channels recorded in `publications`.
+-- Dedup: each CVE and the normalized source URL become unique subject keys (`post_keys`);
+-- a continuation of a subject enters only as `follow_up_of` of the original.
+-- D1 enforces foreign keys by default. D1 limits long LIKE patterns, so URL checks use substr/instr.
 
--- D1 já aplica chaves estrangeiras por padrão (sem PRAGMA).
-
--- 1. Artigos (status apenas editorial: Publicado = publicado no blog)
+-- 1. Posts (editorial status only: published = PT blog article published or skipped)
 CREATE TABLE posts (
   id             INTEGER PRIMARY KEY,
-  notion_id      TEXT UNIQUE,                 -- 32 hex da página de origem; NULL para itens nascidos no D1
+  notion_id      TEXT UNIQUE,                 -- 32-hex id of the source Notion page; NULL for posts born in D1
   topic          TEXT NOT NULL,
-  status         TEXT NOT NULL DEFAULT 'Novo'
-                 CHECK (status IN ('Novo','Aprovado','Publicado','Descartado')),
-  tipo           TEXT NOT NULL
-                 CHECK (tipo IN ('Incidente','Notícia','Vulnerabilidades')),
-  pais           TEXT
-                 CHECK (pais IS NULL OR pais IN ('BR','MX','AR','CL','PE','PY','UY','CO','US','EU','LATAM','Global')),
-  priority       TEXT NOT NULL DEFAULT 'Normal' CHECK (priority IN ('Normal','Alta')),
+  status         TEXT NOT NULL DEFAULT 'new'
+                 CHECK (status IN ('new','approved','published','discarded')),
+  type           TEXT NOT NULL
+                 CHECK (type IN ('incident','news','vulnerability')),
+  country        TEXT
+                 CHECK (country IS NULL OR country IN ('BR','MX','AR','CL','PE','PY','UY','CO','US','EU','LATAM','Global')),
+  priority       TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('normal','high')),
   item_order     REAL,
   source_name    TEXT,
   source_url     TEXT NOT NULL,
   slug           TEXT UNIQUE,
-  briefing_md    TEXT,                        -- corpo canônico do artigo (PT)
-  post_text      TEXT,                        -- rascunho aprovado do texto do LinkedIn
+  briefing_md    TEXT,                        -- canonical article body (PT)
+  post_text      TEXT,                        -- approved LinkedIn draft
   image_source   TEXT NOT NULL DEFAULT 'none' CHECK (image_source IN ('og','generated','none')),
   image_url      TEXT CHECK (image_url IS NULL OR substr(image_url, 1, 33) = 'https://covers.duarte.top/covers/'),
-  added_by       TEXT NOT NULL
-                 CHECK (added_by IN ('user','assistant_research','Grok_Assistant','Claude_Assistant')),
+  added_by       TEXT NOT NULL CHECK (added_by IN ('user','research','grok','claude')),
   added_at       TEXT NOT NULL,
   approved_at    TEXT,
   approval_notes TEXT,
@@ -39,7 +38,7 @@ CREATE TABLE posts (
   CHECK (follow_up_of IS NULL OR follow_up_of <> id)
 );
 CREATE INDEX ix_posts_status_order ON posts(status, item_order);
-CREATE INDEX ix_posts_tipo_status  ON posts(tipo, status);
+CREATE INDEX ix_posts_type_status  ON posts(type, status);
 CREATE INDEX ix_posts_added_at     ON posts(added_at);
 CREATE INDEX ix_posts_follow_up    ON posts(follow_up_of);
 
@@ -49,9 +48,9 @@ BEGIN
   UPDATE posts SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 
--- 2. Chaves de assunto para dedup (uma chave pertence a um único item)
+-- 2. Subject keys for dedup (a key belongs to exactly one post)
 CREATE TABLE post_keys (
-  key        TEXT PRIMARY KEY,                -- 'cve:CVE-2026-93952' | 'url:<url normalizada>'
+  key        TEXT PRIMARY KEY,                -- 'cve:CVE-2026-93952' | 'url:<normalized url>'
   post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   kind       TEXT NOT NULL CHECK (kind IN ('cve','url')),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -59,9 +58,8 @@ CREATE TABLE post_keys (
 );
 CREATE INDEX ix_post_keys_post ON post_keys(post_id);
 
--- URLs genéricas que nunca viram chave.
--- Uma URL é genérica se começa com prefix e, quando contains não é NULL, contém esse trecho.
--- (D1 limita o tamanho de padrões LIKE; por isso a comparação é por substr/instr.)
+-- Generic URLs that never become keys: a URL is generic when it starts with `prefix`
+-- and, if `contains` is set, also contains that fragment.
 CREATE TABLE ignored_url_patterns (
   prefix   TEXT NOT NULL,
   contains TEXT,
@@ -69,24 +67,24 @@ CREATE TABLE ignored_url_patterns (
   PRIMARY KEY (prefix, contains)
 );
 
--- 3. Publicações por canal e idioma (blog = principal; linkedin e x = derivados)
+-- 3. Publications per channel and language (blog = primary; linkedin and x = derived)
 CREATE TABLE publications (
   id           INTEGER PRIMARY KEY,
   post_id      INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   channel      TEXT NOT NULL CHECK (channel IN ('blog','linkedin','x')),
   lang         TEXT NOT NULL DEFAULT 'pt' CHECK (lang IN ('pt','es','en')),
-  status       TEXT NOT NULL CHECK (status IN ('pendente','publicado','falhou','pulado')),
-  url          TEXT,                          -- artigo, post do LinkedIn ou tweet
-  external_id  TEXT,                          -- urn:li:share:… ou id do tweet
-  body         TEXT,                          -- texto efetivamente publicado no canal
+  status       TEXT NOT NULL CHECK (status IN ('pending','published','failed','skipped')),
+  url          TEXT,                          -- article, LinkedIn post or tweet
+  external_id  TEXT,                          -- urn:li:share:… or tweet id
+  body         TEXT,                          -- text actually published on the channel
   published_at TEXT,
   attempts     INTEGER NOT NULL DEFAULT 0,
   last_error   TEXT,
-  agent        TEXT,                          -- Grok_Assistant | Claude_Assistant | user
+  agent        TEXT,
   created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   UNIQUE (post_id, channel, lang),
-  CHECK (status <> 'publicado' OR published_at IS NOT NULL)
+  CHECK (status <> 'published' OR published_at IS NOT NULL)
 );
 CREATE INDEX ix_publications_channel_status ON publications(channel, status);
 
@@ -96,7 +94,7 @@ BEGIN
   UPDATE publications SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 
--- 4. Histórico de status (gravado pela dsb-api)
+-- 4. Status history (written by dsb-api)
 CREATE TABLE post_events (
   id          INTEGER PRIMARY KEY,
   post_id     INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
@@ -108,7 +106,7 @@ CREATE TABLE post_events (
 );
 CREATE INDEX ix_post_events_post ON post_events(post_id);
 
--- 5. Execuções de jobs (substitui backup_runs)
+-- 5. Job runs
 CREATE TABLE job_runs (
   id            INTEGER PRIMARY KEY,
   job           TEXT NOT NULL,
@@ -122,9 +120,9 @@ CREATE TABLE job_runs (
 );
 CREATE INDEX ix_job_runs_job ON job_runs(job, started_at);
 
--- 6. Visão por canal para o app DSB
+-- 6. Channel view for the apps
 CREATE VIEW v_post_channels AS
-SELECT p.id, p.topic, p.status, p.tipo, p.pais, p.priority, p.item_order, p.slug, p.image_url,
+SELECT p.id, p.topic, p.status, p.type, p.country, p.priority, p.item_order, p.slug, p.image_url,
        MAX(CASE WHEN pub.channel='blog' AND pub.lang='pt' THEN pub.status END) AS blog_pt,
        MAX(CASE WHEN pub.channel='blog' AND pub.lang='pt' THEN pub.url END)    AS blog_url,
        MAX(CASE WHEN pub.channel='blog' AND pub.lang='es' THEN pub.status END) AS blog_es,
@@ -137,12 +135,6 @@ FROM posts p
 LEFT JOIN publications pub ON pub.post_id = p.id
 GROUP BY p.id;
 
--- 7. Padrões de URL genérica (fontes compartilhadas por vários artigos)
 INSERT INTO ignored_url_patterns(prefix, contains, note) VALUES
-  ('https://www.cisa.gov/known-exploited-vulnerabilities-catalog', NULL, 'Catálogo KEV: fonte de vários CVEs'),
-  ('https://www.cisa.gov/news-events/alerts/', '/cisa-adds-', 'Alerta CISA "adds N KEVs": vários CVEs por página');
-
--- Teste de URL genérica:
--- SELECT EXISTS (SELECT 1 FROM ignored_url_patterns
---   WHERE substr(?1, 1, length(prefix)) = prefix
---     AND (contains IS NULL OR instr(?1, contains) > 0));
+  ('https://www.cisa.gov/known-exploited-vulnerabilities-catalog', NULL, 'KEV catalog: source for many CVEs'),
+  ('https://www.cisa.gov/news-events/alerts/', '/cisa-adds-', 'CISA "adds N KEVs" alert: several CVEs per page');

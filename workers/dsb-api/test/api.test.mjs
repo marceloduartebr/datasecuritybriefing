@@ -1,231 +1,247 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tratar } from '../src/index.js';
-import { criarD1 } from './d1-sqlite.mjs';
-import { normalizarUrl } from '../src/regras.js';
+import { handle } from '../src/index.js';
+import { createD1 } from './d1-sqlite.mjs';
+import { normalizeUrl } from '../src/rules.js';
 
 const TOKENS = {
-  INTERNO_TOKEN: 'interno-000000000000000000000000',
+  INTERNAL_TOKEN: 'internal-000000000000000000000000',
   TOKEN_GROK: 'grok-00000000000000000000000000000',
   TOKEN_CLAUDE: 'claude-0000000000000000000000000000'
 };
 
-function ambiente() {
-  const env = { DB: criarD1(), ...TOKENS };
-  const chamar = async (metodo, caminho, corpo, { token = TOKENS.TOKEN_CLAUDE, interno = false } = {}) => {
+function setup() {
+  const env = { DB: createD1(), ...TOKENS };
+  const call = async (method, path, body, { token = TOKENS.TOKEN_CLAUDE, internal = false } = {}) => {
     const headers = { 'content-type': 'application/json' };
-    if (interno) {
-      headers['x-interno-token'] = TOKENS.INTERNO_TOKEN;
-      headers['x-ator'] = 'marcelo@app';
+    if (internal) {
+      headers['x-internal-token'] = TOKENS.INTERNAL_TOKEN;
+      headers['x-actor'] = 'marcelo@app';
     } else if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await tratar(
-      new Request(`https://dsb-api${caminho}`, { method: metodo, headers, body: corpo ? JSON.stringify(corpo) : undefined }),
+    const res = await handle(
+      new Request(`https://dsb-api${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }),
       env
     );
-    return { status: res.status, corpo: await res.json() };
+    return { status: res.status, body: await res.json() };
   };
-  return { env, chamar };
+  return { env, call };
 }
 
-const CAPA = 'https://covers.duarte.top/covers/20261116-teste.jpg';
+const COVER = 'https://covers.duarte.top/covers/20261116-test.jpg';
 const base = (extra = {}) => ({
-  topic: 'Incidente teste',
-  tipo: 'Incidente',
-  pais: 'BR',
-  source_name: 'Fonte',
-  source_url: 'https://exemplo.com.br/noticia/1',
-  slug: 'teste-incidente',
-  briefing_md: '# corpo',
-  post_text: 'texto do post',
+  topic: 'Test incident',
+  type: 'incident',
+  country: 'BR',
+  source_name: 'Source',
+  source_url: 'https://example.com.br/news/1',
+  slug: 'test-incident',
+  briefing_md: '# body',
+  post_text: 'post text',
   ...extra
 });
 
-test('normalizarUrl tira rastreio, fragmento e barra final', () => {
-  assert.equal(normalizarUrl('https://Exemplo.com/a/b/?utm_source=x&b=2&a=1#topo'), 'https://exemplo.com/a/b?a=1&b=2');
-  assert.equal(normalizarUrl('https://exemplo.com/'), 'https://exemplo.com/');
+test('normalizeUrl strips tracking, fragment and trailing slash', () => {
+  assert.equal(normalizeUrl('https://Example.com/a/b/?utm_source=x&b=2&a=1#top'), 'https://example.com/a/b?a=1&b=2');
+  assert.equal(normalizeUrl('https://example.com/'), 'https://example.com/');
 });
 
-test('autenticação: health aberto, demais rotas exigem token; sem secrets = 503', async () => {
-  const { chamar, env } = ambiente();
-  assert.equal((await chamar('GET', '/health', null, { token: null })).status, 200);
-  assert.equal((await chamar('GET', '/posts', null, { token: 'errado-errado-errado-errado' })).status, 401);
-  assert.equal((await chamar('GET', '/posts', null, { token: null })).status, 401);
+test('auth: health is open, other routes need a token; no secrets = 503', async () => {
+  const { call, env } = setup();
+  assert.equal((await call('GET', '/health', null, { token: null })).status, 200);
+  assert.equal((await call('GET', '/posts', null, { token: 'wrong-wrong-wrong-wrong-wrong' })).status, 401);
+  assert.equal((await call('GET', '/posts', null, { token: null })).status, 401);
   for (const k of Object.keys(TOKENS)) delete env[k];
-  assert.equal((await chamar('GET', '/posts')).status, 503);
+  assert.equal((await call('GET', '/posts')).status, 503);
 });
 
-test('criar: added_by vem do token; ordem; chave de URL; duplicata com UTM vira 409 + pendência', async () => {
-  const { chamar } = ambiente();
-  const r = await chamar('POST', '/posts', base({ added_by: 'user' }), { token: TOKENS.TOKEN_GROK });
-  assert.equal(r.status, 201, JSON.stringify(r.corpo));
-  assert.equal(r.corpo.item.added_by, 'Grok_Assistant');
-  assert.equal(r.corpo.item.item_order, 1);
-  assert.deepEqual(r.corpo.item.chaves.map((c) => c.key), ['url:https://exemplo.com.br/noticia/1']);
+test('create: added_by comes from the token; order; URL key; UTM duplicate is 409 + issue', async () => {
+  const { call } = setup();
+  const r = await call('POST', '/posts', base({ added_by: 'user' }), { token: TOKENS.TOKEN_GROK });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.equal(r.body.post.added_by, 'grok');
+  assert.equal(r.body.post.status, 'new');
+  assert.equal(r.body.post.item_order, 1);
+  assert.deepEqual(r.body.post.keys.map((c) => c.key), ['url:https://example.com.br/news/1']);
 
-  const dup = await chamar('POST', '/posts', base({ slug: 'outro', source_url: 'https://exemplo.com.br/noticia/1/?utm_source=x' }));
+  const dup = await call('POST', '/posts', base({ slug: 'other', source_url: 'https://example.com.br/news/1/?utm_source=x' }));
   assert.equal(dup.status, 409);
-  assert.equal(dup.corpo.erro, 'assunto_ja_coberto');
-  assert.ok(dup.corpo.pendencia, 'recusa deve virar pendência');
-  const pend = await chamar('GET', '/pendencias?source=api');
-  assert.equal(pend.corpo.itens[0].kind, 'recusa_assunto_ja_coberto');
-  assert.equal(pend.corpo.itens[0].agent, 'Claude_Assistant');
+  assert.equal(dup.body.error, 'subject_already_covered');
+  assert.ok(dup.body.issue, 'a rejection must become an issue');
+  const iss = await call('GET', '/issues?source=api');
+  assert.equal(iss.body.items[0].kind, 'rejected_subject_already_covered');
+  assert.equal(iss.body.items[0].agent, 'claude');
+  assert.equal(iss.body.items[0].stage, 'curation');
 
-  const dup2 = await chamar('POST', '/posts', base({ slug: 'outro2', source_url: 'https://exemplo.com.br/noticia/1#x' }));
-  assert.equal(dup2.corpo.pendencia, dup.corpo.pendencia, 'mesma recusa incrementa a mesma pendência');
+  const dup2 = await call('POST', '/posts', base({ slug: 'other2', source_url: 'https://example.com.br/news/1#x' }));
+  assert.equal(dup2.body.issue, dup.body.issue, 'the same rejection increments the same issue');
 });
 
-test('fonte genérica da CISA: sem CVE é recusada; com CVEs distintos entram dois itens', async () => {
-  const { chamar } = ambiente();
+test('generic CISA source: rejected without CVE; distinct CVEs create two posts', async () => {
+  const { call } = setup();
   const kev = 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog';
-  const sem = await chamar('POST', '/posts', base({ tipo: 'Vulnerabilidades', source_url: kev, slug: 'kev-a' }));
-  assert.equal(sem.status, 422);
-  assert.equal(sem.corpo.erro, 'sem_chave');
-  const a = await chamar('POST', '/posts', base({ tipo: 'Vulnerabilidades', source_url: kev, slug: 'kev-a', cves: ['CVE-2026-11111'] }));
-  const b = await chamar('POST', '/posts', base({ tipo: 'Vulnerabilidades', source_url: kev, slug: 'kev-b', cves: ['cve-2026-22222'] }));
+  const none = await call('POST', '/posts', base({ type: 'vulnerability', source_url: kev, slug: 'kev-a' }));
+  assert.equal(none.status, 422);
+  assert.equal(none.body.error, 'missing_key');
+  const a = await call('POST', '/posts', base({ type: 'vulnerability', source_url: kev, slug: 'kev-a', cves: ['CVE-2026-11111'] }));
+  const b = await call('POST', '/posts', base({ type: 'vulnerability', source_url: kev, slug: 'kev-b', cves: ['cve-2026-22222'] }));
   assert.equal(a.status, 201);
   assert.equal(b.status, 201);
-  assert.deepEqual(b.corpo.item.chaves.map((c) => c.key), ['cve:CVE-2026-22222']);
-  const rep = await chamar('POST', '/posts', base({ tipo: 'Vulnerabilidades', source_url: kev, slug: 'kev-c', cves: ['CVE-2026-11111'] }));
+  assert.deepEqual(b.body.post.keys.map((c) => c.key), ['cve:CVE-2026-22222']);
+  const rep = await call('POST', '/posts', base({ type: 'vulnerability', source_url: kev, slug: 'kev-c', cves: ['CVE-2026-11111'] }));
   assert.equal(rep.status, 409);
-  const alerta = 'https://www.cisa.gov/news-events/alerts/2026/10/20/cisa-adds-six-known-exploited-vulnerabilities-catalog';
-  const d = await chamar('GET', `/dedup?url=${encodeURIComponent(alerta)}&cve=CVE-2026-22222`);
-  assert.equal(d.corpo.url_generica, true);
-  assert.equal(d.corpo.livre, false);
+  const alert = 'https://www.cisa.gov/news-events/alerts/2026/10/20/cisa-adds-six-known-exploited-vulnerabilities-catalog';
+  const d = await call('GET', `/dedup?url=${encodeURIComponent(alert)}&cve=CVE-2026-22222`);
+  assert.equal(d.body.generic_url, true);
+  assert.equal(d.body.free, false);
 });
 
-test('follow-up: mesma URL entra só como continuação; sem follow_up_of é recusada', async () => {
-  const { chamar } = ambiente();
-  const orig = await chamar('POST', '/posts', base({ slug: 'hospital-a' }));
-  const sem = await chamar('POST', '/posts', base({ slug: 'hospital-b' }));
-  assert.equal(sem.status, 409);
-  const com = await chamar('POST', '/posts', base({ slug: 'hospital-b', follow_up_of: orig.corpo.item.id }));
-  assert.equal(com.status, 201, JSON.stringify(com.corpo));
-  assert.deepEqual(com.corpo.item.chaves_compartilhadas_com_follow_up, ['url:https://exemplo.com.br/noticia/1']);
-  const terceiro = await chamar('POST', '/posts', base({ slug: 'hospital-c', follow_up_of: com.corpo.item.id }));
-  assert.equal(terceiro.status, 201, 'cadeia de follow-ups compartilha a raiz');
+test('follow-up: the same URL only enters as a continuation', async () => {
+  const { call } = setup();
+  const orig = await call('POST', '/posts', base({ slug: 'hospital-a' }));
+  const plain = await call('POST', '/posts', base({ slug: 'hospital-b' }));
+  assert.equal(plain.status, 409);
+  const fu = await call('POST', '/posts', base({ slug: 'hospital-b', follow_up_of: orig.body.post.id }));
+  assert.equal(fu.status, 201, JSON.stringify(fu.body));
+  assert.deepEqual(fu.body.post.keys_shared_with_follow_up, ['url:https://example.com.br/news/1']);
+  const third = await call('POST', '/posts', base({ slug: 'hospital-c', follow_up_of: fu.body.post.id }));
+  assert.equal(third.status, 201, 'a follow-up chain shares its root');
 });
 
-test('descarte exige motivo; assunto descartado só volta como follow-up', async () => {
-  const { chamar } = ambiente();
-  const it = await chamar('POST', '/posts', base());
-  const id = it.corpo.item.id;
-  const semMotivo = await chamar('POST', `/posts/${id}/status`, { para: 'Descartado' });
-  assert.equal(semMotivo.status, 422);
-  const desc = await chamar('POST', `/posts/${id}/status`, { para: 'Descartado', motivo: 'fora da linha' }, { interno: true });
-  assert.equal(desc.corpo.item.status, 'Descartado');
-  const de_novo = await chamar('POST', '/posts', base({ slug: 'teste-2' }));
-  assert.equal(de_novo.status, 409);
-  assert.equal(de_novo.corpo.erro, 'assunto_descartado');
-  assert.match(de_novo.corpo.mensagem, /fora da linha/);
+test('discard requires a reason; a discarded subject only comes back as follow-up', async () => {
+  const { call } = setup();
+  const it = await call('POST', '/posts', base());
+  const id = it.body.post.id;
+  const noReason = await call('POST', `/posts/${id}/status`, { to: 'discarded' });
+  assert.equal(noReason.status, 422);
+  assert.equal(noReason.body.error, 'reason_required');
+  const disc = await call('POST', `/posts/${id}/status`, { to: 'discarded', reason: 'off the editorial line' }, { internal: true });
+  assert.equal(disc.body.post.status, 'discarded');
+  const again = await call('POST', '/posts', base({ slug: 'test-2' }));
+  assert.equal(again.status, 409);
+  assert.equal(again.body.error, 'subject_discarded');
+  assert.match(again.body.message, /off the editorial line/);
 });
 
-test('fluxo blog-first: capa, reserva única, Publicado pelo blog, canais derivados e nova tentativa', async () => {
-  const { chamar } = ambiente();
-  const it = await chamar('POST', '/posts', base());
-  const id = it.corpo.item.id;
+test('blog-first flow: cover, single claim, published by the blog, derived channels and retry', async () => {
+  const { call } = setup();
+  const it = await call('POST', '/posts', base());
+  const id = it.body.post.id;
 
-  assert.equal((await chamar('POST', `/posts/${id}/status`, { para: 'Publicado' })).corpo.erro, 'transicao_invalida');
-  const ap = await chamar('POST', `/posts/${id}/status`, { para: 'Aprovado', notas: 'ok' }, { interno: true });
-  assert.equal(ap.corpo.item.status, 'Aprovado');
-  assert.ok(ap.corpo.item.approved_at);
+  assert.equal((await call('POST', `/posts/${id}/status`, { to: 'published' })).body.error, 'invalid_transition');
+  const ap = await call('POST', `/posts/${id}/status`, { to: 'approved', notes: 'ok', star: true }, { internal: true });
+  assert.equal(ap.body.post.status, 'approved');
+  assert.equal(ap.body.post.priority, 'high');
+  assert.ok(ap.body.post.approved_at);
 
-  const semCapa = await chamar('POST', '/publicacoes', { post_id: id, canal: 'blog' });
-  assert.equal(semCapa.corpo.erro, 'sem_capa');
-  assert.equal((await chamar('PATCH', `/posts/${id}`, { image_source: 'og', image_url: 'https://raw.githubusercontent.com/x.jpg' })).corpo.erro, 'capa_fora_do_host');
-  await chamar('PATCH', `/posts/${id}`, { image_source: 'generated', image_url: CAPA });
+  const noCover = await call('POST', '/publications', { post_id: id, channel: 'blog' });
+  assert.equal(noCover.body.error, 'missing_cover');
+  assert.equal((await call('PATCH', `/posts/${id}`, { image_source: 'og', image_url: 'https://raw.githubusercontent.com/x.jpg' })).body.error, 'cover_host_invalid');
+  await call('PATCH', `/posts/${id}`, { image_source: 'generated', image_url: COVER });
 
-  assert.equal((await chamar('POST', '/publicacoes', { post_id: id, canal: 'linkedin' })).corpo.erro, 'blog_nao_publicado');
-  const filaBlog = await chamar('GET', '/fila/blog');
-  assert.equal(filaBlog.corpo.itens[0].pronto, true);
+  assert.equal((await call('POST', '/publications', { post_id: id, channel: 'linkedin' })).body.error, 'blog_not_published');
+  const blogQueue = await call('GET', '/queue/blog');
+  assert.equal(blogQueue.body.items[0].ready, true);
 
-  const res = await chamar('POST', '/publicacoes', { post_id: id, canal: 'blog' }, { token: TOKENS.TOKEN_GROK });
+  const res = await call('POST', '/publications', { post_id: id, channel: 'blog' }, { token: TOKENS.TOKEN_GROK });
   assert.equal(res.status, 201);
-  const outra = await chamar('POST', '/publicacoes', { post_id: id, canal: 'blog' });
-  assert.equal(outra.corpo.erro, 'publicacao_ja_reservada', 'o segundo agente não publica o mesmo item');
+  const other = await call('POST', '/publications', { post_id: id, channel: 'blog' });
+  assert.equal(other.body.error, 'publication_already_claimed', 'a second agent cannot publish the same post');
 
-  const fim = await chamar('POST', `/publicacoes/${res.corpo.publicacao.id}/resultado`, { status: 'publicado', url: 'https://dsb.duarte.top/briefings/2026-11-16-teste-incidente' });
-  assert.equal(fim.corpo.item_publicado, true);
-  assert.equal((await chamar('GET', `/posts/${id}`)).corpo.item.status, 'Publicado');
+  const done = await call('POST', `/publications/${res.body.publication.id}/result`, { status: 'published', url: 'https://dsb.duarte.top/briefings/2026-11-16-test-incident' });
+  assert.equal(done.body.post_published, true);
+  assert.equal((await call('GET', `/posts/${id}`)).body.post.status, 'published');
 
-  const filaLi = await chamar('GET', '/fila/linkedin');
-  assert.equal(filaLi.corpo.itens.length, 1);
-  const li = await chamar('POST', '/publicacoes', { post_id: id, canal: 'linkedin' });
-  const falha = await chamar('POST', `/publicacoes/${li.corpo.publicacao.id}/resultado`, { status: 'falhou', erro: 'HTTP 429 Composio' });
-  assert.equal(falha.corpo.publicacao.attempts, 1);
-  const de_novo = await chamar('POST', '/publicacoes', { post_id: id, canal: 'linkedin' });
-  assert.equal(de_novo.corpo.publicacao.retomada, true);
-  const ok = await chamar('POST', `/publicacoes/${li.corpo.publicacao.id}/resultado`, { status: 'publicado', url: 'https://www.linkedin.com/feed/update/urn:li:share:1', external_id: 'urn:li:share:1' });
-  assert.equal(ok.corpo.publicacao.status, 'publicado');
-  assert.equal((await chamar('GET', '/fila/linkedin')).corpo.itens.length, 0);
-  assert.equal((await chamar('GET', '/fila/x')).corpo.itens.length, 1);
+  assert.equal((await call('GET', '/queue/translations')).body.items.length, 1);
+  const liQueue = await call('GET', '/queue/linkedin');
+  assert.equal(liQueue.body.items.length, 1);
+  const li = await call('POST', '/publications', { post_id: id, channel: 'linkedin' });
+  const fail = await call('POST', `/publications/${li.body.publication.id}/result`, { status: 'failed', error: 'HTTP 429 Composio' });
+  assert.equal(fail.body.publication.attempts, 1);
+  const retry = await call('POST', '/publications', { post_id: id, channel: 'linkedin' });
+  assert.equal(retry.body.publication.retry, true);
+  const ok = await call('POST', `/publications/${li.body.publication.id}/result`, { status: 'published', url: 'https://www.linkedin.com/feed/update/urn:li:share:1', external_id: 'urn:li:share:1' });
+  assert.equal(ok.body.publication.status, 'published');
+  assert.equal((await call('GET', '/queue/linkedin')).body.items.length, 0);
+  assert.equal((await call('GET', '/queue/x')).body.items.length, 1);
 });
 
-test('varredura abre, incrementa e fecha sozinha; ignorada não volta; job com erro vira pendência', async () => {
-  const { chamar } = ambiente();
-  const it = await chamar('POST', '/posts', base());
-  const id = it.corpo.item.id;
-  await chamar('POST', `/posts/${id}/status`, { para: 'Aprovado' });
+test('sweep opens, increments and auto-resolves; ignored stays closed; job error becomes an issue', async () => {
+  const { call } = setup();
+  const it = await call('POST', '/posts', base());
+  const id = it.body.post.id;
+  await call('POST', `/posts/${id}/status`, { to: 'approved' });
 
-  await chamar('POST', '/varrer', {});
-  let p = await chamar('GET', '/pendencias?stage=capa');
-  assert.equal(p.corpo.itens.length, 1);
-  assert.equal(p.corpo.itens[0].fingerprint, `capa_ausente:${id}`);
+  await call('POST', '/sweep', {});
+  let p = await call('GET', '/issues?stage=cover');
+  assert.equal(p.body.items.length, 1);
+  assert.equal(p.body.items[0].fingerprint, `missing_cover:${id}`);
 
-  await chamar('POST', '/varrer', {});
-  p = await chamar('GET', '/pendencias?stage=capa');
-  assert.equal(p.corpo.itens[0].occurrences, 2);
+  await call('POST', '/sweep', {});
+  p = await call('GET', '/issues?stage=cover');
+  assert.equal(p.body.items[0].occurrences, 2);
 
-  await chamar('PATCH', `/posts/${id}`, { image_source: 'og', image_url: CAPA });
-  await chamar('POST', '/varrer', {});
-  assert.equal((await chamar('GET', '/pendencias?stage=capa')).corpo.itens.length, 0);
-  const fechada = await chamar('GET', '/pendencias?stage=capa&status=resolvido');
-  assert.equal(fechada.corpo.itens[0].resolved_by, 'auto');
+  await call('PATCH', `/posts/${id}`, { image_source: 'og', image_url: COVER });
+  await call('POST', '/sweep', {});
+  assert.equal((await call('GET', '/issues?stage=cover')).body.items.length, 0);
+  const closed = await call('GET', '/issues?stage=cover&status=resolved');
+  assert.equal(closed.body.items[0].resolved_by, 'auto');
 
-  const job = await chamar('POST', '/jobs', { job: 'linkedin-publish-10h' });
-  assert.equal((await chamar('PATCH', `/jobs/${job.corpo.job.id}`, { status: 'error' })).status, 422, 'erro exige notes');
-  const fim = await chamar('PATCH', `/jobs/${job.corpo.job.id}`, { status: 'error', notes: 'Composio fora do ar' });
-  assert.equal(fim.corpo.job.status, 'error');
-  const recusa = await chamar('GET', '/pendencias?stage=job&source=api');
-  assert.equal(recusa.corpo.itens[0].kind, 'recusa_campo_obrigatorio', 'a tentativa sem notes também ficou registrada');
-  const pj = await chamar('GET', '/pendencias?stage=job&source=health');
-  assert.equal(pj.corpo.itens.length, 1);
+  const job = await call('POST', '/jobs', { job: 'linkedin-publish-10h' });
+  assert.equal((await call('PATCH', `/jobs/${job.body.job.id}`, { status: 'error' })).status, 422, 'error requires notes');
+  const end = await call('PATCH', `/jobs/${job.body.job.id}`, { status: 'error', notes: 'Composio is down' });
+  assert.equal(end.body.job.status, 'error');
+  const rej = await call('GET', '/issues?stage=job&source=api');
+  assert.equal(rej.body.items[0].kind, 'rejected_field_required', 'the attempt without notes was recorded too');
+  const hj = await call('GET', '/issues?stage=job&source=health');
+  assert.equal(hj.body.items.length, 1);
 
-  const ign = await chamar('PATCH', `/pendencias/${pj.corpo.itens[0].id}`, { status: 'ignorado' });
-  assert.equal(ign.corpo.erro, 'nota_obrigatoria');
-  await chamar('PATCH', `/pendencias/${pj.corpo.itens[0].id}`, { status: 'ignorado', resolution: 'instabilidade conhecida' }, { interno: true });
-  await chamar('POST', '/varrer', {});
-  assert.equal((await chamar('GET', '/pendencias?stage=job&source=health')).corpo.itens.length, 0, 'ignorada não reabre');
+  const ign = await call('PATCH', `/issues/${hj.body.items[0].id}`, { status: 'ignored' });
+  assert.equal(ign.body.error, 'note_required');
+  await call('PATCH', `/issues/${hj.body.items[0].id}`, { status: 'ignored', resolution: 'known instability' }, { internal: true });
+  await call('POST', '/sweep', {});
+  assert.equal((await call('GET', '/issues?stage=job&source=health')).body.items.length, 0, 'an ignored issue does not reopen');
 });
 
-test('relato de agente, resumo e notificação única', async () => {
-  const { chamar } = ambiente();
-  const r = await chamar('POST', '/pendencias', { fingerprint: 'x-sessao', kind: 'sessao_expirada', severity: 'critico', stage: 'x', summary: 'Sessão da @DSBriefing caiu' });
+test('agent report, summary and single notification', async () => {
+  const { call } = setup();
+  const r = await call('POST', '/issues', { fingerprint: 'x-session', kind: 'session_expired', severity: 'critical', stage: 'x', summary: '@DSBriefing session dropped' });
   assert.equal(r.status, 201);
-  const res = await chamar('GET', '/pendencias/resumo');
-  assert.deepEqual(res.corpo.resumo, [{ stage: 'x', severity: 'critico', n: 1 }]);
-  assert.equal((await chamar('POST', '/pendencias/notificadas', { ids: [r.corpo.pendencia.id] })).corpo.marcadas, 1);
-  assert.equal((await chamar('POST', '/pendencias/notificadas', { ids: [r.corpo.pendencia.id] })).corpo.marcadas, 0);
+  const s = await call('GET', '/issues/summary');
+  assert.deepEqual(s.body.summary, [{ stage: 'x', severity: 'critical', n: 1 }]);
+  assert.equal((await call('POST', '/issues/notified', { ids: [r.body.issue.id] })).body.marked, 1);
+  assert.equal((await call('POST', '/issues/notified', { ids: [r.body.issue.id] })).body.marked, 0);
 });
 
-test('reordenar exige a lista completa e atual', async () => {
-  const { chamar } = ambiente();
-  const a = (await chamar('POST', '/posts', base({ slug: 'a', source_url: 'https://e.com/a' }))).corpo.item.id;
-  const b = (await chamar('POST', '/posts', base({ slug: 'b', source_url: 'https://e.com/b' }))).corpo.item.id;
-  assert.equal((await chamar('POST', '/posts/reordenar', { status: 'Novo', ids: [b] })).corpo.erro, 'lista_desatualizada');
-  const ok = await chamar('POST', '/posts/reordenar', { status: 'Novo', ids: [b, a] }, { interno: true });
+test('reorder requires the full, current list', async () => {
+  const { call } = setup();
+  const a = (await call('POST', '/posts', base({ slug: 'a', source_url: 'https://e.com/a' }))).body.post.id;
+  const b = (await call('POST', '/posts', base({ slug: 'b', source_url: 'https://e.com/b' }))).body.post.id;
+  assert.equal((await call('POST', '/posts/reorder', { status: 'new', ids: [b] })).body.error, 'stale_list');
+  const ok = await call('POST', '/posts/reorder', { status: 'new', ids: [b, a] }, { internal: true });
   assert.equal(ok.status, 200);
-  const lista = (await chamar('GET', '/posts?status=Novo')).corpo.itens.map((i) => i.id);
-  assert.deepEqual(lista, [b, a]);
+  const order = (await call('GET', '/posts?status=new')).body.items.map((i) => i.id);
+  assert.deepEqual(order, [b, a]);
 });
 
-test('erros de entrada: JSON inválido, rota inexistente, slug inválido', async () => {
-  const { env } = ambiente();
-  const res = await tratar(
+test('competitors: list with rule and aliases; text match by name and alias, not substrings', async () => {
+  const { call } = setup();
+  const r = await call('GET', '/competitors');
+  assert.equal(r.status, 200);
+  assert.ok(r.body.rule.blocked);
+  const sec = r.body.competitors.find((c) => c.name === 'Securiti');
+  assert.deepEqual(sec.aliases, ['Securiti.ai', 'Veeam Securiti']);
+  const m = await call('GET', `/competitors?text=${encodeURIComponent('Veeam Securiti and Amazon Macie announce; Cyberhavens is fake; keep in mind; MIND raises; dig into Dig Security')}`);
+  assert.deepEqual(m.body.matches.map((x) => x.name).sort(), ['Amazon Macie', 'Dig Security', 'MIND', 'Securiti']);
+});
+
+test('input errors: invalid JSON, unknown route, invalid slug, invalid type', async () => {
+  const { env, call } = setup();
+  const res = await handle(
     new Request('https://dsb-api/posts', { method: 'POST', headers: { Authorization: `Bearer ${TOKENS.TOKEN_CLAUDE}` }, body: '{x' }),
     env
   );
   assert.equal(res.status, 400);
-  const { chamar } = ambiente();
-  assert.equal((await chamar('GET', '/nada')).status, 404);
-  assert.equal((await chamar('POST', '/posts', base({ slug: 'Com Acento é' }))).corpo.erro, 'slug_invalido');
+  assert.equal((await call('GET', '/nothing')).status, 404);
+  assert.equal((await call('POST', '/posts', base({ slug: 'With Accent é' }))).body.error, 'invalid_slug');
+  assert.equal((await call('POST', '/posts', base({ type: 'Incidente' }))).body.error, 'invalid_value');
 });

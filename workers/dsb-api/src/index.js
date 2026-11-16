@@ -1,140 +1,138 @@
-import { ErroApi, json, lerCorpo } from './http.js';
-import { autenticar } from './auth.js';
-import { obterPost, listarPosts, verificarDedup, criarPost, adicionarChaves, editarPost, mudarStatus, reordenar, filaDoCanal } from './posts.js';
-import { reservar, concluir } from './publicacoes.js';
-import { listar, resumo, atualizar, registrar, registrarRecusa, marcarNotificadas, varrer } from './pendencias.js';
-import { iniciarJob, finalizarJob } from './jobs.js';
+import { ApiError, json, readBody } from './http.js';
+import { authenticate } from './auth.js';
+import { getPost, listPosts, checkDedup, createPost, addKeys, editPost, changeStatus, reorder, channelQueue } from './posts.js';
+import { claim, complete } from './publications.js';
+import { list, summary, update, record, recordRejection, markNotified, sweep } from './issues.js';
+import { startJob, finishJob } from './jobs.js';
+import { listCompetitors } from './competitors.js';
 
 /**
- * Rotas (todas exigem autenticação; ver auth.js):
- *  GET  /health
- *  GET  /dedup?url=…&cve=CVE-…            consulta sem escrever
- *  GET  /posts?status=&tipo=&desde=&limite=
- *  POST /posts                             cria item Novo (dedup por chave; follow_up_of)
- *  GET  /posts/:id
- *  PATCH /posts/:id                        edita campos permitidos
- *  POST /posts/:id/status                  {para, notas, motivo, estrela}
- *  POST /posts/:id/chaves                  {cves, url} — corrige "sem chave"
- *  POST /posts/reordenar                   {status, ids}
- *  GET  /fila/:canal                       blog | linkedin | x | traducoes
- *  POST /publicacoes                       reserva {post_id, canal, idioma}
- *  POST /publicacoes/:id/resultado         {status: publicado|falhou|pulado, url, erro, external_id, body, published_at}
- *  GET  /pendencias?status=&severity=&stage=&source=&post_id=&limite=
- *  GET  /pendencias/resumo
- *  POST /pendencias                        relato de agente {fingerprint, kind, severity, stage, summary, …}
- *  PATCH /pendencias/:id                   {status, resolution}
- *  POST /pendencias/notificadas            {ids}
- *  POST /varrer                            roda as verificações de saúde
- *  POST /jobs                              {job} → id
- *  PATCH /jobs/:id                         {status: ok|error|skipped, notes, items_read, items_written} (+ varredura)
+ * Routes (all require authentication except /health; see auth.js):
+ *  GET   /health
+ *  GET   /dedup?url=…&cve=CVE-…           read-only dedup check
+ *  GET   /competitors[?text=…]             BigID competitor list and editorial rule
+ *  GET   /posts?status=&type=&since=&limit=
+ *  POST  /posts                            creates a new post (dedup by key; follow_up_of)
+ *  GET   /posts/:id
+ *  PATCH /posts/:id                        edits allowed fields
+ *  POST  /posts/:id/status                 {to, notes, reason, star}
+ *  POST  /posts/:id/keys                   {cves, url} — fixes "missing key"
+ *  POST  /posts/reorder                    {status, ids}
+ *  GET   /queue/:channel                   blog | linkedin | x | translations
+ *  POST  /publications                     claim {post_id, channel, lang}
+ *  POST  /publications/:id/result          {status: published|failed|skipped, url, error, external_id, body, published_at}
+ *  GET   /issues?status=&severity=&stage=&source=&kind=&post_id=&limit=
+ *  GET   /issues/summary
+ *  POST  /issues                           agent report {fingerprint, kind, severity, stage, summary, …}
+ *  PATCH /issues/:id                       {status, resolution}
+ *  POST  /issues/notified                  {ids}
+ *  POST  /sweep                            runs the health checks
+ *  POST  /jobs                             {job} → id
+ *  PATCH /jobs/:id                         {status: ok|error|skipped, notes, items_read, items_written} (+ sweep)
  *
- * Toda escrita recusada vira pendência (source = api) e a resposta traz o número dela em "pendencia".
+ * Every rejected write becomes an issue (source = api) and the response carries its id in "issue".
  */
-export async function tratar(request, env) {
+export async function handle(request, env) {
   const url = new URL(request.url);
-  const metodo = request.method;
-  const partes = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
-  const rota = `${metodo} /${partes.map((p) => (/^\d+$/.test(p) ? ':id' : p)).join('/')}`;
+  const method = request.method;
+  const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+  const route = `${method} /${parts.map((p) => (/^\d+$/.test(p) ? ':id' : p)).join('/')}`;
 
-  if (metodo === 'GET' && rota === 'GET /health') return json({ ok: true, servico: 'dsb-api' });
+  if (route === 'GET /health') return json({ ok: true, service: 'dsb-api' });
 
-  const sessao = await autenticar(request, env);
-  if (!sessao.ok) return json({ ok: false, erro: sessao.erro }, sessao.status);
+  const session = await authenticate(request, env);
+  if (!session.ok) return json({ ok: false, error: session.error }, session.status);
 
   const db = env.DB;
-  if (!db) return json({ ok: false, erro: 'sem_banco' }, 503);
+  if (!db) return json({ ok: false, error: 'no_database' }, 503);
 
-  let corpo = null;
+  let body = null;
+  const postId = parts[0] === 'posts' && /^\d+$/.test(parts[1] || '') ? Number(parts[1]) : null;
   try {
-    if (metodo === 'POST' || metodo === 'PATCH') corpo = await lerCorpo(request);
-    const id = partes[1] && /^\d+$/.test(partes[1]) ? Number(partes[1]) : null;
-    const resultado = await despachar({ rota, db, url, corpo, id, sessao });
-    return json({ ok: true, ...resultado.corpo }, resultado.status || 200);
+    if (method === 'POST' || method === 'PATCH') body = await readBody(request);
+    const id = parts[1] && /^\d+$/.test(parts[1]) ? Number(parts[1]) : null;
+    const result = await dispatch({ route, db, url, body, id, session });
+    return json({ ok: true, ...result.body }, result.status || 200);
   } catch (e) {
-    if (e instanceof ErroApi) {
-      let pendencia = null;
-      if (metodo !== 'GET' && e.status !== 404) {
-        pendencia = await registrarRecusa(db, { erro: e, rota, sessao, corpo, postId: partes[0] === 'posts' && /^\d+$/.test(partes[1] || '') ? Number(partes[1]) : null });
-      }
-      return json({ ok: false, erro: e.codigo, mensagem: e.message, ...e.extra, pendencia }, e.status);
+    if (e instanceof ApiError) {
+      let issue = null;
+      if (method !== 'GET' && e.status !== 404) issue = await recordRejection(db, { error: e, route, session, body, postId });
+      return json({ ok: false, error: e.code, message: e.message, ...e.extra, issue }, e.status);
     }
     const msg = String((e && e.message) || e).slice(0, 300);
-    const pendencia = await registrarRecusa(db, {
-      erro: new ErroApi(500, 'erro_interno', msg),
-      rota,
-      sessao,
-      corpo
-    });
-    console.log(JSON.stringify({ evento: 'erro_interno', rota, msg }));
-    return json({ ok: false, erro: 'erro_interno', mensagem: msg, pendencia }, 500);
+    const issue = await recordRejection(db, { error: new ApiError(500, 'internal_error', msg), route, session, body, postId });
+    console.log(JSON.stringify({ event: 'internal_error', route, msg }));
+    return json({ ok: false, error: 'internal_error', message: msg, issue }, 500);
   }
 }
 
-async function despachar({ rota, db, url, corpo, id, sessao }) {
+async function dispatch({ route, db, url, body, id, session }) {
   const q = url.searchParams;
-  switch (rota) {
+  switch (route) {
     case 'GET /dedup':
-      return { corpo: await verificarDedup(db, { sourceUrl: q.get('url'), cves: q.getAll('cve') }) };
+      return { body: await checkDedup(db, { sourceUrl: q.get('url'), cves: q.getAll('cve') }) };
+    case 'GET /competitors':
+      return { body: await listCompetitors(db, q) };
     case 'GET /posts':
-      return { corpo: { itens: await listarPosts(db, q) } };
+      return { body: { items: await listPosts(db, q) } };
     case 'POST /posts':
-      return { corpo: { item: await criarPost(db, corpo, sessao) }, status: 201 };
-    case 'POST /posts/reordenar':
-      return { corpo: await reordenar(db, corpo, sessao) };
+      return { body: { post: await createPost(db, body, session) }, status: 201 };
+    case 'POST /posts/reorder':
+      return { body: await reorder(db, body, session) };
     case 'GET /posts/:id':
-      return { corpo: { item: await obterPost(db, id) } };
+      return { body: { post: await getPost(db, id) } };
     case 'PATCH /posts/:id':
-      return { corpo: { item: await editarPost(db, id, corpo, sessao) } };
+      return { body: { post: await editPost(db, id, body, session) } };
     case 'POST /posts/:id/status':
-      return { corpo: { item: await mudarStatus(db, id, corpo, sessao) } };
-    case 'POST /posts/:id/chaves':
-      return { corpo: { item: await adicionarChaves(db, id, corpo, sessao) } };
-    case 'GET /fila/blog':
-    case 'GET /fila/linkedin':
-    case 'GET /fila/x':
-    case 'GET /fila/traducoes':
-      return { corpo: { itens: await filaDoCanal(db, rota.split('/').pop(), q.get('limite')) } };
-    case 'POST /publicacoes':
-      return { corpo: { publicacao: await reservar(db, corpo, sessao) }, status: 201 };
-    case 'POST /publicacoes/:id/resultado':
-      return { corpo: await concluir(db, id, corpo, sessao) };
-    case 'GET /pendencias':
-      return { corpo: { itens: await listar(db, q) } };
-    case 'GET /pendencias/resumo':
-      return { corpo: { resumo: await resumo(db) } };
-    case 'POST /pendencias':
+      return { body: { post: await changeStatus(db, id, body, session) } };
+    case 'POST /posts/:id/keys':
+      return { body: { post: await addKeys(db, id, body) } };
+    case 'GET /queue/blog':
+    case 'GET /queue/linkedin':
+    case 'GET /queue/x':
+    case 'GET /queue/translations':
+      return { body: { items: await channelQueue(db, route.split('/').pop(), q.get('limit')) } };
+    case 'POST /publications':
+      return { body: { publication: await claim(db, body, session) }, status: 201 };
+    case 'POST /publications/:id/result':
+      return { body: await complete(db, id, body, session) };
+    case 'GET /issues':
+      return { body: { items: await list(db, q) } };
+    case 'GET /issues/summary':
+      return { body: { summary: await summary(db) } };
+    case 'POST /issues':
       return {
-        corpo: {
-          pendencia: await registrar(db, {
-            ...corpo,
-            source: 'agente',
+        body: {
+          issue: await record(db, {
+            ...body,
+            source: 'agent',
             check_name: null,
-            agent: sessao.ator,
-            fingerprint: corpo && corpo.fingerprint ? `agente:${corpo.fingerprint}` : null
+            agent: session.actor,
+            fingerprint: body && body.fingerprint ? `agent:${body.fingerprint}` : null
           })
         },
         status: 201
       };
-    case 'PATCH /pendencias/:id':
-      return { corpo: { pendencia: await atualizar(db, id, corpo, sessao) } };
-    case 'POST /pendencias/notificadas':
-      return { corpo: { marcadas: await marcarNotificadas(db, corpo.ids) } };
-    case 'POST /varrer':
-      return { corpo: { varredura: await varrer(db) } };
+    case 'PATCH /issues/:id':
+      return { body: { issue: await update(db, id, body, session) } };
+    case 'POST /issues/notified':
+      return { body: { marked: await markNotified(db, body.ids) } };
+    case 'POST /sweep':
+      return { body: { sweep: await sweep(db) } };
     case 'POST /jobs':
-      return { corpo: { job: await iniciarJob(db, corpo, sessao) }, status: 201 };
+      return { body: { job: await startJob(db, body, session) }, status: 201 };
     case 'PATCH /jobs/:id': {
-      const job = await finalizarJob(db, id, corpo);
-      const varredura = await varrer(db).catch((e) => ({ erro: String(e.message || e).slice(0, 200) }));
-      return { corpo: { job, varredura } };
+      const job = await finishJob(db, id, body);
+      const s = await sweep(db).catch((e) => ({ error: String(e.message || e).slice(0, 200) }));
+      return { body: { job, sweep: s } };
     }
     default:
-      throw new ErroApi(404, 'nao_encontrado', `Rota inexistente: ${rota}`);
+      throw new ApiError(404, 'not_found', `Unknown route: ${route}`);
   }
 }
 
 export default {
   fetch(request, env) {
-    return tratar(request, env);
+    return handle(request, env);
   }
 };

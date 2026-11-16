@@ -1,67 +1,74 @@
 # dsb-api
 
-Regras da fila do Data Security Briefing sobre o Cloudflare D1. Depois do cutover, é o único caminho de escrita na fila: agentes (Grok, Claude), o app de gestão (`dsb-fila`) e o app de auditoria (`dsb-auditor`) passam por aqui.
+Data Security Briefing queue rules on Cloudflare D1. After cutover it is the only write path to the queue: agents (Grok, Claude), the management app (`dsb-fila`) and the audit app (`dsb-auditor`) all go through it.
 
-## Acesso
+## Access
 
-- Domínio `dsb-api.duarte.top`, usado só pelos agentes. Sem token válido, 401; sem secrets configurados, 503.
-- Sem cron próprio (a conta está no limite de crons do plano free).
-- Apps: Service Binding com header `x-interno-token` (secret `INTERNO_TOKEN`) e `x-ator` (e-mail do Access ou nome do app).
-- Agentes: `Authorization: Bearer` com `TOKEN_GROK` ou `TOKEN_CLAUDE`. O ator e o `added_by` vêm do token, não do corpo.
-- Sem nenhum secret configurado, tudo responde 503.
+- Domain `dsb-api.duarte.top`, used by the agents only. Without a valid token, 401; without secrets configured, 503.
+- No cron of its own (the account is at the cron limit of the free plan).
+- Apps: Service Binding with header `x-internal-token` (secret `INTERNAL_TOKEN`) and `x-actor` (Access e-mail or app name).
+- Agents: `Authorization: Bearer` with `TOKEN_GROK` or `TOKEN_CLAUDE`. The actor and `added_by` (`grok` / `claude`) come from the token, not the body.
 
-## Regras que o banco e a API garantem
+## Rules enforced by the database and the API
 
-| Regra | Onde |
+| Rule | Where |
 |---|---|
-| Dedup por assunto: cada CVE e a URL normalizada da fonte viram chaves únicas | `post_keys` + `POST /posts` |
-| URLs genéricas (catálogo KEV, alertas "CISA adds") não viram chave; exigem CVE | `ignored_url_patterns` |
-| Continuação de um assunto só com `follow_up_of` (mesma cadeia) | `POST /posts` |
-| Assunto descartado só volta como follow-up; descarte exige motivo | `POST /posts/:id/status` |
-| `Publicado` só nasce da publicação do blog PT | `POST /publicacoes/:id/resultado` |
-| Blog PT exige item Aprovado com capa em `covers.duarte.top`, briefing e slug | `POST /publicacoes` |
-| LinkedIn, X e traduções exigem blog PT publicado | `POST /publicacoes` |
-| Uma publicação por item, canal e idioma (dois agentes não publicam o mesmo item) | `UNIQUE` em `publications` |
+| Subject dedup: each CVE and the normalized source URL become unique keys | `post_keys` + `POST /posts` |
+| Generic URLs (KEV catalog, "CISA adds" alerts) never become keys and require a CVE | `ignored_url_patterns` |
+| A continuation of a subject only enters with `follow_up_of` (same chain) | `POST /posts` |
+| A discarded subject only comes back as a follow-up; discarding requires a reason | `POST /posts/:id/status` |
+| `published` is only set by the PT blog publication | `POST /publications/:id/result` |
+| PT blog requires an approved post with a cover on `covers.duarte.top`, a briefing and a slug | `POST /publications` |
+| LinkedIn, X and translations require the PT blog article to be published | `POST /publications` |
+| One publication per post, channel and language (two agents never publish the same post) | `UNIQUE` on `publications` |
+| BigID competitors: single list and editorial rule read by every agent | `competitors` + `GET /competitors` |
 
-## Pendências
+## Values
 
-Nenhum problema fica só como erro na resposta:
+- Post `status`: `new`, `approved`, `published`, `discarded`. `type`: `incident`, `news`, `vulnerability`. `priority`: `normal`, `high`.
+- Publication `status`: `pending`, `published`, `failed`, `skipped`. `channel`: `blog`, `linkedin`, `x`. `lang`: `pt`, `es`, `en`.
+- Issue `status`: `open`, `in_progress`, `resolved`, `ignored`. `severity`: `info`, `warning`, `error`, `critical`.
 
-- **Recusas da API** viram pendência (`source = api`) com o corpo enviado, o agente e a ação sugerida. A resposta traz o número em `pendencia`. A mesma recusa repetida só incrementa `occurrences`.
-- **Verificações de saúde** (`health_checks` + views `v_hc_*`) rodam em `POST /varrer`, disparado pelo cron do `dsb-auditor` e ao fim de cada job (`PATCH /jobs/:id`). O que deixa de ocorrer fecha sozinho.
-- **Relatos de agentes** entram por `POST /pendencias`.
-- Fechar manualmente (`resolvido` ou `ignorado`) exige nota. Ignorada não reabre.
+## Issues
 
-## Rotas
+No problem stays a bare error in a response:
 
-Ver o comentário no topo de `src/index.js`.
+- **API rejections** become issues (`source = api`) with the payload sent, the agent and a suggested action. The response carries the id in `issue`. The same rejection repeated only increments `occurrences`.
+- **Health checks** (`health_checks` + `v_hc_*` views) run on `POST /sweep`, triggered by the `dsb-auditor` cron and at the end of each job (`PATCH /jobs/:id`). What stops happening is resolved automatically.
+- **Agent reports** come in through `POST /issues`.
+- Closing manually (`resolved` or `ignored`) requires a note. An ignored issue does not reopen.
 
-## Fluxo típico de um job
+## Routes
+
+See the comment at the top of `src/index.js`.
+
+## Typical job flow
 
 ```
-POST /jobs {job}                              → id
-GET  /fila/blog                               → itens prontos
-POST /publicacoes {post_id, canal, idioma}    → reserva (409 se outro job já pegou)
-… publica no canal …
-POST /publicacoes/:id/resultado {status, url | erro}
-PATCH /jobs/:id {status, items_read, items_written, notes}   → fecha o job e varre
+POST /jobs {job}                                   → id
+GET  /queue/blog                                   → posts ready to publish
+POST /publications {post_id, channel, lang}        → claim (409 if another job took it)
+… publish on the channel …
+POST /publications/:id/result {status, url | error}
+PATCH /jobs/:id {status, items_read, items_written, notes}   → closes the job and sweeps
 ```
 
-## Banco
+## Database
 
-- Fase de testes: binding `DB` → `dsb-staging`. No cutover, trocar para a base de produção.
-- `migrations/` tem o schema v2 e as pendências. Na `dsb-staging` elas foram aplicadas à mão em 16/11/2026; numa base nova, aplicar com `npx wrangler d1 migrations apply <base> --remote`.
-- O D1 limita padrões `LIKE` longos e `UNION` com muitos termos: por isso as URLs genéricas usam `substr`/`instr` e cada verificação é uma view própria.
+- Test phase: binding `DB` → `dsb-staging`. At cutover, switch it to the production database.
+- `migrations/`: `0001_schema.sql` (posts, keys, publications, events, jobs), `0002_issues.sql` (issues and health checks), `0003_competitors.sql`. On `dsb-staging` they were applied through the D1 API on 2026-11-16; on a new database, apply them with `npx wrangler d1 migrations apply <database> --remote`.
+- D1 limits long `LIKE` patterns and compound `SELECT`s with many terms, so generic URLs use `substr`/`instr` and each check is its own view.
+- Full Notion load and X backfill: see `load/README.md`.
 
-## Testes
+## Tests
 
-`npm test` na raiz do repositório (ou `node --test workers/dsb-api/test/*.test.mjs`). Os testes rodam a API inteira sobre SQLite (`node:sqlite`) com as migrations reais.
+`npm test` at the repository root (or `node --test workers/dsb-api/test/*.test.mjs`). The tests run the whole API on SQLite (`node:sqlite`) with the real migrations.
 
 ## Deploy
 
 ```
 cd workers/dsb-api
-npx wrangler secret put INTERNO_TOKEN
+npx wrangler secret put INTERNAL_TOKEN
 npx wrangler secret put TOKEN_GROK
 npx wrangler secret put TOKEN_CLAUDE
 npx wrangler deploy

@@ -1,13 +1,13 @@
-// Adaptador mínimo da API do D1 sobre node:sqlite, para testar o dsb-api com as migrations reais.
-// Cobre o que o Worker usa: prepare().bind().first()/all()/run() e batch() transacional.
+// Minimal D1 API adapter over node:sqlite, to test dsb-api against the real migrations.
+// Covers what the Worker uses: prepare().bind().first()/all()/run() and transactional batch().
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const aqui = dirname(fileURLToPath(import.meta.url));
+const here = dirname(fileURLToPath(import.meta.url));
 
-const norm = (v) => (v === undefined ? (() => { throw new TypeError('D1_TYPE_ERROR: undefined em bind'); })() : typeof v === 'boolean' ? (v ? 1 : 0) : v);
+const norm = (v) => (v === undefined ? (() => { throw new TypeError('D1_TYPE_ERROR: undefined in bind'); })() : typeof v === 'boolean' ? (v ? 1 : 0) : v);
 
 class Stmt {
   constructor(db, sql, params = []) {
@@ -18,12 +18,12 @@ class Stmt {
   bind(...params) {
     return new Stmt(this.db, this.sql, params.map(norm));
   }
-  _devolveLinhas() {
+  _returnsRows() {
     return /^\s*(SELECT|WITH)\b/i.test(this.sql) || /\bRETURNING\b/i.test(this.sql);
   }
   _exec() {
     const st = this.db.prepare(this.sql);
-    if (this._devolveLinhas()) {
+    if (this._returnsRows()) {
       const results = st.all(...this.params).map((r) => ({ ...r }));
       const ch = this.db.prepare('SELECT changes() AS c').get().c;
       return { success: true, results, meta: { changes: /^\s*(SELECT|WITH)\b/i.test(this.sql) ? 0 : ch } };
@@ -43,10 +43,10 @@ class Stmt {
   }
 }
 
-export function criarD1() {
+export function createD1() {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON');
-  const dir = join(aqui, '..', 'migrations');
+  const dir = join(here, '..', 'migrations');
   for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) db.exec(readFileSync(join(dir, f), 'utf8'));
   return {
     _db: db,
