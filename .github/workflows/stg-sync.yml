@@ -1,0 +1,66 @@
+# STG sync: nightly full reload of dsb-staging (D1) from the Notion queue, until the cutover.
+# - Loader scripts come from the dsb-api branch (workers/dsb-api/load); blog content from main, so the load
+#   knows which PT/ES/EN briefing files exist.
+# - Notion: ~2 read requests per run. X publications are kept across reloads (write.py, KEEP_X).
+# - Everything created on STG (posts, issues, job runs) is replaced by the Notion state on each run.
+# - Secrets: STG_NOTION_TOKEN (Notion integration with read access to the queue), STG_D1_TOKEN (Cloudflare token
+#   with D1 edit on dsb-staging), STG_INTERNAL_TOKEN (dsb-api-stg internal token, for the sweep).
+name: STG sync (Notion → dsb-staging)
+
+on:
+  schedule:
+    - cron: '23 2 * * *' # 23:23 BRT, after the evening publishing jobs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stg-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Loader (dsb-api branch)
+        uses: actions/checkout@v4
+        with:
+          ref: dsb-api
+          path: loader
+          sparse-checkout: workers/dsb-api/load
+
+      - name: Blog content (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: blog
+          sparse-checkout: src/content
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Export the Notion queue
+        env:
+          NOTION_TOKEN: ${{ secrets.STG_NOTION_TOKEN }}
+        run: python3 loader/workers/dsb-api/load/export_notion.py
+
+      - name: Transform
+        env:
+          DSB_CONTENT: ${{ github.workspace }}/blog/src/content
+        run: python3 loader/workers/dsb-api/load/transform.py loader/workers/dsb-api/load/notion.json
+
+      - name: Write to dsb-staging
+        env:
+          CF_D1: ${{ secrets.STG_D1_TOKEN }}
+          JOB_NAME: notion-stg-sync
+        run: python3 loader/workers/dsb-api/load/write.py
+
+      - name: Sweep (health checks on dsb-api-stg)
+        env:
+          T: ${{ secrets.STG_INTERNAL_TOKEN }}
+        run: |
+          curl -fsS --max-time 60 -X POST -H "x-internal-token: $T" -H "x-actor: stg-sync" \
+            https://dsb-api-stg.duarte.top/sweep | python3 -c "import json,sys; print(json.load(sys.stdin)['sweep'])"
