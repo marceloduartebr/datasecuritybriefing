@@ -68,7 +68,9 @@ def iso(v):
 
 
 def notion_id(url):
-    m = re.search(r'([0-9a-f]{32})', url.replace('-', ''))
+    # The page id is the last 32 hex digits of the URL path; REST URLs put the title (which can end in a-f) before it.
+    path = urlsplit(url).path.replace('-', '')
+    m = re.search(r'([0-9a-f]{32})$', path)
     return m.group(1) if m else None
 
 

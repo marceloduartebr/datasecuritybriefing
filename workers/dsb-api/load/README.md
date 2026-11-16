@@ -18,9 +18,9 @@ Used during the test phase (dsb-staging) and repeated at cutover. Idempotent: de
 ## Nightly STG sync
 
 `.github/workflows/stg-sync.yml` repeats steps 1–4 every night at 23:23 BRT (and on demand with "Run workflow"):
-`export_notion.py` (Notion REST, read-only, ~2 requests) → `transform.py` → `write.py` (`JOB_NAME=notion-stg-sync`) → `POST /sweep` on dsb-api-stg.
+`export_notion.py` (Notion REST, read-only, ~2 requests) → `transform.py` → `write.py` (`JOB_NAME=notion-stg-sync`). The sweep runs when the STG auditor panel opens (GitHub runners get 403 from Cloudflare's bot protection).
 
-- X publications survive the reload: `write.py` saves them by Notion page id and restores them on the reloaded posts. New X posts after the backfill still need `x_match.py` + `write_x.py`.
+- X publications survive the reload: `write.py` saves them by PT blog article URL (falling back to the Notion page id) and restores them on the reloaded posts. `write_x.py` resolves posts from the database the same way. New X posts after the backfill still need `x_match.py` + `write_x.py`.
 - Anything created only on STG (test posts, issues, job runs) is replaced by the Notion state on each run.
-- Repository secrets: `STG_NOTION_TOKEN`, `STG_D1_TOKEN`, `STG_INTERNAL_TOKEN`.
+- Repository secrets: `STG_NOTION_TOKEN`, `STG_D1_TOKEN`.
 - The schedule only runs from the default branch, so the workflow file lives on `main`; it checks out this branch for the scripts and `main` for the blog content.
