@@ -1,12 +1,15 @@
 """Writes load.json to dsb-staging through the D1 REST API (token read from Pass into the CF_D1 variable).
 Full reload: deletes the data (not the schema, health_checks, ignored_url_patterns or competitors) and inserts with stable ids.
+X publications are kept across reloads (Notion has no X column): they are saved by the post's Notion page id
+before clearing and restored onto the reloaded posts (KEEP_X=0 disables this). JOB_NAME names the job run.
 """
 import json, os, ssl, time, urllib.request, urllib.error
 
 ACCT = '33755e61c66edcba424c5cf9a1f9e676'
 DB = os.environ.get('D1_DATABASE_ID', '808d3914-2df5-4da9-aab7-1f19d51001d2')  # dsb-staging
 URL = f'https://api.cloudflare.com/client/v4/accounts/{ACCT}/d1/database/{DB}/query'
-CTX = ssl.create_default_context(cafile=os.environ.get('CA_BUNDLE', '/root/.ccr/ca-bundle.crt'))
+_CA = os.environ.get('CA_BUNDLE', '/root/.ccr/ca-bundle.crt')  # agent proxy CA here; absent on GitHub Actions
+CTX = ssl.create_default_context(cafile=_CA) if _CA and os.path.exists(_CA) else ssl.create_default_context()
 TOKEN = os.environ['CF_D1']
 HERE = os.path.dirname(os.path.abspath(__file__))
 usage = {'rows_read': 0, 'rows_written': 0, 'calls': 0}
@@ -48,6 +51,14 @@ def insert(table, columns, rows):
 if __name__ == '__main__':
     c = json.load(open(os.path.join(HERE, 'load.json')))
 
+    keep_x = os.environ.get('KEEP_X', '1') != '0'
+    saved_x = []
+    if keep_x:
+        saved_x = q("""SELECT p.notion_id, x.status, x.url, x.external_id, x.body, x.published_at, x.last_error, x.agent
+                       FROM publications x JOIN posts p ON p.id = x.post_id
+                       WHERE x.channel = 'x' AND p.notion_id IS NOT NULL AND x.status IN ('published','skipped')""")[0]['results']
+        print(f'0) saved {len(saved_x)} X publication(s)')
+
     print('1) clearing staging data')
     for t in ('issues', 'post_events', 'publications', 'post_keys', 'job_runs'):
         q(f'DELETE FROM {t}')
@@ -55,7 +66,8 @@ if __name__ == '__main__':
     q('DELETE FROM posts')
 
     print('2) load job')
-    job = q("INSERT INTO job_runs (job, agent, status) VALUES ('notion-full-load', 'claude', 'running') RETURNING id")[0]['results'][0]['id']
+    job = q("INSERT INTO job_runs (job, agent, status) VALUES (?1, 'claude', 'running') RETURNING id",
+            [os.environ.get('JOB_NAME', 'notion-full-load')])[0]['results'][0]['id']
 
     print('3) inserting')
     post_cols = ['id', 'notion_id', 'topic', 'status', 'type', 'country', 'priority', 'item_order', 'source_name', 'source_url', 'slug',
@@ -68,6 +80,12 @@ if __name__ == '__main__':
     insert('post_keys', ['key', 'post_id', 'kind'], c['keys'])
     insert('publications', ['post_id', 'channel', 'lang', 'status', 'url', 'external_id', 'published_at', 'last_error', 'agent'],
            [dict(p, agent='notion-load') for p in c['publications']])
+    if saved_x:
+        by_notion = {p['notion_id']: p['id'] for p in c['posts'] if p.get('notion_id')}
+        x_rows = [dict(r, post_id=by_notion[r['notion_id']], channel='x', lang='pt') for r in saved_x if r['notion_id'] in by_notion]
+        insert('publications', ['post_id', 'channel', 'lang', 'status', 'url', 'external_id', 'body', 'published_at', 'last_error', 'agent'], x_rows)
+        if len(x_rows) < len(saved_x):
+            print(f'   {len(saved_x) - len(x_rows)} X publication(s) dropped: their Notion page is gone')
     insert('post_events', ['post_id', 'to_status', 'actor', 'notes'], [dict(e, actor='notion-load') for e in c['events']])
     insert('issues', ['fingerprint', 'source', 'kind', 'severity', 'stage', 'post_id', 'agent', 'summary', 'detail',
                       'suggested_action', 'job_run_id'], [dict(i, job_run_id=job) for i in c['issues']])
@@ -75,7 +93,7 @@ if __name__ == '__main__':
     print('4) closing the job')
     q("UPDATE job_runs SET status = 'ok', finished_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'), items_read = ?1, items_written = ?2, notes = ?3 WHERE id = ?4",
       [len(c['posts']), len(c['posts']) + len(c['keys']) + len(c['publications']),
-       f"Notion full load; load issues: {len(c['issues'])}", job])
+       f"Notion full load; load issues: {len(c['issues'])}; X kept: {len(saved_x)}", job])
 
     print('5) reconciliation')
     for r in q('SELECT status, COUNT(*) n FROM posts GROUP BY status ORDER BY status')[0]['results']:
