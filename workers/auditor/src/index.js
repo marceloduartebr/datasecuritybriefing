@@ -10,6 +10,7 @@ export const HOST_ATALHO = 'dsba.duarte.top';
 export const HOST_PAINEL = 'dsb-auditor.duarte.top';
 import { dispararFilaPush } from './fila-push.js';
 import { usesApi, resolveIssue } from './fila-api.js';
+import { ERRO_EN } from './i18n.js';
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -143,9 +144,19 @@ export async function tratar(request, env, ctx, deps = {}) {
   return json(capasFaltando(ultimo), ultimo ? 200 : 404);
 }
 
+/** STG: JSON error replies carry English codes. */
+export async function jsonErroEn(res) {
+  if (res.status < 400 || !(res.headers.get('Content-Type') || '').includes('application/json')) return res;
+  const j = await res.clone().json().catch(() => null);
+  if (!j || !ERRO_EN[j.erro]) return res;
+  const { erro, ...rest } = j;
+  return new Response(JSON.stringify({ ...rest, error: ERRO_EN[erro] }), { status: res.status, headers: res.headers });
+}
+
 export default {
-  fetch(request, env, ctx) {
-    return tratar(request, env, ctx);
+  async fetch(request, env, ctx) {
+    const res = await tratar(request, env, ctx);
+    return usesApi(env) ? jsonErroEn(res) : res;
   },
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(dispararFilaPush(env)); // avisos da fila (dsb-fila); isolado da auditoria

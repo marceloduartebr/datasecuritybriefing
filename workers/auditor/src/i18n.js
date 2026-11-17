@@ -78,6 +78,25 @@ const PHRASES = [
   [' — sem capa<', ' — no cover<'],
   [' — sem capa ', ' — no cover '],
   [/(\d{4}-\d{2}-\d{2}-[a-z0-9-]+) capa/g, '$1 cover'],
+  // ranking tags (views tab) and the "no type" bucket
+  ['<span class="tag">Notícia</span>', '<span class="tag">News</span>'],
+  ['<span class="tag">Incidente</span>', '<span class="tag">Incident</span>'],
+  ['<span class="tag">Vulnerabilidades</span>', '<span class="tag">Vulnerabilities</span>'],
+  ['>Sem tipo<', '>No type<'],
+  // cover reason codes (queue list and blog problems)
+  [/ — sem_capa</g, ' — no cover<'],
+  [/ — host_invalido</g, ' — cover not on covers.duarte.top<'],
+  [/ — http</g, ' — cover URL does not answer 200<'],
+  [/ cover (falhou|sem_capa|host_invalido|http)\b/g, (_, c) => ` cover ${{ falhou: 'failed', sem_capa: 'missing', host_invalido: 'not on covers.duarte.top', http: 'does not answer 200' }[c]}`],
+  // settings box
+  ['<li>ALERTAS: ', '<li>Alerts: '],
+  ['<li>ALERTA_OK_DIARIO: ', '<li>Daily all-clear alert: '],
+  ['<li>NOTION: ', '<li>Notion: '],
+  // last alert: titles and reason codes
+  [/DSB: (\d+) problema\(s\) às (\d{2}:\d{2})/g, 'DSB: $1 problem(s) at $2'],
+  ['DSB: tudo certo hoje', 'DSB: all clear today'],
+  [/(motivo: |reason: |Última execução: |Last run: |Enviado nesta execução \(|Sent in this run \()(alertas_off|sem_problemas|sem_binding|sem_token|repetido|rede|problema|ok_diario)\b/g,
+    (_, pre, c) => pre + { alertas_off: 'alerts off', sem_problemas: 'no problems', sem_binding: 'push binding missing', sem_token: 'alert token missing', repetido: 'same alert already sent today', rede: 'network error', problema: 'problems', ok_diario: 'daily all-clear' }[c]],
   // queue counts
   ['Notion desligado.', 'Notion off.'],
   ['<li>Adicionados hoje: ', '<li>Added today: '],
@@ -132,3 +151,7 @@ export function toEnglish(html) {
   for (const [from, to] of PHRASES) out = typeof from === 'string' ? out.split(from).join(to) : out.replace(from, to);
   return out;
 }
+
+/** STG: English codes for the JSON errors the panel and its endpoints return. */
+export const ERRO_EN = { nao_autorizado: 'unauthorized', nao_configurado: 'not_configured', nao_encontrado: 'not_found', origem: 'origin_not_allowed', formato: 'unsupported_format', grande: 'too_large', metodo: 'method_not_allowed', sem_execucao: 'no_run_yet' };
+
