@@ -188,7 +188,7 @@ function flagsHtml(r) {
 function alertaHtml(ultimoAlerta, r) {
   if (ultimoAlerta && (ultimoAlerta.titulo || ultimoAlerta.sig)) {
     const quando = ultimoAlerta.em ? fmtIsoBrt(ultimoAlerta.em) : (ultimoAlerta.data || '—');
-    const motivo = ultimoAlerta.tipo || ultimoAlerta.motivo || (ultimoAlerta.titulo?.includes('tudo certo') ? 'ok_diario' : 'problema');
+    const motivo = ultimoAlerta.tipo || ultimoAlerta.motivo || (/tudo certo|all clear/.test(ultimoAlerta.titulo || '') ? 'ok_diario' : 'problema');
     const titulo = ultimoAlerta.titulo || (ultimoAlerta.sig ? String(ultimoAlerta.sig).split('|')[0] : '—');
     return `<p><strong>${esc(titulo)}</strong></p>
       <p class="muted">${esc(quando)} · motivo: ${esc(motivo)}${ultimoAlerta.slot ? ` · slot ${esc(ultimoAlerta.slot)}` : ''}</p>`;
@@ -219,6 +219,12 @@ const IC_LUA = '<svg class="i-lua" viewBox="0 0 24 24" fill="none" stroke="curre
 const IC_SOL = '<svg class="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 
 /** <head> com identidade DSB (mesma do blog e da DSB Queue): fontes, tema claro/escuro; ícone próprio do painel (escudo + lupa) em /pwa/dsba/. */
+/** English everywhere; API names say dsb-api-stg only on STG. */
+function finish(html, ambiente = '') {
+  const out = toEnglish(html);
+  return ambiente === 'stg' ? out : out.split('dsb-api-stg').join('dsb-api').split('(D1 · STG)').join('(D1)');
+}
+
 function cabeca(titulo, ambiente = '') {
   const stg = ambiente === 'stg';
   return `<!doctype html>
@@ -297,7 +303,7 @@ function barras(obj, ordem, total) {
 /** Aba "Leituras": analytics do blog (Cloudflare Web Analytics), já agregado e em cache. */
 export function renderLeituras(dados, opts = {}) {
   const html = renderLeiturasPt(dados, opts);
-  return opts.ambiente === 'stg' ? toEnglish(html) : html;
+  return finish(html, opts.ambiente);
 }
 
 function renderLeiturasPt(dados, { janela = '7d', ambiente = '' } = {}) {
@@ -357,7 +363,7 @@ ${RODAPE_JS}${PTR_JS}
 /** HTML do painel a partir do estado já gravado (sem rede extra). */
 export function renderPainel(ultimo, opts = {}) {
   const html = renderPainelPt(ultimo, opts);
-  return opts.ambiente === 'stg' ? toEnglish(html) : html;
+  return finish(html, opts.ambiente);
 }
 
 function flashHtml(flash) {

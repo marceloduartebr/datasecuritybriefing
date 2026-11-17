@@ -75,6 +75,7 @@
       "vars": {
         "DATA_SOURCE": "api",
         "RUN_ON_VIEW": "on",
+        "AMBIENTE": "stg",
         "ALERTAS": "off",
         "ALERTA_OK_DIARIO": "off",
         "NOTION": "off",

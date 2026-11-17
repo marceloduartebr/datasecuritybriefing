@@ -100,10 +100,10 @@ test('alertas on: POST /admin/alerta com ALERTA_TOKEN, sem destino no corpo; nã
 });
 
 test('montarAlerta: problema vira alerta; OK diário só às 19:15 com ALERTA_OK_DIARIO=on', () => {
-  assert.match(montarAlerta(R_PROB).titulo, /1 problema/);
+  assert.match(montarAlerta(R_PROB).titulo, /1 problem\(s\) at /);
   const ok = { problemas: [], slot: '19:15', horaBrt: '19:15', blog: { total: 3 } };
   assert.equal(montarAlerta(ok), null);
-  assert.equal(montarAlerta(ok, { ALERTA_OK_DIARIO: 'on' }).titulo, 'DSB: tudo certo hoje');
+  assert.equal(montarAlerta(ok, { ALERTA_OK_DIARIO: 'on' }).titulo, 'DSB: all clear today');
   assert.equal(montarAlerta({ ...ok, slot: '18:15' }, { ALERTA_OK_DIARIO: 'on' }), null);
 });
 
@@ -292,19 +292,19 @@ test('painel: sem auth e sem ACCESS_* → 404; health intacto; bearer → 200 HT
     subrequests: { usadas: 10, orcamento: 45 },
   }));
   const env = { DSB_AUDITOR: kv, AUDITOR_TOKEN: TOKEN };
-  let r = await tratar(new Request('https://a/painel'), env);
+  let r = await tratar(new Request('https://a/panel'), env);
   assert.equal(r.status, 404);
   r = await tratar(new Request('https://a/health'), env);
   assert.equal(r.status, 200);
   assert.equal((await r.json()).servico, 'dsb-auditor');
-  r = await tratar(new Request('https://a/painel', { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
+  r = await tratar(new Request('https://a/panel', { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /text\/html/);
   const body = await r.text();
   assert.match(body, /DSB Auditor/);
   assert.match(body, /15:42/);
-  assert.match(body, /ALERTAS/);
-  assert.match(body, /Tudo certo/);
+  assert.match(body, /Alerts: /);
+  assert.match(body, /All good/);
   assert.match(body, /rel="icon"[^>]*href="\/pwa\/dsba\/favicon\.svg"/);
   assert.match(body, /rel="apple-touch-icon"[^>]*href="\/pwa\/dsba\/apple-touch-icon\.png"/);
   // favicon.ico fora do Access: 302 para o ícone do painel
@@ -312,7 +312,7 @@ test('painel: sem auth e sem ACCESS_* → 404; health intacto; bearer → 200 HT
   assert.equal(r.status, 302);
   assert.equal(r.headers.get('Location'), 'https://dsb-auditor.duarte.top/pwa/dsba/favicon.ico');
   // não aceita token em query
-  r = await tratar(new Request(`https://a/painel?token=${TOKEN}`), env);
+  r = await tratar(new Request(`https://a/panel?token=${TOKEN}`), env);
   assert.equal(r.status, 404);
 });
 
@@ -326,11 +326,11 @@ test('painel: ACCESS configurado exige JWT ou bearer', async () => {
     notion: { ativo: false }, alerta: { enviado: true, motivo: 'ok' }, subrequests: {},
   }));
   const env = { DSB_AUDITOR: kv, AUDITOR_TOKEN: TOKEN, ACCESS_TEAM: 'https://exemplo.cloudflareaccess.com', ACCESS_AUD: 'aud-teste' };
-  let r = await tratar(new Request('https://a/painel'), env);
+  let r = await tratar(new Request('https://a/panel'), env);
   assert.equal(r.status, 401);
-  r = await tratar(new Request('https://a/painel', { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
+  r = await tratar(new Request('https://a/panel', { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
   assert.equal(r.status, 200);
-  assert.match(await r.text(), /problema/);
+  assert.match(await r.text(), /problem/);
 });
 
 test('validarAccessJwt: assina e verifica com JWKS falso', async () => {
@@ -389,11 +389,11 @@ test('renderPainel: lista capas e flags em português', () => {
     alerta: { enviado: false, motivo: 'repetido' },
     subrequests: { usadas: 20, orcamento: 45 },
   }, { ultimoAlerta: { data: HOJE, em: '2026-11-09T18:00:00Z', titulo: 'DSB: 1 problema(s) às 15:00', tipo: 'problema', slot: 'manual' } });
-  assert.match(html, /Capas faltando/);
+  assert.match(html, /Missing covers/);
   assert.match(html, /Foo/);
-  assert.match(html, /ALERTAS/);
-  assert.match(html, /Último alerta/);
-  assert.match(html, /problema/);
+  assert.match(html, /Alerts: /);
+  assert.match(html, /Last alert/);
+  assert.match(html, /problem/);
   assert.match(html, /Blog ES/);
   assert.match(html, /\/pwa\/dsba\/favicon\.svg/);
   assert.match(html, /\/pwa\/dsba\/apple-touch-icon\.png/);
@@ -401,7 +401,7 @@ test('renderPainel: lista capas e flags em português', () => {
 
 test('renderPainel: vazio ainda inclui o ícone do painel', () => {
   const html = renderPainel(null);
-  assert.match(html, /Ainda não houve execução/);
+  assert.match(html, /No run yet/);
   assert.match(html, /rel="icon"[^>]*href="\/pwa\/dsba\/favicon\.svg"/);
   assert.match(html, /apple-touch-icon[^>]*href="\/pwa\/dsba\/apple-touch-icon\.png"/);
 });
@@ -416,16 +416,16 @@ test('renderPainel: identidade DSB (logo, serifada, dourado, tema claro/escuro) 
   assert.match(html, /apple-mobile-web-app-status-bar-style" content="black"/);
   // Única regra fixed permitida: a pílula do puxar-para-atualizar (criada só no gesto, abaixo do topo).
   assert.doesNotMatch(html.replace(/\.ptr\{position:fixed;/, '.ptr{'), /position:fixed|backdrop-filter\s*:|black-translucent/);
-  assert.match(html, /Tudo certo/);
+  assert.match(html, /All good/);
   assert.match(renderPainel(null), /class="topo"/);
 });
 
 test('atalho dsba.duarte.top: sempre 302 para o painel no host com Access, nunca serve conteúdo', async () => {
   const env = { DSB_AUDITOR: kvMem(), AUDITOR_TOKEN: TOKEN };
   for (const [u, alvo] of [
-    ['https://dsba.duarte.top/', 'https://dsb-auditor.duarte.top/painel'],
-    ['https://dsba.duarte.top/painel?aba=leituras', 'https://dsb-auditor.duarte.top/painel?aba=leituras'],
-    ['https://dsba.duarte.top/status', 'https://dsb-auditor.duarte.top/painel'],
+    ['https://dsba.duarte.top/', 'https://dsb-auditor.duarte.top/panel'],
+    ['https://dsba.duarte.top/painel?aba=leituras', 'https://dsb-auditor.duarte.top/panel?aba=leituras'],
+    ['https://dsba.duarte.top/status', 'https://dsb-auditor.duarte.top/panel'],
   ]) {
     const r = await tratar(new Request(u, { headers: { Authorization: `Bearer ${TOKEN}` } }), env);
     assert.equal(r.status, 302, u);

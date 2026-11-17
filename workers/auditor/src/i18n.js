@@ -1,4 +1,4 @@
-// English for the STG panel (ambiente = "stg"). Production keeps Portuguese.
+// English for the panel in every environment (Marcelo, 2026-11-17: Queue and Audit in English).
 // Applied to the rendered HTML: the panel's own phrases only, anchored on markup where a word could also appear
 // in content (post topics stay as written). Longer phrases come first.
 const PHRASES = [
@@ -17,6 +17,9 @@ const PHRASES = [
   ['aria-label="DSB Auditor — painel"', 'aria-label="DSB Auditor — panel"'],
   ['DSB Auditor STG — painel', 'DSB Auditor STG — panel'],
   ['DSB Auditor STG — leituras', 'DSB Auditor STG — views'],
+  ['DSB Auditor — painel', 'DSB Auditor — panel'],
+  ['DSB Auditor — leituras', 'DSB Auditor — views'],
+  ['Auditoria · DSB Auditor', 'Audit · DSB Auditor'],
   ['<h1>Painel de auditoria</h1>', '<h1>Audit panel</h1>'],
   ['Status da última checagem · horários em Brasília (BRT)', 'Status of the last check · times in Brasília (BRT)'],
   ['Ainda não houve execução.', 'No run yet.'],
@@ -32,6 +35,9 @@ const PHRASES = [
   ['<h2>Alertas</h2>', '<h2>Alerts</h2>'],
   ['<h2>Capas faltando</h2>', '<h2>Missing covers</h2>'],
   ['<h2>Fila (D1 · STG)</h2>', '<h2>Queue (D1 · STG)</h2>'],
+  ['<h2>Fila (D1)</h2>', '<h2>Queue (D1)</h2>'],
+  ['<h2>Fila (Notion)</h2>', '<h2>Queue (Notion)</h2>'],
+  ['Notion (fila)', 'Notion (queue)'],
   ['<h2>Último alerta enviado</h2>', '<h2>Last alert sent</h2>'],
   // state badges
   ['<span class="warn">Alerta</span>', '<span class="warn">Alert</span>'],
@@ -84,9 +90,10 @@ const PHRASES = [
   ['<span class="tag">Vulnerabilidades</span>', '<span class="tag">Vulnerabilities</span>'],
   ['>Sem tipo<', '>No type<'],
   // cover reason codes (queue list and blog problems)
-  [/ — sem_capa</g, ' — no cover<'],
-  [/ — host_invalido</g, ' — cover not on covers.duarte.top<'],
-  [/ — http</g, ' — cover URL does not answer 200<'],
+  [/ — (sem_capa|sem capa)(?=[\s<])/g, ' — no cover'],
+  [/ — host_invalido(?=[\s<])/g, ' — cover not on covers.duarte.top'],
+  [/ — http(?=[\s<])/g, ' — cover URL does not answer 200'],
+  ['<span class="tag">fila</span>', '<span class="tag">queue</span>'],
   [/ cover (falhou|sem_capa|host_invalido|http)\b/g, (_, c) => ` cover ${{ falhou: 'failed', sem_capa: 'missing', host_invalido: 'not on covers.duarte.top', http: 'does not answer 200' }[c]}`],
   // settings box
   ['<li>ALERTAS: ', '<li>Alerts: '],
@@ -152,6 +159,6 @@ export function toEnglish(html) {
   return out;
 }
 
-/** STG: English codes for the JSON errors the panel and its endpoints return. */
+/** English codes for the JSON errors the panel and its endpoints return. */
 export const ERRO_EN = { nao_autorizado: 'unauthorized', nao_configurado: 'not_configured', nao_encontrado: 'not_found', origem: 'origin_not_allowed', formato: 'unsupported_format', grande: 'too_large', metodo: 'method_not_allowed', sem_execucao: 'no_run_yet' };
 

@@ -95,30 +95,30 @@ test('obterLeituras: usa cache de 30 min; renova depois; falha devolve cache ant
 test('renderLeituras: ranking, quebras, aviso de estimativa e janela; erro de token', () => {
   const j = agregar([{ count: 5, dimensions: { requestPath: '/briefings/2026-11-06-anpd/', refererHost: 't.co' } }], mapaCatalogo(CAT));
   const html = renderLeituras({ ok: true, geradoEm: '2026-11-09T23:00:00Z', janelas: { '24h': j, '7d': j, '30d': j } }, { janela: '30d' });
-  assert.match(html, /Mais lidos · últimos 30 dias/);
+  assert.match(html, /Most viewed · last 30 days/);
   assert.match(html, /ANPD/);
-  assert.match(html, /Por tipo.*Notícia.*Incidente.*Vulnerabilidades/s);
-  assert.match(html, /Por idioma/);
-  assert.match(html, /Por origem.*LinkedIn.*X.*Google.*Direto.*Outros/s);
-  assert.match(html, /Estimativa\./);
-  assert.match(html, /amostragem/);
-  assert.match(html, /href="\/painel\?aba=leituras&amp;janela=30d" class="on"/);
-  assert.match(html, /class="on" aria-current="page">Leituras/);
-  assert.match(renderLeituras({ ok: false, erro: 'sem_token' }), /Token de Analytics ausente/);
+  assert.match(html, /By type.*News.*Incident.*Vulnerabilities/s);
+  assert.match(html, /By language/);
+  assert.match(html, /By source.*LinkedIn.*X.*Google.*Direct.*Other/s);
+  assert.match(html, /Estimate\./);
+  assert.match(html, /sampling/);
+  assert.match(html, /href="\/panel\?tab=views&amp;window=30d" class="on"/);
+  assert.match(html, /class="on" aria-current="page">Views/);
+  assert.match(renderLeituras({ ok: false, erro: 'sem_token' }), /Analytics token missing/);
 });
 
 test('rota /painel?aba=leituras: exige auth; com bearer usa o cache do KV sem rede', async () => {
   const { tratar } = await import('../src/index.js');
   const cache = { ok: true, geradoEm: new Date().toISOString(), janelas: { '24h': agregar([]), '7d': agregar([{ count: 2, dimensions: { requestPath: '/briefings/x-y/', refererHost: '' } }]), '30d': agregar([]) } };
   const env = { DSB_AUDITOR: kv({ [CHAVE_CACHE]: JSON.stringify(cache) }), AUDITOR_TOKEN: 'z'.repeat(40) };
-  assert.equal((await tratar(new Request('https://a/painel?aba=leituras'), env)).status, 404);
+  assert.equal((await tratar(new Request('https://a/panel?tab=views'), env)).status, 404);
   const prev = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error('sem rede no teste'); };
   try {
-    const r = await tratar(new Request('https://a/painel?aba=leituras', { headers: { Authorization: `Bearer ${'z'.repeat(40)}` } }), env);
+    const r = await tratar(new Request('https://a/panel?tab=views', { headers: { Authorization: `Bearer ${'z'.repeat(40)}` } }), env);
     assert.equal(r.status, 200);
     const body = await r.text();
-    assert.match(body, /Leituras do blog/);
+    assert.match(body, /Blog views/);
     assert.match(body, /x-y/);
   } finally {
     globalThis.fetch = prev;

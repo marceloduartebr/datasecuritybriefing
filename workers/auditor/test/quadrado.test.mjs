@@ -135,7 +135,7 @@ test('quadrado: vira problema no alerta e linha no painel', () => {
   assert.ok(p.includes('Capa: quadrado escuro atrás do escudo — Item da fila'));
   r.problemas = p;
   const html = renderPainel(r, {});
-  assert.match(html, /Capas \(escudo sem quadrado\)/);
+  assert.match(html, /Covers \(shield without dark square\)/);
   assert.match(html, /2026-11-09-anpd-balanco-seis-anos/);
   // Sem a chave (execuções antigas no KV): painel não quebra nem mostra a linha.
   delete r.quadrado;

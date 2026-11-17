@@ -8,9 +8,9 @@ test('puxar para atualizar: só standalone, pílula criada no gesto, abaixo do t
   const html = renderPainel(R);
   assert.match(html, /display-mode: standalone/);
   assert.match(html, /navigator\.standalone===true/);
-  assert.match(html, /Puxe para atualizar/);
-  assert.match(html, /Solte para atualizar/);
-  assert.match(html, /Atualizando…/);
+  assert.match(html, /Pull to refresh/);
+  assert.match(html, /Release to refresh/);
+  assert.match(html, /Refreshing…/);
   assert.match(html, /location\.reload\(\)/);
   assert.match(html, /pil\.remove\(\)/);
   // em repouso não há pílula no HTML (sem camada invisível sobre o topo)

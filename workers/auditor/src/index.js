@@ -72,7 +72,7 @@ export async function tratar(request, env, ctx, deps = {}) {
   // dsba.duarte.top é só um atalho: qualquer pedido vira 302 para o painel no host protegido pelo Access.
   // Nada é servido neste host (nem /painel, /status etc.).
   if (url.hostname === HOST_ATALHO) {
-    return new Response(null, { status: 302, headers: { Location: `https://${HOST_PAINEL}/painel${url.search}`, 'Cache-Control': 'no-store' } });
+    return new Response(null, { status: 302, headers: { Location: `https://${HOST_PAINEL}/panel${url.search}`, 'Cache-Control': 'no-store' } });
   }
   const path = url.pathname.replace(/\/$/, '') || '/';
   if (request.method === 'GET' && path === '/health') return json({ ok: true, servico: 'dsb-auditor' });
@@ -87,8 +87,8 @@ export async function tratar(request, env, ctx, deps = {}) {
     return Response.redirect(`https://${HOST_PAINEL}${ICONES_PAINEL}/favicon.ico`, 302);
   }
 
-  // STG URLs are English: /panel, ?tab=views, ?window=. Old /painel links redirect (query mapped).
-  if (usesApi(env) && path === '/painel' && (request.method === 'GET' || request.method === 'HEAD')) {
+  // URLs are English: /panel, ?tab=views, ?window=. Old /painel links redirect (query mapped).
+  if (path === '/painel' && (request.method === 'GET' || request.method === 'HEAD')) {
     const q = new URLSearchParams();
     for (const [k, v] of url.searchParams) {
       if (k === 'aba') q.set('tab', v === 'leituras' ? 'views' : v);
@@ -98,8 +98,7 @@ export async function tratar(request, env, ctx, deps = {}) {
     const qs = q.toString();
     return new Response(null, { status: 301, headers: { Location: `/panel${qs ? `?${qs}` : ''}`, 'Cache-Control': 'no-store' } });
   }
-  const panelPath = usesApi(env) ? '/panel' : '/painel';
-  if (path === panelPath) {
+  if (path === '/panel') {
     // STG: POST /panel resolves or ignores an issue (Access login, same-origin form, note required).
     if (request.method === 'POST' && usesApi(env)) return resolverIssue(request, env, url);
     if (request.method !== 'GET') return json({ ok: false, erro: 'metodo' }, 405);
@@ -108,10 +107,10 @@ export async function tratar(request, env, ctx, deps = {}) {
       if (auth.status === 404) return json({ ok: false, erro: 'nao_encontrado' }, 404);
       return json({ ok: false, erro: auth.erro }, auth.status);
     }
-    const aba = usesApi(env) ? (url.searchParams.get('tab') === 'views' ? 'leituras' : '') : url.searchParams.get('aba');
+    const aba = url.searchParams.get('tab') === 'views' ? 'leituras' : '';
     if (aba === 'leituras') {
-      const janela = (usesApi(env) ? url.searchParams.get('window') : url.searchParams.get('janela')) || '7d';
-      return html(renderLeituras(await obterLeituras(env), { janela, ambiente: usesApi(env) ? 'stg' : '' }));
+      const janela = url.searchParams.get('window') || '7d';
+      return html(renderLeituras(await obterLeituras(env), { janela, ambiente: env.AMBIENTE === 'stg' ? 'stg' : '' }));
     }
     let ultimo = await lerUltimo(env.DSB_AUDITOR);
     // STG has no cron (account cron limit): RUN_ON_VIEW=on runs the audit when the panel is opened
@@ -123,7 +122,7 @@ export async function tratar(request, env, ctx, deps = {}) {
     const flash = usesApi(env) && (url.searchParams.get('ok') || url.searchParams.get('err'))
       ? { texto: String(url.searchParams.get('ok') || url.searchParams.get('err')).slice(0, 300), erro: !url.searchParams.get('ok') }
       : null;
-    return html(renderPainel(ultimo, { ultimoAlerta, ambiente: usesApi(env) ? 'stg' : '', flash }));
+    return html(renderPainel(ultimo, { ultimoAlerta, ambiente: env.AMBIENTE === 'stg' ? 'stg' : '', flash }));
   }
 
   if (!['/status', '/capas-faltando', '/rodar'].includes(path)) return json({ ok: false, erro: 'nao_encontrado' }, 404);
@@ -156,7 +155,7 @@ export async function jsonErroEn(res) {
 export default {
   async fetch(request, env, ctx) {
     const res = await tratar(request, env, ctx);
-    return usesApi(env) ? jsonErroEn(res) : res;
+    return jsonErroEn(res);
   },
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(dispararFilaPush(env)); // avisos da fila (dsb-fila); isolado da auditoria

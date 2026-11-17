@@ -49,10 +49,14 @@ test('queue counts, missing cover and open issues come from dsb-api after a swee
   assert.ok(problems.some((p) => /^Issue #\d+ \(cover\): Approved without a cover/.test(p)), problems.join(' | '));
   assert.deepEqual(calcularAlertas(r), ['1 open warning issue(s) in dsb-api']);
 
-  const html = renderPainel({ ...r, em: new Date().toISOString(), ok: false, problemas: problems, alertas: [], flags: {} });
+  const html = renderPainel({ ...r, em: new Date().toISOString(), ok: false, problemas: problems, alertas: [], flags: {} }, { ambiente: 'stg' });
   assert.match(html, /Issues \(dsb-api-stg\)/);
   assert.match(html, /D1 queue \(dsb-api-stg\)/);
-  assert.match(html, /Fila \(D1 · STG\)/);
+  assert.match(html, /Queue \(D1 · STG\)/);
+  const prod = renderPainel({ ...r, em: new Date().toISOString(), ok: false, problemas: problems, alertas: [], flags: {} });
+  assert.match(prod, /Issues \(dsb-api\)/);
+  assert.match(prod, /Queue \(D1\)/);
+  assert.doesNotMatch(prod, /dsb-api-stg|STG/);
 });
 
 test('API down or not configured is reported, not thrown', async () => {
@@ -69,12 +73,12 @@ test('STG panel shows the STG badge in the title and the header; production does
   assert.match(stg, /<title>DSB Auditor STG — panel<\/title>/);
   assert.match(stg, /<b class="stg">STG<\/b> D1 via dsb-api-stg · DSB Auditor/);
   const prod = renderPainel(r);
-  assert.match(prod, /<title>DSB Auditor — painel<\/title>/);
+  assert.match(prod, /<title>DSB Auditor — panel<\/title>/);
   assert.doesNotMatch(prod, /class="stg"/);
   assert.match(renderPainel(null, { ambiente: 'stg' }), /<title>DSB Auditor STG<\/title>/);
 });
 
-test('STG panel: English interface (content kept) and an issue filter; production stays Portuguese', () => {
+test('Panel: English interface (content kept) and an issue filter, on STG and in production', () => {
   const r = {
     em: new Date().toISOString(), dataBrt: '2026-11-16', horaBrt: '19:47', slot: 'view', ok: false, flags: {},
     blog: { total: 1, itens: [{ slug: '2026-11-16-x', paginas: { pt: 200, es: 404, en: 200 }, capa: { ok: false, motivo: 'http_404' } }] },
@@ -93,8 +97,8 @@ test('STG panel: English interface (content kept) and an issue filter; productio
   assert.match(en, /<select data-f="sev">.*<option value="error">error \(1\)<\/option>/s);
   assert.match(en, /<select data-f="stage">.*<option value="cover">cover \(1\)<\/option>.*<option value="load">load \(1\)<\/option>/s);
   assert.match(en, /<li data-sev="warning" data-stage="load">/);
-  const pt = renderPainel(r);
-  assert.ok(pt.includes('<h1>Painel de auditoria</h1>') && pt.includes('<html lang="pt-BR">'));
+  const prod = renderPainel(r);
+  assert.ok(prod.includes('<h1>Audit panel</h1>') && prod.includes('<html lang="en">') && !prod.includes('Painel de auditoria'));
 });
 
 // --- STG panel: resolve or ignore an issue with a note ---
@@ -150,12 +154,12 @@ test('STG panel: issues get a resolve form; POST resolves with a note as the Acc
   } finally {
     globalThis.fetch = realFetch;
   }
-  // production (no DATA_SOURCE=api): POST /painel stays 405
-  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/painel', { method: 'POST' }), {})).status, 405);
+  // production on Notion (no DATA_SOURCE=api): POST /panel stays 405 (resolving needs the API)
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/panel', { method: 'POST' }), {})).status, 405);
 });
 
-test('STG URLs are English: /panel and ?tab=views&window=; old /painel links redirect; production keeps /painel', async () => {
-  const stg = { DATA_SOURCE: 'api' };
+test('URLs are English everywhere: /panel and ?tab=views&window=; old /painel links redirect', async () => {
+  const stg = { DATA_SOURCE: 'api', AMBIENTE: 'stg' };
   let r = await tratar(new Request('https://dsba-stg.duarte.top/painel?aba=leituras&janela=24h&sev=error'), stg);
   assert.equal(r.status, 301);
   assert.equal(r.headers.get('Location'), '/panel?tab=views&window=24h&sev=error');
@@ -165,6 +169,9 @@ test('STG URLs are English: /panel and ?tab=views&window=; old /painel links red
   assert.ok(html.includes('href="/panel"') && html.includes('href="/panel?tab=views"') && html.includes('>Views</a>'), 'English links and tab');
   assert.ok(!html.includes('/painel') && !html.includes('aba=') && !html.includes('Readership'));
   const prod = renderPainel({ em: new Date().toISOString(), ok: true, problemas: [], alertas: [], flags: {} });
-  assert.ok(prod.includes('href="/painel?aba=leituras"') && prod.includes('>Leituras</a>'));
-  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/painel?aba=leituras'), {})).status, 404); // no auth configured → 404, not a redirect
+  assert.ok(prod.includes('href="/panel?tab=views"') && prod.includes('>Views</a>') && !prod.includes('/painel'));
+  r = await tratar(new Request('https://dsb-auditor.duarte.top/painel?aba=leituras'), {});
+  assert.equal(r.status, 301);
+  assert.equal(r.headers.get('Location'), '/panel?tab=views');
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/panel?tab=views'), {})).status, 404); // no auth configured → 404
 });

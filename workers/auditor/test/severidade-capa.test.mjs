@@ -59,8 +59,8 @@ test('alerta não vira problema, não dispara push e o "tudo certo" das 19:15 me
   assert.deepEqual(r.problemas, []);
   assert.equal(r.alertas.length, 2);
   const a = montarAlerta(r, { ALERTA_OK_DIARIO: 'on' });
-  assert.equal(a.titulo, 'DSB: tudo certo hoje');
-  assert.match(a.texto, /2 alerta\(s\)/);
+  assert.equal(a.titulo, 'DSB: all clear today');
+  assert.match(a.texto, /2 alert\(s\)/);
   assert.equal(montarAlerta({ ...r, slot: '18:15' }, { ALERTA_OK_DIARIO: 'on' }), null);
 });
 
@@ -76,10 +76,11 @@ test('painel: pill e seção Alertas em amarelo, linha da fila como Alerta', () 
     alertas: ['Fila: sem capa (aguarda a rodada de capas) — Porto de Santos'], flags: {},
     notion: { ativo: true, ok: true, novosHoje: { total: 2, aindaNovo: 2 }, semCapa: [{ id: 'p', topic: 'Porto de Santos', motivo: 'sem_capa', severidade: 'alerta' }], publicadosSemUrn: [], publicadosHoje: 0, aprovadosPorTipo: {}, fila: { total: 3 } },
   });
-  assert.match(html, /Tudo certo/);
-  assert.match(html, /class="pill warn">1 alerta\(s\)/);
-  assert.match(html, /<h2>Alertas<\/h2>/);
-  assert.match(html, /<span class="warn">Alerta<\/span>/);
-  assert.match(html, /1 sem capa \(1 alerta, 0 problema\)/);
+  assert.match(html, /All good/);
+  assert.match(html, /class="pill warn">1 alert\(s\)/);
+  assert.match(html, /<h2>Alerts<\/h2>/);
+  assert.match(html, /<span class="warn">Alert<\/span>/);
+  assert.match(html, /1 without cover \(1 alert, 0 problem\)/);
+  assert.match(html, /Porto de Santos — no cover/);
   assert.match(html, /--warn:/);
 });

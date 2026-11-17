@@ -1,3 +1,4 @@
+import { toEnglish } from './i18n.js';
 /** Problemas que merecem aviso ao Marcelo. Pura: só olha o resultado da execução. */
 export function calcularProblemas(r) {
   const p = [];
@@ -37,23 +38,28 @@ export function calcularAlertas(r) {
 }
 
 /** Monta o alerta (texto livre curto). null = nada a enviar. */
+/** Phone alerts in English: the problem line goes through the panel's English map (anchored on <li>). */
+function problemaEn(p) {
+  return toEnglish(`<li>${p}</li>`).replace(/^<li>/, '').replace(/<\/li>$/, '');
+}
+
 export function montarAlerta(r, env = {}) {
   const n = r.problemas.length;
   if (n > 0) {
-    const linhas = r.problemas.slice(0, 4).map((p) => `• ${p}`);
-    if (n > 4) linhas.push(`• +${n - 4} outro(s)`);
-    return { titulo: `DSB: ${n} problema(s) às ${r.horaBrt}`, texto: linhas.join('\n').slice(0, 400) };
+    const linhas = r.problemas.slice(0, 4).map((p) => `• ${problemaEn(p)}`);
+    if (n > 4) linhas.push(`• +${n - 4} more`);
+    return { titulo: `DSB: ${n} problem(s) at ${r.horaBrt}`, texto: linhas.join('\n').slice(0, 400) };
   }
   if (r.slot === '19:15' && env.ALERTA_OK_DIARIO === 'on') {
     const pub = r.blog ? r.blog.total : 0;
     const na = (r.alertas || []).length;
-    return { titulo: 'DSB: tudo certo hoje', texto: `${pub} briefing(s) no blog, capas e páginas ok.${na ? ` ${na} alerta(s): sem capa aguardando a rodada das 09:30.` : ''}` };
+    return { titulo: 'DSB: all clear today', texto: `${pub} briefing(s) on the blog; covers and pages OK.${na ? ` ${na} alert(s): missing covers waiting for the 09:30 round.` : ''}` };
   }
   return null;
 }
 
 function assinatura(alerta) {
-  return `${alerta.titulo.replace(/ às \d\d:\d\d$/, '')}|${alerta.texto}`;
+  return `${alerta.titulo.replace(/ (às|at) \d\d:\d\d$/, '')}|${alerta.texto}`;
 }
 
 /**
