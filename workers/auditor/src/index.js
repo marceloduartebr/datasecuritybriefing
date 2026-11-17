@@ -9,7 +9,7 @@ import { SITE } from './constantes.js';
 export const HOST_ATALHO = 'dsba.duarte.top';
 export const HOST_PAINEL = 'dsb-auditor.duarte.top';
 import { dispararFilaPush } from './fila-push.js';
-import { usesApi } from './fila-api.js';
+import { usesApi, resolveIssue } from './fila-api.js';
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -40,6 +40,32 @@ async function iconeEstatico(request, env) {
   return new Response(request.method === 'HEAD' ? null : res.body, { status: 200, headers });
 }
 
+/** STG panel action: resolve/ignore an issue through dsb-api-stg, then back to the panel with a fresh sweep. */
+async function resolverIssue(request, env, url) {
+  const auth = await autorizarPainel(request, env);
+  if (!auth.ok || auth.via !== 'access') return json({ ok: false, erro: auth.erro || 'nao_autorizado' }, auth.status || 401);
+  const origin = request.headers.get('Origin') || '';
+  if (origin !== `https://${url.host}`) return json({ ok: false, erro: 'origem' }, 403);
+  const ct = (request.headers.get('content-type') || '').toLowerCase();
+  if (!ct.startsWith('application/x-www-form-urlencoded')) return json({ ok: false, erro: 'formato' }, 415);
+  const body = await request.text();
+  if (body.length > 8192) return json({ ok: false, erro: 'grande' }, 413);
+  const form = new URLSearchParams(body);
+  const volta = new URL(`https://${url.host}/painel`);
+  volta.searchParams.set('run', '1');
+  try {
+    if (form.get('acao') !== 'issue') throw new Error('unknown action');
+    const id = form.get('id');
+    const status = form.get('status');
+    await resolveIssue(env, id, status, form.get('resolution'), auth.email);
+    volta.searchParams.set('ok', `Issue #${id} ${status} with your note.`);
+  } catch (e) {
+    volta.searchParams.set('err', `Could not update the issue: ${String((e && e.message) || e).slice(0, 200)}`);
+  }
+  volta.hash = 'issues';
+  return new Response(null, { status: 303, headers: { Location: volta.pathname + volta.search + volta.hash, 'Cache-Control': 'no-store' } });
+}
+
 export async function tratar(request, env, ctx, deps = {}) {
   const url = new URL(request.url);
   // dsba.duarte.top é só um atalho: qualquer pedido vira 302 para o painel no host protegido pelo Access.
@@ -61,6 +87,8 @@ export async function tratar(request, env, ctx, deps = {}) {
   }
 
   if (path === '/painel') {
+    // STG: POST /painel resolves or ignores an issue (Access login, same-origin form, note required).
+    if (request.method === 'POST' && usesApi(env)) return resolverIssue(request, env, url);
     if (request.method !== 'GET') return json({ ok: false, erro: 'metodo' }, 405);
     const auth = await autorizarPainel(request, env);
     if (!auth.ok) {
@@ -77,7 +105,10 @@ export async function tratar(request, env, ctx, deps = {}) {
       ultimo = await rodarAuditoria(env, { slot: 'view', ...deps });
     }
     const ultimoAlerta = await lerUltimoAlerta(env.DSB_AUDITOR);
-    return html(renderPainel(ultimo, { ultimoAlerta, ambiente: usesApi(env) ? 'stg' : '' }));
+    const flash = usesApi(env) && (url.searchParams.get('ok') || url.searchParams.get('err'))
+      ? { texto: String(url.searchParams.get('ok') || url.searchParams.get('err')).slice(0, 300), erro: !url.searchParams.get('ok') }
+      : null;
+    return html(renderPainel(ultimo, { ultimoAlerta, ambiente: usesApi(env) ? 'stg' : '', flash }));
   }
 
   if (!['/status', '/capas-faltando', '/rodar'].includes(path)) return json({ ok: false, erro: 'nao_encontrado' }, 404);

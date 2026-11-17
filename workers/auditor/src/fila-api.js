@@ -71,3 +71,27 @@ export async function checarFilaApi(env, hoje, checarCapa) {
     }))
   };
 }
+
+/** Resolves or ignores one issue in dsb-api-stg with a note; the actor is the panel user's Access email. */
+export async function resolveIssue(env, id, status, resolution, email) {
+  if (!env.API || String(env.INTERNAL_TOKEN || '').length < 24) throw new Error('dsb-api is not configured in this Worker');
+  if (!/^\d{1,9}$/.test(String(id))) throw new Error('invalid issue id');
+  if (!['resolved', 'ignored'].includes(status)) throw new Error('outcome must be resolved or ignored');
+  const note = String(resolution || '').trim();
+  if (!note) throw new Error('a note is required');
+  const res = await env.API.fetch(
+    new Request(`https://dsb-api/issues/${id}`, {
+      method: 'PATCH',
+      headers: { 'x-internal-token': String(env.INTERNAL_TOKEN || ''), 'x-actor': `panel:${email || 'unknown'}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ status, resolution: note.slice(0, 1000) })
+    })
+  );
+  let j = null;
+  try {
+    j = await res.json();
+  } catch {
+    /* not JSON */
+  }
+  if (!res.ok || !j || !j.ok) throw new Error((j && (j.message || j.error)) || `dsb-api answered ${res.status}`);
+  return j.issue || null;
+}

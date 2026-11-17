@@ -96,3 +96,60 @@ test('STG panel: English interface (content kept) and an issue filter; productio
   const pt = renderPainel(r);
   assert.ok(pt.includes('<h1>Painel de auditoria</h1>') && pt.includes('<html lang="pt-BR">'));
 });
+
+// --- STG panel: resolve or ignore an issue with a note ---
+import { tratar } from '../src/index.js';
+
+const b64u = (buf) => Buffer.from(buf).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+async function accessJwt(team, aud, email) {
+  const { privateKey, publicKey } = await crypto.subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
+  const jwk = { ...(await crypto.subtle.exportKey('jwk', publicKey)), kid: 'k1', alg: 'RS256' };
+  const h = b64u(JSON.stringify({ alg: 'RS256', kid: 'k1' }));
+  const p = b64u(JSON.stringify({ iss: team, aud: [aud], email, exp: Math.floor(Date.now() / 1000) + 600 }));
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, new TextEncoder().encode(`${h}.${p}`));
+  return { jwt: `${h}.${p}.${b64u(Buffer.from(sig))}`, jwk };
+}
+
+test('STG panel: issues get a resolve form; POST resolves with a note as the Access user; origin and note are enforced', async () => {
+  const { env: base, call } = setup();
+  await call('POST', '/posts', { topic: 'Dup', type: 'incident', source_url: 'https://e.com/a' });
+  await call('POST', '/posts', { topic: 'Dup 2', type: 'incident', source_url: 'https://e.com/a?utm_source=x' }); // rejected → issue
+  const open = (await call('GET', '/issues?status=open')).items;
+  assert.equal(open.length, 1);
+  const id = open[0].id;
+
+  const html = renderPainel({ em: new Date().toISOString(), ok: true, problemas: [], alertas: [], flags: {}, notion: { ativo: true, ok: true, fonte: 'api', issues: open } }, { ambiente: 'stg' });
+  assert.match(html, /<details class="resolver"><summary>Resolve…<\/summary><form method="post" action="\/painel"/);
+  assert.match(html, /<textarea name="resolution" required/);
+
+  const team = 'https://team.cloudflareaccess.com', aud = 'aud-stg';
+  const { jwt, jwk } = await accessJwt(team, aud, 'marcelo@example.com');
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u) => (String(u).startsWith(team) ? new Response(JSON.stringify({ keys: [jwk] })) : realFetch(u));
+  try {
+    const env = { ...base, ACCESS_TEAM: team, ACCESS_AUD: aud };
+    const post = (body, headers = {}) => tratar(new Request('https://dsba-stg.duarte.top/painel', {
+      method: 'POST', body: new URLSearchParams(body).toString(),
+      headers: { 'content-type': 'application/x-www-form-urlencoded', Origin: 'https://dsba-stg.duarte.top', 'Cf-Access-Jwt-Assertion': jwt, ...headers }
+    }), env);
+
+    assert.equal((await tratar(new Request('https://dsba-stg.duarte.top/painel', { method: 'POST', body: 'acao=issue', headers: { 'content-type': 'application/x-www-form-urlencoded', Origin: 'https://dsba-stg.duarte.top' } }), env)).status, 401);
+    assert.equal((await post({ acao: 'issue', id, status: 'resolved', resolution: 'x' }, { Origin: 'https://evil.example' })).status, 403);
+
+    let r = await post({ acao: 'issue', id, status: 'resolved', resolution: '' });
+    assert.equal(r.status, 303);
+    assert.match(decodeURIComponent(r.headers.get('Location').replace(/\+/g, ' ')), /err=Could not update the issue: a note is required/);
+
+    r = await post({ acao: 'issue', id, status: 'resolved', resolution: 'Test rejection from the STG walkthrough' });
+    assert.equal(r.status, 303);
+    assert.match(decodeURIComponent(r.headers.get('Location').replace(/\+/g, ' ')), /\/painel\?run=1&ok=Issue #\d+ resolved with your note\.#issues/);
+    const done = (await call('GET', `/issues?status=resolved`)).items.find((i) => i.id === id);
+    assert.equal(done.resolution, 'Test rejection from the STG walkthrough');
+    assert.equal(done.resolved_by, 'panel:marcelo@example.com');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  // production (no DATA_SOURCE=api): POST /painel stays 405
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/painel', { method: 'POST' }), {})).status, 405);
+});

@@ -130,7 +130,12 @@ function issuesHtml(r) {
   const cls = { critical: 'bad', error: 'bad', warning: 'warn', info: 'muted' };
   const head = ['critical', 'error', 'warning', 'info'].map((s) => `${s}: <strong>${counts[s] || 0}</strong>`).join(' · ');
   const sw = n.sweep ? `<p class="muted">Sweep: ${esc(n.sweep.checks)} checks, ${esc(n.sweep.opened_or_seen)} opened or seen, ${esc(n.sweep.resolved)} resolved${(n.sweep.failures || []).length ? `, <span class="bad">${n.sweep.failures.length} failed</span>` : ''}.</p>` : '';
-  const items = list.map((i) => `<li data-sev="${esc(i.severity)}" data-stage="${esc(i.stage)}"><span class="${cls[i.severity] || ''}">${esc(i.severity)}</span> <span class="tag">${esc(i.stage)}</span> #${esc(i.id)}${i.post_id ? ` · post ${esc(i.post_id)}` : ''} — ${esc(i.summary)}${i.occurrences > 1 ? ` <span class="muted">×${esc(i.occurrences)}</span>` : ''}${i.suggested_action ? `<br><span class="muted">${esc(i.suggested_action)}</span>` : ''}</li>`).join('');
+  const resolver = (i) => `<details class="resolver"><summary>Resolve…</summary><form method="post" action="/painel" class="resolver-form">
+<input type="hidden" name="acao" value="issue"><input type="hidden" name="id" value="${esc(i.id)}">
+<label>Outcome <select name="status"><option value="resolved">Resolved</option><option value="ignored">Ignored</option></select></label>
+<label class="nota">Note (required)<textarea name="resolution" required maxlength="1000" rows="2" placeholder="What was done, or why it can be ignored"></textarea></label>
+<button type="submit">Save</button></form></details>`;
+  const items = list.map((i) => `<li data-sev="${esc(i.severity)}" data-stage="${esc(i.stage)}"><span class="${cls[i.severity] || ''}">${esc(i.severity)}</span> <span class="tag">${esc(i.stage)}</span> #${esc(i.id)}${i.post_id ? ` · post ${esc(i.post_id)}` : ''} — ${esc(i.summary)}${i.occurrences > 1 ? ` <span class="muted">×${esc(i.occurrences)}</span>` : ''}${i.suggested_action ? `<br><span class="muted">${esc(i.suggested_action)}</span>` : ''}${resolver(i)}</li>`).join('');
   const stages = [...new Set(list.map((i) => i.stage))].sort();
   const opt = (v, label, n) => `<option value="${esc(v)}">${esc(label)}${n == null ? '' : ` (${n})`}</option>`;
   const nStage = (st) => list.filter((i) => i.stage === st).length;
@@ -355,7 +360,12 @@ export function renderPainel(ultimo, opts = {}) {
   return opts.ambiente === 'stg' ? toEnglish(html) : html;
 }
 
-function renderPainelPt(ultimo, { ultimoAlerta = null, ambiente = '' } = {}) {
+function flashHtml(flash) {
+  if (!flash || !flash.texto) return '';
+  return `<section class="card flash ${flash.erro ? 'bad' : 'ok'}" role="status">${esc(flash.texto)}</section>`;
+}
+
+function renderPainelPt(ultimo, { ultimoAlerta = null, ambiente = '', flash = null } = {}) {
   if (!ultimo) {
     return `${cabeca('DSB Auditor', ambiente)}
 <main>${abas('auditoria')}<div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
@@ -371,6 +381,7 @@ ${RODAPE_JS}${PTR_JS}</body></html>`;
     <h1>Painel de auditoria</h1>
     <p class="sub">Status da última checagem · horários em Brasília (BRT)</p>
   </div>
+  ${flashHtml(flash)}
 
   <section class="card destaque">
     <div class="row">
@@ -453,6 +464,12 @@ body{margin:0;min-height:100dvh;padding:0 env(safe-area-inset-right,0px) 0 env(s
 .brand small{display:block;margin-top:3px;font-size:12px;color:var(--muted);white-space:nowrap}
 .filtro-issues{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:8px 0 4px;font-size:13px;color:var(--muted)}
 .lista li[hidden]{display:none!important}
+.resolver{margin:4px 0 2px}.resolver>summary{cursor:pointer;color:var(--muted);font-size:12px}
+.resolver-form{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;margin:6px 0;font-size:13px;color:var(--muted)}
+.resolver-form select,.resolver-form textarea{display:block;margin-top:4px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit}
+.resolver-form .nota{flex:1 1 260px}.resolver-form textarea{width:100%}
+.resolver-form button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit;cursor:pointer}
+.flash.ok{border-color:var(--ok)}.flash.bad{border-color:var(--bad)}
 .filtro-issues select{margin-left:6px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit}
 .stg{display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:#f0a070;color:#1a140b;font-weight:700;letter-spacing:.06em}
 :root[data-tema="claro"] .stg{background:#a5501c;color:#fff}

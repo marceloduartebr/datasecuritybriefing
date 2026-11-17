@@ -35,8 +35,8 @@ export async function autorizarPainel(request, env) {
 
   if (accessOn && jwt) {
     try {
-      await validarAccessJwt(jwt, team, aud);
-      return { ok: true, via: 'access' };
+      const payload = await validarAccessJwt(jwt, team, aud);
+      return { ok: true, via: 'access', email: String((payload && payload.email) || '') };
     } catch {
       /* cai no bearer */
     }
