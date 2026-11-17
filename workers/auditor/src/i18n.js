@@ -2,16 +2,21 @@
 // Applied to the rendered HTML: the panel's own phrases only, anchored on markup where a word could also appear
 // in content (post topics stay as written). Longer phrases come first.
 const PHRASES = [
+  // STG URLs are English: /panel, ?tab=views, &window= (old /painel links redirect)
+  ['href="/painel?aba=leituras&amp;janela=', 'href="/panel?tab=views&amp;window='],
+  ['href="/painel?aba=leituras"', 'href="/panel?tab=views"'],
+  ['href="/painel"', 'href="/panel"'],
+  ['action="/painel"', 'action="/panel"'],
   // structure and navigation
   ['<html lang="pt-BR">', '<html lang="en">'],
   ['aria-label="Seções do painel"', 'aria-label="Panel sections"'],
   ['>Auditoria</a>', '>Audit</a>'],
-  ['>Leituras</a>', '>Readership</a>'],
+  ['>Leituras</a>', '>Views</a>'],
   ['aria-label="Alternar tema claro/escuro"', 'aria-label="Toggle light/dark theme"'],
   ['title="Tema"', 'title="Theme"'],
   ['aria-label="DSB Auditor — painel"', 'aria-label="DSB Auditor — panel"'],
   ['DSB Auditor STG — painel', 'DSB Auditor STG — panel'],
-  ['DSB Auditor STG — leituras', 'DSB Auditor STG — readership'],
+  ['DSB Auditor STG — leituras', 'DSB Auditor STG — views'],
   ['<h1>Painel de auditoria</h1>', '<h1>Audit panel</h1>'],
   ['Status da última checagem · horários em Brasília (BRT)', 'Status of the last check · times in Brasília (BRT)'],
   ['Ainda não houve execução.', 'No run yet.'],
@@ -92,18 +97,18 @@ const PHRASES = [
   ["'Atualizando…'", "'Refreshing…'"],
   ["'Solte para atualizar'", "'Release to refresh'"],
   ["'Puxe para atualizar'", "'Pull to refresh'"],
-  // readership tab
-  ['<h1>Leituras do blog</h1>', '<h1>Blog readership</h1>'],
+  // views tab
+  ['<h1>Leituras do blog</h1>', '<h1>Blog views</h1>'],
   ['dsb.duarte.top · Cloudflare Web Analytics · horários em Brasília (BRT)', 'dsb.duarte.top · Cloudflare Web Analytics · times in Brasília (BRT)'],
   ['aria-label="Janela"', 'aria-label="Window"'],
   ['>Páginas vistas<', '>Page views<'],
   ['>Visitas<', '>Visits<'],
-  ['>Leituras de briefings<', '>Briefing reads<'],
-  ['>Briefings lidos<', '>Briefings read<'],
-  ['<h2>Mais lidos · últimas 24 horas</h2>', '<h2>Most read · last 24 hours</h2>'],
-  ['<h2>Mais lidos · últimos 7 dias</h2>', '<h2>Most read · last 7 days</h2>'],
-  ['<h2>Mais lidos · últimos 30 dias</h2>', '<h2>Most read · last 30 days</h2>'],
-  ['Nenhuma leitura de briefing nesta janela.', 'No briefing reads in this window.'],
+  ['>Leituras de briefings<', '>Briefing views<'],
+  ['>Briefings lidos<', '>Briefings viewed<'],
+  ['<h2>Mais lidos · últimas 24 horas</h2>', '<h2>Most viewed · last 24 hours</h2>'],
+  ['<h2>Mais lidos · últimos 7 dias</h2>', '<h2>Most viewed · last 7 days</h2>'],
+  ['<h2>Mais lidos · últimos 30 dias</h2>', '<h2>Most viewed · last 30 days</h2>'],
+  ['Nenhuma leitura de briefing nesta janela.', 'No briefing views in this window.'],
   ['<h2>Por tipo</h2>', '<h2>By type</h2>'],
   ['<h2>Por idioma</h2>', '<h2>By language</h2>'],
   ['<h2>Por origem</h2>', '<h2>By source</h2>'],
@@ -117,7 +122,7 @@ const PHRASES = [
   ['Token de Analytics ausente (CF_ANALYTICS_TOKEN / CF_ACCOUNT_ID).', 'Analytics token missing (CF_ANALYTICS_TOKEN / CF_ACCOUNT_ID).'],
   ['Não foi possível ler o Web Analytics: ', 'Could not read Web Analytics: '],
   ['<strong>Estimativa.</strong> Dados do Cloudflare Web Analytics com amostragem (quanto maior a janela, mais amostrado); sem bots. Ranking soma PT/ES/EN do mesmo briefing; tipo, idioma e origem contam só leituras de briefings. Atualizado ',
-    '<strong>Estimate.</strong> Cloudflare Web Analytics data with sampling (the larger the window, the more sampled); no bots. The ranking adds up PT/ES/EN of the same briefing; type, language and source count briefing reads only. Updated '],
+    '<strong>Estimate.</strong> Cloudflare Web Analytics data with sampling (the larger the window, the more sampled); no bots. The ranking adds up PT/ES/EN of the same briefing; type, language and source count briefing views only. Updated '],
   [' (cache de até 30 min)', ' (cached up to 30 min)'],
   [' · última tentativa falhou: ', ' · last attempt failed: ']
 ];

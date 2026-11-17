@@ -51,7 +51,7 @@ async function resolverIssue(request, env, url) {
   const body = await request.text();
   if (body.length > 8192) return json({ ok: false, erro: 'grande' }, 413);
   const form = new URLSearchParams(body);
-  const volta = new URL(`https://${url.host}/painel`);
+  const volta = new URL(`https://${url.host}/panel`);
   volta.searchParams.set('run', '1');
   try {
     if (form.get('acao') !== 'issue') throw new Error('unknown action');
@@ -86,8 +86,20 @@ export async function tratar(request, env, ctx, deps = {}) {
     return Response.redirect(`https://${HOST_PAINEL}${ICONES_PAINEL}/favicon.ico`, 302);
   }
 
-  if (path === '/painel') {
-    // STG: POST /painel resolves or ignores an issue (Access login, same-origin form, note required).
+  // STG URLs are English: /panel, ?tab=views, ?window=. Old /painel links redirect (query mapped).
+  if (usesApi(env) && path === '/painel' && (request.method === 'GET' || request.method === 'HEAD')) {
+    const q = new URLSearchParams();
+    for (const [k, v] of url.searchParams) {
+      if (k === 'aba') q.set('tab', v === 'leituras' ? 'views' : v);
+      else if (k === 'janela') q.set('window', v);
+      else q.set(k, v);
+    }
+    const qs = q.toString();
+    return new Response(null, { status: 301, headers: { Location: `/panel${qs ? `?${qs}` : ''}`, 'Cache-Control': 'no-store' } });
+  }
+  const panelPath = usesApi(env) ? '/panel' : '/painel';
+  if (path === panelPath) {
+    // STG: POST /panel resolves or ignores an issue (Access login, same-origin form, note required).
     if (request.method === 'POST' && usesApi(env)) return resolverIssue(request, env, url);
     if (request.method !== 'GET') return json({ ok: false, erro: 'metodo' }, 405);
     const auth = await autorizarPainel(request, env);
@@ -95,8 +107,10 @@ export async function tratar(request, env, ctx, deps = {}) {
       if (auth.status === 404) return json({ ok: false, erro: 'nao_encontrado' }, 404);
       return json({ ok: false, erro: auth.erro }, auth.status);
     }
-    if (url.searchParams.get('aba') === 'leituras') {
-      return html(renderLeituras(await obterLeituras(env), { janela: url.searchParams.get('janela') || '7d', ambiente: usesApi(env) ? 'stg' : '' }));
+    const aba = usesApi(env) ? (url.searchParams.get('tab') === 'views' ? 'leituras' : '') : url.searchParams.get('aba');
+    if (aba === 'leituras') {
+      const janela = (usesApi(env) ? url.searchParams.get('window') : url.searchParams.get('janela')) || '7d';
+      return html(renderLeituras(await obterLeituras(env), { janela, ambiente: usesApi(env) ? 'stg' : '' }));
     }
     let ultimo = await lerUltimo(env.DSB_AUDITOR);
     // STG has no cron (account cron limit): RUN_ON_VIEW=on runs the audit when the panel is opened
