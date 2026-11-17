@@ -35,6 +35,8 @@
   "main": "src/index.js",
   "compatibility_date": "2026-11-07",
   "workers_dev": true,
+  // workers.dev is the API host (push-evento uses it); preview URLs are not needed.
+  "preview_urls": false,
   "observability": {
     "enabled": true,
     "logs": {
