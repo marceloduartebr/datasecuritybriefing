@@ -107,6 +107,9 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/$/, '') || '/';
 
+    // STG preview branch: the push API is off so a preview can never touch the production subscriber store.
+    if (path.startsWith('/api/push/')) return new Response('Not found (STG preview)', { status: 404 });
+
     if (path === '/api/push/subscribe' || path === '/api/push/unsubscribe') {
       if (request.method === 'OPTIONS') return corsPreflight(request);
       // Per-IP rate limit before any KV write (the Origin header alone can be forged outside a browser).
