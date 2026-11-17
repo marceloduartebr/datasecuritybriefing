@@ -29,8 +29,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "dsb-staging",
-      "database_id": "808d3914-2df5-4da9-aab7-1f19d51001d2",
+      "database_name": "dsb-prod",
+      "database_id": "d181dd85-78d4-4081-83a9-ead6e674aaf6",
       "migrations_dir": "migrations"
     }
   ],
