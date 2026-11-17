@@ -202,6 +202,21 @@ test('sweep opens, increments and auto-resolves; ignored stays closed; job error
   assert.equal((await call('GET', '/issues?stage=job&source=health')).body.items.length, 0, 'an ignored issue does not reopen');
 });
 
+test('a job_failed issue resolved by a person does not reopen on the next sweep', async () => {
+  const { call } = setup();
+  const job = await call('POST', '/jobs', { job: 'x-publish-stg' });
+  await call('PATCH', `/jobs/${job.body.job.id}`, { status: 'error', notes: 'browser offline' });
+  const open = (await call('GET', '/issues?stage=job&source=health')).body.items;
+  assert.equal(open.length, 1);
+  await call('PATCH', `/issues/${open[0].id}`, { status: 'resolved', resolution: 'browser back' }, { internal: true });
+  await call('POST', '/sweep', {});
+  await call('POST', '/sweep', {});
+  assert.equal((await call('GET', '/issues?stage=job&source=health')).body.items.length, 0, 'no new issue for the same job run');
+  const other = await call('POST', '/jobs', { job: 'x-publish-stg' });
+  await call('PATCH', `/jobs/${other.body.job.id}`, { status: 'error', notes: 'again' });
+  assert.equal((await call('GET', '/issues?stage=job&source=health')).body.items.length, 1, 'a new failed run still opens one');
+});
+
 test('agent report, summary and single notification', async () => {
   const { call } = setup();
   const r = await call('POST', '/issues', { fingerprint: 'x-session', kind: 'session_expired', severity: 'critical', stage: 'x', summary: '@DSBriefing session dropped' });
