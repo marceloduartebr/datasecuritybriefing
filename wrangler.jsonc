@@ -5,6 +5,9 @@
   "name": "datasecuritybriefing",
   "main": "worker/index.js",
   "compatibility_date": "2026-11-04",
+  // Only dsb.duarte.top serves production; preview URLs stay on for the stg branch preview.
+  "workers_dev": false,
+  "preview_urls": true,
   "observability": {
     "enabled": true,
     "traces": {
@@ -21,5 +24,9 @@
       "binding": "DSB_PUSH",
       "id": "1467af16ba4f4d3db8f3c6dd292f2d0b"
     }
+  ],
+  // Per-IP limit on /api/push/* (subscribe/unsubscribe): 10 requests per minute.
+  "ratelimits": [
+    { "name": "PUSH_RL", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }
   ]
 }

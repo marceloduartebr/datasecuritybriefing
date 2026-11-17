@@ -19,7 +19,8 @@
   "name": "dsb-auditor",
   "main": "src/index.js",
   "compatibility_date": "2026-11-07",
-  "workers_dev": true,
+  "workers_dev": false,
+  "preview_urls": false,
   "routes": [
     { "pattern": "dsb-auditor.duarte.top", "custom_domain": true },
     // Atalho: dsba.duarte.top só responde 302 para https://dsb-auditor.duarte.top/painel (ver src/index.js).

@@ -109,6 +109,12 @@ export default {
 
     if (path === '/api/push/subscribe' || path === '/api/push/unsubscribe') {
       if (request.method === 'OPTIONS') return corsPreflight(request);
+      // Per-IP rate limit before any KV write (the Origin header alone can be forged outside a browser).
+      if (env.PUSH_RL) {
+        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const { success } = await env.PUSH_RL.limit({ key: `push:${ip}` });
+        if (!success) return json({ ok: false, erro: 'limite' }, 429, request);
+      }
       if (request.method !== 'POST') return json({ ok: false, erro: 'metodo' }, 405, request);
       if (path.endsWith('/subscribe')) return subscribe(request, env);
       return unsubscribe(request, env);
