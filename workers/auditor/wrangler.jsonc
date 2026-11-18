@@ -70,7 +70,9 @@
       "kv_namespaces": [],
       "services": [
         { "binding": "API", "service": "dsb-api-stg" },
-        { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" }
+        { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" },
+        // Queue new-post alerts on STG: opening the panel calls /interno/checar-novos (secret FILA_INTERNO_TOKEN).
+        { "binding": "FILA", "service": "dsb-queue-stg" }
       ],
       "vars": {
         "DATA_SOURCE": "api",

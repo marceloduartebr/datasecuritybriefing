@@ -117,6 +117,7 @@ export async function tratar(request, env, ctx, deps = {}) {
     // and the last run is older than 5 min (or ?run=1). Alerts stay off there (ALERTAS=off).
     if (env.RUN_ON_VIEW === 'on' && (!ultimo || url.searchParams.get('run') === '1' || Date.now() - Date.parse(ultimo.em) > 5 * 60_000)) {
       ultimo = await rodarAuditoria(env, { slot: 'view', ...deps });
+      await dispararFilaPush(env); // STG stand-in for the cron tick: the queue's new-post alerts (needs the FILA binding)
     }
     const ultimoAlerta = await lerUltimoAlerta(env.DSB_AUDITOR);
     const flash = usesApi(env) && (url.searchParams.get('ok') || url.searchParams.get('err'))
