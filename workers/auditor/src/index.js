@@ -123,7 +123,7 @@ export async function tratar(request, env, ctx, deps = {}) {
     const flash = usesApi(env) && (url.searchParams.get('ok') || url.searchParams.get('err'))
       ? { texto: String(url.searchParams.get('ok') || url.searchParams.get('err')).slice(0, 300), erro: !url.searchParams.get('ok') }
       : null;
-    return html(renderPainel(ultimo, { ultimoAlerta, ambiente: env.AMBIENTE === 'stg' ? 'stg' : '', flash }));
+    return html(renderPainel(ultimo, { ultimoAlerta, ambiente: env.AMBIENTE === 'stg' ? 'stg' : '', flash, fonte: usesApi(env) ? 'api' : 'notion' }));
   }
 
   if (!['/status', '/capas-faltando', '/rodar'].includes(path)) return json({ ok: false, erro: 'nao_encontrado' }, 404);
