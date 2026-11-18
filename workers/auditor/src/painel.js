@@ -225,7 +225,7 @@ function finish(html, ambiente = '') {
   return ambiente === 'stg' ? out : out.split('dsb-api-stg').join('dsb-api').split('(D1 · STG)').join('(D1)');
 }
 
-function cabeca(titulo, ambiente = '') {
+function cabeca(titulo, ambiente = '', fonte = '') {
   const stg = ambiente === 'stg';
   return `<!doctype html>
 <html lang="pt-BR">
@@ -245,7 +245,7 @@ ${FONTES}
 </head>
 <body>
 <header class="topo"><div class="container">
-<a class="brand" href="/painel" aria-label="DSB Auditor — painel"><img class="mark" src="${SITE}/brand-mark-128.png" width="38" height="38" alt="" decoding="async"><span class="txt"><span class="wm">Data Security Briefing</span><small>${stg ? '<b class="stg">STG</b> D1 via dsb-api-stg · DSB Auditor' : 'Auditoria · DSB Auditor'}</small></span></a>
+<a class="brand" href="/painel" aria-label="DSB Auditor — painel"><img class="mark" src="${SITE}/brand-mark-128.png" width="38" height="38" alt="" decoding="async"><span class="txt"><span class="wm">Data Security Briefing</span><small>${stg ? '<b class="stg">STG</b> D1 via dsb-api-stg · DSB Auditor' : fonte === 'api' ? 'D1 via dsb-api · DSB Auditor' : 'Auditoria · DSB Auditor'}</small></span></a>
 <button type="button" class="btn-icone" id="tema" aria-label="Alternar tema claro/escuro" title="Tema">${IC_LUA}${IC_SOL}</button>
 </div></header>`;
 }
@@ -371,16 +371,16 @@ function flashHtml(flash) {
   return `<section class="card flash ${flash.erro ? 'bad' : 'ok'}" role="status">${esc(flash.texto)}</section>`;
 }
 
-function renderPainelPt(ultimo, { ultimoAlerta = null, ambiente = '', flash = null } = {}) {
+function renderPainelPt(ultimo, { ultimoAlerta = null, ambiente = '', flash = null, fonte = '' } = {}) {
   if (!ultimo) {
-    return `${cabeca('DSB Auditor', ambiente)}
+    return `${cabeca('DSB Auditor', ambiente, fonte)}
 <main>${abas('auditoria')}<div class="titulo"><h1>Painel de auditoria</h1></div><section class="card"><p class="muted">Ainda não houve execução.</p></section></main>
 ${RODAPE_JS}${PTR_JS}</body></html>`;
   }
   const nAlertas = (ultimo.alertas || []).length;
   const statusGeral = (ultimo.ok ? '<span class="pill ok">Tudo certo</span>' : `<span class="pill bad">${(ultimo.problemas || []).length} problema(s)</span>`)
     + (nAlertas ? ` <span class="pill warn">${nAlertas} alerta(s)</span>` : '');
-  return `${cabeca('DSB Auditor — painel', ambiente)}
+  return `${cabeca('DSB Auditor — painel', ambiente, fonte)}
 <main>
   ${abas('auditoria')}
   <div class="titulo">
