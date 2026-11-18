@@ -2,7 +2,7 @@
 export const REGIOES = {
   br: ['br'],
   mx: ['mx'],
-  latam: ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'latam'],
+  latam: ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'bo', 'ec', 've', 'cr', 'pa', 'gt', 'hn', 'sv', 'ni', 'do', 'cu', 'latam'],
   us: ['us'],
   eu: ['eu'],
   global: ['global'],

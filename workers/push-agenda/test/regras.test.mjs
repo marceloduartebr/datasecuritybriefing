@@ -36,7 +36,7 @@ test('filtro de região, inclusive LATAM e país desconhecido preservado', () =>
   assert.equal(combinaRegiao({ regioes: ['br'] }, 'br'), true);
   assert.equal(combinaRegiao({ regioes: ['br'] }, 'mx'), false);
   assert.equal(combinaRegiao({ regioes: ['mx'] }, 'mx'), true);
-  for (const pais of ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'latam']) {
+  for (const pais of ['ar', 'cl', 'pe', 'py', 'uy', 'co', 'bo', 'ec', 've', 'cr', 'do', 'latam']) {
     assert.equal(combinaRegiao({ regioes: ['latam'] }, pais), true, pais);
   }
   assert.equal(combinaRegiao({ regioes: ['latam'] }, 'br'), false);
