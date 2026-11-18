@@ -1,6 +1,7 @@
 # STG branch
 
-Preview of the blog for the DSB STG tests (dsb-api-stg). Built by Workers Builds as the preview alias `stg`:
+STG blog for the DSB STG tests (dsb-api-stg), at https://dsb-stg.duarte.top (Worker `dsb-stg`,
+`wrangler deploy --env stg` from this branch). The old preview alias still builds:
 https://stg-datasecuritybriefing.marceloduarte.workers.dev
 
 - Never merged into `main`. The `dsb-stg-publish` skill commits dry-run briefings here only.
