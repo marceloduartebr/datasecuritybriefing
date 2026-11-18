@@ -24,3 +24,7 @@ Used during the test phase (dsb-staging) and repeated at cutover. Idempotent: de
 - Anything created only on STG (test posts, issues, job runs) is replaced by the Notion state on each run.
 - Repository secrets: `STG_NOTION_TOKEN`, `STG_D1_TOKEN`.
 - The schedule only runs from the default branch, so the workflow file lives on `main`; it checks out this branch for the scripts and `main` for the blog content.
+
+## Production load (cutover)
+
+`.github/workflows/prod-load.yml` ("Run workflow", type `dsb-prod` to confirm) runs steps 1–3 into **dsb-prod** (`D1_DATABASE_ID=d181dd85-…`, `JOB_NAME=notion-prod-load`, `KEEP_X=0`), then `x_baseline.py`: X publications known on dsb-staging are copied by PT blog URL and every other blog-published post becomes X skipped ("before the cutover"), so Grok does not post the archive again. Used for the dress rehearsal (X-20) and the final load on the freeze night (X-09). Secret: `PROD_D1_TOKEN` (falls back to `STG_D1_TOKEN`).
