@@ -450,6 +450,11 @@ test('ícones /pwa/dsba/*: públicos, content-type certo, cache; nada além de p
   const head = await tratar(new Request('https://dsb-auditor.duarte.top/pwa/dsba/icon-512.png', { method: 'HEAD' }), env);
   assert.equal(head.status, 200);
   assert.equal(await head.text(), '');
+  // Revalidation: ASSETS answers 304 to If-None-Match; the icon must stay a 304, never a 404.
+  const env304 = { DSB_AUDITOR: kvMem(), ASSETS: { fetch: async () => new Response(null, { status: 304, headers: { etag: '"abc"' } }) } };
+  const r304 = await tratar(new Request('https://dsb-auditor.duarte.top/pwa/dsba/favicon.svg', { headers: { 'If-None-Match': '"abc"' } }), env304);
+  assert.equal(r304.status, 304);
+  assert.equal(r304.headers.get('etag'), '"abc"');
   // dsba.duarte.top continua só redirecionando
   const d = await tratar(new Request('https://dsba.duarte.top/pwa/dsba/icon-512.png'), env);
   assert.equal(d.status, 302);
