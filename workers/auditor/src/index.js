@@ -32,6 +32,12 @@ const TIPOS_ICONE = { png: 'image/png', svg: 'image/svg+xml', ico: 'image/x-icon
 async function iconeEstatico(request, env) {
   if (!env.ASSETS || typeof env.ASSETS.fetch !== 'function') return json({ ok: false, erro: 'nao_encontrado' }, 404);
   const res = await env.ASSETS.fetch(request);
+  // A browser revalidating its cached icon (If-None-Match) gets 304 from ASSETS: pass it on, it is not a miss.
+  if (res.status === 304) {
+    const h = new Headers(res.headers);
+    h.set('Cache-Control', 'public, max-age=86400');
+    return new Response(null, { status: 304, headers: h });
+  }
   if (!res.ok) return json({ ok: false, erro: 'nao_encontrado' }, 404);
   const ext = new URL(request.url).pathname.split('.').pop();
   const headers = new Headers(res.headers);
