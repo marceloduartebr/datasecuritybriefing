@@ -1,0 +1,69 @@
+# Production load: full load of dsb-prod (D1) from the Notion queue, for the cutover.
+# - Dress rehearsal (cutover X-20) and the final load on the freeze night (X-09). Manual only: type dsb-prod to confirm.
+# - Same loader as the STG sync (dsb-api branch), written to dsb-prod, then x_baseline.py so Grok does not post
+#   the X archive again (known X rows copied from dsb-staging, the rest X skipped "before the cutover").
+# - Secrets: STG_NOTION_TOKEN (read-only Notion), PROD_D1_TOKEN (D1 edit on dsb-prod, read on dsb-staging;
+#   falls back to STG_D1_TOKEN).
+name: Production load (Notion → dsb-prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type dsb-prod to wipe and reload the production database'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-load
+  cancel-in-progress: false
+
+jobs:
+  load:
+    if: github.event.inputs.confirm == 'dsb-prod'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      D1_DATABASE_ID: d181dd85-78d4-4081-83a9-ead6e674aaf6
+    steps:
+      - name: Loader (dsb-api branch)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: dsb-api
+          path: loader
+          sparse-checkout: workers/dsb-api/load
+
+      - name: Blog content (main)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          path: blog
+          sparse-checkout: src/content
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Export the Notion queue
+        env:
+          NOTION_TOKEN: ${{ secrets.STG_NOTION_TOKEN }}
+        run: python3 loader/workers/dsb-api/load/export_notion.py
+
+      - name: Transform
+        env:
+          DSB_CONTENT: ${{ github.workspace }}/blog/src/content
+        run: python3 loader/workers/dsb-api/load/transform.py loader/workers/dsb-api/load/notion.json
+
+      - name: Write to dsb-prod
+        env:
+          CF_D1: ${{ secrets.PROD_D1_TOKEN || secrets.STG_D1_TOKEN }}
+          JOB_NAME: notion-prod-load
+          KEEP_X: '0'
+        run: python3 loader/workers/dsb-api/load/write.py
+
+      - name: X baseline
+        env:
+          CF_D1: ${{ secrets.PROD_D1_TOKEN || secrets.STG_D1_TOKEN }}
+        run: python3 loader/workers/dsb-api/load/x_baseline.py
