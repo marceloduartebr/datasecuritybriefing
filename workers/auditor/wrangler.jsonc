@@ -41,15 +41,19 @@
     { "binding": "DSB_AUDITOR", "id": "7656c44bffe641f191734a3b5fc1fcec" }
   ],
   // Service Binding: GET /health, /admin/status (se PUSH_ADMIN_TOKEN existir) e POST /admin/alerta (só com ALERTAS=on).
+  // Cutover (Fri 20 Nov 2026): queue checks read dsb-api (D1 dsb-prod) through API (secret INTERNAL_TOKEN =
+  // Pass "DSB API - INTERNAL_TOKEN"); the Notion checks are off because Notion is frozen.
   "services": [
+    { "binding": "API", "service": "dsb-api" },
     { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" },
     // FILA: a cada tick do cron, POST /interno/checar-novos no dsb-fila (avisos push da fila; secret FILA_INTERNO_TOKEN).
     { "binding": "FILA", "service": "dsb-fila" }
   ],
   "vars": {
+    "DATA_SOURCE": "api",
     "ALERTAS": "on",
     "ALERTA_OK_DIARIO": "on",
-    "NOTION": "on",
+    "NOTION": "off",
     "ACCESS_TEAM": "https://royal-lake-6796.cloudflareaccess.com",
     "ACCESS_AUD": "96689ab8700a02984d0f69327ef111ce08d4f26a8b625e87c90c0d530ec17379",
     // Aba Leituras do /painel (Web Analytics via GraphQL; secret CF_ANALYTICS_TOKEN = Account Analytics: Read).
