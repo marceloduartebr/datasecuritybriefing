@@ -253,7 +253,7 @@ export function tipoLabel(locale: Locale, tipo: string) {
   return ui[locale].tipo[key];
 }
 
-export const paises = ['br', 'mx', 'ar', 'cl', 'pe', 'py', 'uy', 'co', 'us', 'eu', 'latam', 'global'] as const;
+export const paises = ['br', 'mx', 'ar', 'cl', 'pe', 'py', 'uy', 'co', 'bo', 'ec', 've', 'cr', 'pa', 'gt', 'hn', 'sv', 'ni', 'do', 'cu', 'us', 'eu', 'latam', 'global'] as const;
 export type Pais = (typeof paises)[number];
 
 const paisIso: Record<Pais, string> = {
@@ -265,6 +265,17 @@ const paisIso: Record<Pais, string> = {
   py: 'PY',
   uy: 'UY',
   co: 'CO',
+  bo: 'BO',
+  ec: 'EC',
+  ve: 'VE',
+  cr: 'CR',
+  pa: 'PA',
+  gt: 'GT',
+  hn: 'HN',
+  sv: 'SV',
+  ni: 'NI',
+  do: 'DO',
+  cu: 'CU',
   us: 'US',
   eu: 'EU',
   latam: 'LATAM',
