@@ -25,6 +25,9 @@ const PHRASES = [
   ['Ainda não houve execução.', 'No run yet.'],
   ['>Última execução<', '>Last run<'],
   [' (gravado)<', ' (recorded)<'],
+  ['>Rodou ao abrir o painel<', '>Ran when the panel was opened<'],
+  ['>Rodada manual<', '>Run by hand<'],
+  [/>Checagem agendada das (\d\d:\d\d)</g, '>Scheduled check at $1<'],
   ['>Tudo certo<', '>All good<'],
   [/>(\d+) problema\(s\)</g, '>$1 problem(s)<'],
   [/>(\d+) alerta\(s\)</g, '>$1 alert(s)<'],
@@ -99,6 +102,7 @@ const PHRASES = [
   ['<li>ALERTAS: ', '<li>Alerts: '],
   ['<li>ALERTA_OK_DIARIO: ', '<li>Daily all-clear alert: '],
   ['<li>NOTION: ', '<li>Notion: '],
+  ['<li>Fonte da fila: ', '<li>Queue source: '],
   // last alert: titles and reason codes
   [/DSB: (\d+) problema\(s\) às (\d{2}:\d{2})/g, 'DSB: $1 problem(s) at $2'],
   ['DSB: tudo certo hoje', 'DSB: all clear today'],

@@ -21,6 +21,13 @@ function fmtIsoBrt(iso) {
   }
 }
 
+/** What started the run: a scheduled slot, opening the panel (STG) or a manual run. */
+function origemExecucao(slot) {
+  if (slot === 'view') return 'Rodou ao abrir o painel';
+  if (slot === 'manual') return 'Rodada manual';
+  return /^\d\d:\d\d$/.test(String(slot || '')) ? `Checagem agendada das ${slot}` : `Slot ${slot || '—'}`;
+}
+
 function badge(ok, labelOk = 'OK', labelBad = 'Problema') {
   if (ok === 'alerta') return '<span class="warn">Alerta</span>';
   if (ok === true) return `<span class="ok">${esc(labelOk)}</span>`;
@@ -181,7 +188,7 @@ function flagsHtml(r) {
   return `<ul class="lista flags">
     <li>ALERTAS: <strong>${esc(f.alertas || 'off')}</strong></li>
     <li>ALERTA_OK_DIARIO: <strong>${esc(f.okDiario || 'off')}</strong></li>
-    <li>NOTION: <strong>${esc(f.notion || 'off')}</strong></li>
+    ${f.fonte === 'api' ? '<li>Fonte da fila: <strong>D1 via dsb-api-stg</strong></li>' : `<li>NOTION: <strong>${esc(f.notion || 'off')}</strong></li>`}
   </ul>`;
 }
 
@@ -393,8 +400,8 @@ ${RODAPE_JS}${PTR_JS}</body></html>`;
     <div class="row">
       <div>
         <div class="label">Última execução</div>
-        <div class="valor">slot <strong>${esc(ultimo.slot)}</strong> · ${esc(ultimo.dataBrt || '')} ${esc(ultimo.horaBrt || '')} BRT</div>
-        <div class="muted mono">${esc(fmtIsoBrt(ultimo.em))} (gravado)</div>
+        <div class="valor">${esc(fmtIsoBrt(ultimo.em))}</div>
+        <div class="muted">${esc(origemExecucao(ultimo.slot))}</div>
       </div>
       <div class="status">${statusGeral}</div>
     </div>
