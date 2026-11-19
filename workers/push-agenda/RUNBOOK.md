@@ -37,7 +37,7 @@ Segredos do repositório GitHub (só os **nomes**; valores nunca no git nem em i
 Desligar o disparo por evento (cron continua):
 
 ```bash
-gh variable set EVENTO_PUSH -R marceloduartebr/datasecuritybriefing --body off
+gh variable set EVENTO_PUSH -R marceloduartebr/dsb --body off
 ```
 
 Religar: `--body on`.
@@ -58,7 +58,7 @@ Isso chama `POST /admin/tick` com `origem: evento`, `somente` e `slug`. Não exi
 Exemplo:
 
 ```bash
-gh workflow run push-evento.yml -R marceloduartebr/datasecuritybriefing \
+gh workflow run push-evento.yml -R marceloduartebr/dsb \
   -f somente='sub:…64hex…' \
   -f slug='2026-11-09-exemplo'
 ```
