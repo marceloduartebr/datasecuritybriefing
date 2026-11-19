@@ -1,5 +1,5 @@
 import { ApiError, nowIso, nz, constraintError } from './http.js';
-import { validateNewPost, postKeys, normalizeUrl, validateCves, validateCover, EDITABLE, TRANSITIONS, STATUSES, TYPES } from './rules.js';
+import { validateNewPost, postKeys, normalizeUrl, validateCves, validateCover, validateRelatedUrls, validateStoryKey, storyRoot, isGenericUrl, EDITABLE, TRANSITIONS, STATUSES, TYPES } from './rules.js';
 
 export async function getPost(db, id, { full = true } = {}) {
   const p = await db.prepare('SELECT * FROM posts WHERE id = ?1').bind(id).first();
@@ -63,33 +63,61 @@ async function rootOf(db, id) {
   return current;
 }
 
-/** Read-only dedup check: returns the keys the post would have and the collisions. */
-export async function checkDedup(db, { sourceUrl, cves }) {
+/** All subject keys of a post: CVEs, the source URL (unless generic), related outlet URLs and the story key. */
+async function allKeys(db, { sourceUrl, cves, relatedUrls = [], storyKey = null }) {
+  const { keys, generic } = await postKeys(db, { sourceUrl, cves });
+  for (const u of relatedUrls) {
+    if (u !== sourceUrl && !(await isGenericUrl(db, u))) keys.push({ key: `url:${u}`, kind: 'url' });
+  }
+  if (storyKey) keys.push({ key: `story:${storyKey}`, kind: 'story' });
+  const seen = new Set();
+  return { keys: keys.filter((k) => !seen.has(k.key) && seen.add(k.key)), generic };
+}
+
+/** Read-only dedup check: returns the keys the post would have and the collisions.
+ *  match: exact (same key) or story_recent (same story root and event, another month, added in the last 10 days). */
+export async function checkDedup(db, { sourceUrl, cves, related = [], storyKey = null }) {
   const url = normalizeUrl(sourceUrl);
   const list = validateCves(cves);
-  const { keys, generic } = await postKeys(db, { sourceUrl: url, cves: list });
+  const story = validateStoryKey(storyKey);
+  const { keys, generic } = await allKeys(db, { sourceUrl: url, cves: list, relatedUrls: validateRelatedUrls(related), storyKey: story });
   const collisions = await collisionsOf(db, keys);
-  return { source_url: url, generic_url: generic, keys, collisions, free: collisions.length === 0 };
+  const warnings = generic && !list.length ? ['generic_url_needs_cve'] : [];
+  return { source_url: url, generic_url: generic, keys, collisions, free: collisions.length === 0, warnings };
 }
 
 async function collisionsOf(db, keys) {
   if (!keys.length) return [];
   const r = await db
     .prepare(
-      `SELECT k.key, p.id, p.topic, p.status, p.type, p.item_order, p.discard_reason, p.added_at
+      `SELECT k.key, p.id, p.topic, p.status, p.type, p.item_order, p.discard_reason, p.added_at, 'exact' AS match
        FROM post_keys k JOIN posts p ON p.id = k.post_id
        WHERE k.key IN (${keys.map((_, i) => `?${i + 1}`).join(',')})`
     )
     .bind(...keys.map((c) => c.key))
     .all();
-  return r.results || [];
+  const out = r.results || [];
+  for (const s of keys.filter((k) => k.kind === 'story')) {
+    const root = `story:${storyRoot(s.key.slice('story:'.length))}-`;
+    const near = await db
+      .prepare(
+        `SELECT k.key, p.id, p.topic, p.status, p.type, p.item_order, p.discard_reason, p.added_at, 'story_recent' AS match
+         FROM post_keys k JOIN posts p ON p.id = k.post_id
+         WHERE k.kind = 'story' AND k.key <> ?1 AND substr(k.key, 1, length(?2)) = ?2
+           AND length(k.key) = length(?2) + 7 AND julianday('now') - julianday(p.added_at) <= 10`
+      )
+      .bind(s.key, root)
+      .all();
+    for (const c of near.results || []) if (!out.some((o) => o.id === c.id && o.key === c.key)) out.push(c);
+  }
+  return out;
 }
 
 export async function createPost(db, body, session) {
   const d = validateNewPost(body, session);
-  const { keys } = await postKeys(db, { sourceUrl: d.source_url, cves: d.cves });
+  const { keys } = await allKeys(db, { sourceUrl: d.source_url, cves: d.cves, relatedUrls: d.related_urls, storyKey: d.story_key });
   if (!keys.length) {
-    throw new ApiError(422, 'missing_key', 'Generic source without a CVE: send the CVEs or a specific URL', { source_url: d.source_url });
+    throw new ApiError(422, 'missing_key', 'Generic source without a CVE: send the CVEs, a specific URL or a story_key', { source_url: d.source_url });
   }
 
   let targetRoot = null;
@@ -154,24 +182,32 @@ export async function createPost(db, body, session) {
   return { ...post, keys: fresh, keys_shared_with_follow_up: [...shared] };
 }
 
+/** POST /posts/:id/keys {cves, url, urls, story_key}: adds keys (append-only). Answers the post id and all its keys. */
 export async function addKeys(db, id, body) {
   const p = await getPost(db, id, { full: false });
   const cves = validateCves(body.cves);
   const keys = cves.map((c) => ({ key: `cve:${c}`, kind: 'cve' }));
-  if (body.url) {
-    const url = normalizeUrl(body.url, 'url');
+  const urls = validateRelatedUrls([...(body.url ? [body.url] : []), ...(Array.isArray(body.urls) ? body.urls : [])]);
+  for (const url of urls) {
     const { keys: k } = await postKeys(db, { sourceUrl: url, cves: [] });
     keys.push(...k);
   }
-  if (!keys.length) throw new ApiError(422, 'missing_key', 'Send cves or a specific url');
-  const collisions = (await collisionsOf(db, keys)).filter((c) => c.id !== p.id);
+  const story = validateStoryKey(body.story_key);
+  if (story) keys.push({ key: `story:${story}`, kind: 'story' });
+  if (!keys.length) throw new ApiError(422, 'missing_key', 'Send cves, a specific url (or urls) or a story_key');
+  const root = await rootOf(db, p.id);
+  const collisions = [];
+  for (const c of await collisionsOf(db, keys)) {
+    if (c.id !== p.id && (await rootOf(db, c.id)) !== root) collisions.push(c);
+  }
   if (collisions.length) throw new ApiError(409, 'subject_already_covered', `Key already belongs to #${collisions[0].id}`, { key: collisions[0].key, collisions });
   try {
     await db.batch(keys.map((c) => db.prepare('INSERT OR IGNORE INTO post_keys (key, post_id, kind) VALUES (?1, ?2, ?3)').bind(c.key, p.id, c.kind)));
   } catch (e) {
     throw constraintError(e) || e;
   }
-  return getPost(db, id);
+  const all = await db.prepare('SELECT key, kind FROM post_keys WHERE post_id = ?1 ORDER BY key').bind(p.id).all();
+  return { id: p.id, keys: all.results || [] };
 }
 
 export async function editPost(db, id, body, session) {

@@ -307,3 +307,50 @@ test('removal: only the queue app, with a reason; channels go removal_pending, t
   assert.equal((await call('GET', '/issues?source=health&stage=linkedin')).body.items.length, 0, 'the takedown issue resolves itself');
   assert.equal((await call('GET', '/queue/removals')).body.items.length, 0);
 });
+
+test('X-26 stronger dedup: www/AMP forms, related URLs, story key, recent story, /keys answer', async () => {
+  const { call } = setup();
+  // www. and AMP forms of the same article collide
+  const a = await call('POST', '/posts', base({ source_url: 'https://www.example.com.br/news/1/amp?utm_source=x' }));
+  assert.equal(a.status, 201);
+  assert.equal(a.body.post.source_url, 'https://example.com.br/news/1');
+  const amp = await call('GET', `/dedup?url=${encodeURIComponent('https://example.com.br/news/1?amp=1')}`);
+  assert.equal(amp.body.free, false);
+
+  // related_urls become keys; another outlet's URL then collides
+  const b = await call('POST', '/posts', base({ source_url: 'https://site-a.com/x', slug: 'b', related_urls: ['https://site-b.com/y', 'https://www.site-c.com/z/amp'], story_key: 'acme-breach-2026-11' }));
+  assert.equal(b.status, 201);
+  const bid = b.body.post.id;
+  const viaC = await call('POST', '/posts', base({ source_url: 'https://site-c.com/z', slug: 'c' }));
+  assert.equal(viaC.status, 409);
+  assert.equal(viaC.body.error, 'subject_already_covered');
+  assert.equal(viaC.body.collisions[0].id, bid);
+
+  // same story key under a new URL collides (exact); the same story in the next month collides as story_recent
+  const sameStory = await call('GET', `/dedup?url=${encodeURIComponent('https://other.com/1')}&story_key=acme-breach-2026-11`);
+  assert.equal(sameStory.body.collisions[0].match, 'exact');
+  const nextMonth = await call('POST', '/posts', base({ source_url: 'https://other.com/2', slug: 'd', story_key: 'acme-breach-2026-12' }));
+  assert.equal(nextMonth.status, 409);
+  assert.equal(nextMonth.body.collisions[0].match, 'story_recent');
+  // another event of the same company is a different story
+  const otherEvent = await call('GET', `/dedup?url=${encodeURIComponent('https://other.com/3')}&story_key=acme-sanction-2026-11`);
+  assert.equal(otherEvent.body.free, true);
+  // a follow-up shares the story with its root
+  const fu = await call('POST', '/posts', base({ source_url: 'https://other.com/4', slug: 'e', story_key: 'acme-breach-2026-11', follow_up_of: bid }));
+  assert.equal(fu.status, 201);
+  assert.deepEqual(fu.body.post.keys_shared_with_follow_up, ['story:acme-breach-2026-11']);
+
+  assert.equal((await call('POST', '/posts', base({ source_url: 'https://other.com/5', slug: 'f', story_key: 'Acme Breach' }))).body.error, 'invalid_story_key');
+
+  // /keys: url list + story key, answers id and keys only
+  const k = await call('POST', `/posts/${a.body.post.id}/keys`, { urls: ['https://site-d.com/q', 'https://site-e.com/r'], story_key: 'tjmg-incident-2026-11' });
+  assert.equal(k.status, 200);
+  assert.equal(k.body.post.id, a.body.post.id);
+  assert.deepEqual(Object.keys(k.body.post).sort(), ['id', 'keys']);
+  assert.ok(k.body.post.keys.some((x) => x.key === 'story:tjmg-incident-2026-11' && x.kind === 'story'));
+  assert.equal(k.body.post.keys.filter((x) => x.kind === 'url').length, 3);
+
+  // generic URL without CVE: warning on /dedup
+  const g = await call('GET', `/dedup?url=${encodeURIComponent('https://www.cisa.gov/known-exploited-vulnerabilities-catalog')}`);
+  assert.deepEqual(g.body.warnings, ['generic_url_needs_cve']);
+});

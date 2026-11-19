@@ -36,11 +36,14 @@ export function normalizeUrl(raw, field = 'source_url') {
   }
   if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new ApiError(422, 'invalid_url', `${field} must be http(s)`);
   u.hash = '';
-  u.hostname = u.hostname.toLowerCase();
-  const keep = [...u.searchParams.entries()].filter(([k]) => !TRACKING_PARAMS.test(k)).sort(([a], [b]) => a.localeCompare(b));
+  u.hostname = u.hostname.toLowerCase().replace(/^www\./, '');
+  // AMP copies are the same article: drop ?amp / ?amp=1 / ?outputType=amp and a trailing /amp path segment.
+  const keep = [...u.searchParams.entries()]
+    .filter(([k, v]) => !TRACKING_PARAMS.test(k) && k.toLowerCase() !== 'amp' && !(k === 'outputType' && v.toLowerCase() === 'amp'))
+    .sort(([a], [b]) => a.localeCompare(b));
   u.search = '';
   for (const [k, v] of keep) u.searchParams.append(k, v);
-  if (u.pathname.length > 1) u.pathname = u.pathname.replace(/\/+$/, '') || '/';
+  if (u.pathname.length > 1) u.pathname = u.pathname.replace(/\/+$/, '').replace(/\/amp$/i, '') || '/';
   return u.toString();
 }
 
@@ -74,6 +77,32 @@ export async function isGenericUrl(db, url) {
     .bind(url)
     .first();
   return !!r;
+}
+
+export const STORY_EVENTS = ['incident', 'breach', 'sanction', 'vulnerability', 'regulation', 'news'];
+const STORY_RE = new RegExp(`^([a-z0-9]+(?:-[a-z0-9]+)*)-(${STORY_EVENTS.join('|')})-(\\d{4})-(0[1-9]|1[0-2])$`);
+
+/** story_key: <root-entity>-<event>-<yyyy-mm>, e.g. fireworks-ai-breach-2026-11. Returns the key text or null. */
+export function validateStoryKey(v) {
+  if (v == null || v === '') return null;
+  const s = String(v).trim().toLowerCase().replace(/^story:/, '');
+  if (!STORY_RE.test(s)) {
+    throw new ApiError(422, 'invalid_story_key', `story_key must be <root-entity>-<event>-<yyyy-mm>, event one of: ${STORY_EVENTS.join(', ')}`);
+  }
+  return s;
+}
+
+/** The story without its month ("fireworks-ai-breach"): the same fact posted across a month boundary. */
+export function storyRoot(storyKey) {
+  return storyKey.replace(/-\d{4}-\d{2}$/, '');
+}
+
+/** Extra outlet URLs for the same fact (POST /posts related_urls, /dedup related). At most 10. */
+export function validateRelatedUrls(list) {
+  if (list == null) return [];
+  if (!Array.isArray(list)) throw new ApiError(422, 'invalid_value', 'related_urls must be a list');
+  if (list.length > 10) throw new ApiError(422, 'invalid_value', 'related_urls takes at most 10 URLs');
+  return [...new Set(list.map((u) => normalizeUrl(u, 'related_urls')))];
 }
 
 /** Subject keys of a post: each CVE plus the normalized URL (unless it is generic). */
@@ -144,7 +173,9 @@ export function validateNewPost(b, session) {
     added_at: isoOrNull(b.added_at, 'added_at') || new Date().toISOString(),
     follow_up_of: b.follow_up_of == null ? null : Number(b.follow_up_of),
     notion_id: text(b.notion_id, 40, 'notion_id'),
-    cves: validateCves(b.cves)
+    cves: validateCves(b.cves),
+    related_urls: validateRelatedUrls(b.related_urls),
+    story_key: validateStoryKey(b.story_key)
   };
 }
 

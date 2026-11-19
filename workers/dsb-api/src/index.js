@@ -9,14 +9,14 @@ import { listCompetitors } from './competitors.js';
 /**
  * Routes (all require authentication except /health; see auth.js):
  *  GET   /health
- *  GET   /dedup?url=…&cve=CVE-…           read-only dedup check
+ *  GET   /dedup?url=…&cve=CVE-…&related=…&story_key=…  read-only dedup check (match exact | story_recent; warnings)
  *  GET   /competitors[?text=…]             BigID competitor list and editorial rule
  *  GET   /posts?status=&type=&since=&limit=
- *  POST  /posts                            creates a new post (dedup by key; follow_up_of)
+ *  POST  /posts                            creates a new post (dedup by key; follow_up_of, related_urls, story_key)
  *  GET   /posts/:id
  *  PATCH /posts/:id                        edits allowed fields
  *  POST  /posts/:id/status                 {to, notes, reason, star}; to=removed only via the internal token
- *  POST  /posts/:id/keys                   {cves, url} — fixes "missing key"
+ *  POST  /posts/:id/keys                   {cves, url, urls, story_key} → {id, keys} (append-only)
  *  POST  /posts/reorder                    {status, ids}
  *  GET   /queue/:channel                   blog | linkedin | x | translations | removals (pending takedowns)
  *  POST  /publications                     claim {post_id, channel, lang}
@@ -90,7 +90,7 @@ async function dispatch({ route, db, url, body, id, session }) {
   const q = url.searchParams;
   switch (route) {
     case 'GET /dedup':
-      return { body: await checkDedup(db, { sourceUrl: q.get('url'), cves: q.getAll('cve') }) };
+      return { body: await checkDedup(db, { sourceUrl: q.get('url'), cves: q.getAll('cve'), related: q.getAll('related'), storyKey: q.get('story_key') }) };
     case 'GET /competitors':
       return { body: await listCompetitors(db, q) };
     case 'GET /posts':
