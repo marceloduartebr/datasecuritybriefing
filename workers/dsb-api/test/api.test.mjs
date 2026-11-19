@@ -354,3 +354,43 @@ test('X-26 stronger dedup: www/AMP forms, related URLs, story key, recent story,
   const g = await call('GET', `/dedup?url=${encodeURIComponent('https://www.cisa.gov/known-exploited-vulnerabilities-catalog')}`);
   assert.deepEqual(g.body.warnings, ['generic_url_needs_cve']);
 });
+
+test('X-23 ad hoc intake requests: create, dedup, single live request, claim, done/refused, health check', async () => {
+  const { call, env } = setup();
+  const r = await call('POST', '/intake/requests', { url: 'https://www.news.example/story?utm_source=x', note: 'veja se serve' }, { internal: true });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.request.url, 'https://news.example/story');
+  assert.equal(r.body.request.requested_by, 'marcelo@app');
+  // same link while it waits
+  const again = await call('POST', '/intake/requests', { url: 'https://news.example/story' }, { token: TOKENS.TOKEN_GROK });
+  assert.equal(again.body.error, 'intake_already_open');
+  // a link already covered by a post is answered at once
+  const p = await call('POST', '/posts', base({ source_url: 'https://covered.example/a' }));
+  const cov = await call('POST', '/intake/requests', { url: 'https://covered.example/a' });
+  assert.equal(cov.status, 409);
+  assert.equal(cov.body.error, 'subject_already_covered');
+
+  const listed = await call('GET', '/intake/requests');
+  assert.equal(listed.body.items.length, 1);
+  const id = r.body.request.id;
+  const c = await call('POST', `/intake/requests/${id}/claim`, {});
+  assert.equal(c.body.request.status, 'claimed');
+  assert.equal(c.body.request.claimed_by, 'claude');
+  assert.equal((await call('POST', `/intake/requests/${id}/claim`, {}, { token: TOKENS.TOKEN_GROK })).body.error, 'intake_not_open');
+  assert.equal((await call('POST', `/intake/requests/${id}/result`, { status: 'refused', reason: 'x' }, { token: TOKENS.TOKEN_GROK })).body.error, 'intake_claimed_by_other');
+  assert.equal((await call('POST', `/intake/requests/${id}/result`, { status: 'done' })).body.error, 'field_required');
+  const done = await call('POST', `/intake/requests/${id}/result`, { status: 'done', post_id: p.body.post.id });
+  assert.equal(done.body.request.status, 'done');
+  // closed: the same link can be requested again later (it is now dedup's job)
+  assert.equal((await call('GET', '/intake/requests?status=done')).body.items.length, 1);
+
+  // refused path and the 24 h health check
+  const r2 = await call('POST', '/intake/requests', { url: 'https://other.example/x' }, { token: TOKENS.TOKEN_GROK });
+  await env.DB.prepare("UPDATE intake_requests SET created_at = '2020-01-01T00:00:00.000Z' WHERE id = ?1").bind(r2.body.request.id).run();
+  await call('POST', '/sweep', {}, { internal: true });
+  const iss = await call('GET', '/issues?kind=intake_waiting', null, { internal: true });
+  assert.equal(iss.body.items.length, 1);
+  await call('POST', `/intake/requests/${r2.body.request.id}/claim`, {}, { token: TOKENS.TOKEN_GROK });
+  const ref = await call('POST', `/intake/requests/${r2.body.request.id}/result`, { status: 'refused', reason: 'concorrente BigID: X — funding' }, { token: TOKENS.TOKEN_GROK });
+  assert.equal(ref.body.request.status, 'refused');
+});

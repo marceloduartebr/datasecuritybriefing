@@ -23,7 +23,7 @@ TOKEN = os.environ['CF_D1']
 usage = {'calls': 0, 'rows_read': 0, 'rows_written': 0}
 
 # Copy order respects the foreign keys; clearing runs in reverse.
-DATA = ['job_runs', 'posts', 'post_keys', 'publications', 'post_events', 'issues']
+DATA = ['job_runs', 'posts', 'post_keys', 'publications', 'post_events', 'intake_requests', 'issues']
 CONFIG = ['competitors', 'ignored_url_patterns']
 
 
@@ -107,6 +107,14 @@ if __name__ == '__main__':
     if DST == PROD or DST == SRC:
         raise SystemExit('refusing to write: the target is the production database')
     print(f'source {SRC} (read only) → target {DST}{" (dry run)" if DRY else ""}')
+
+    # A table added by a newer migration is skipped until it exists on both databases.
+    present = {r['name'] for r in src("SELECT name FROM sqlite_master WHERE type = 'table'")} & \
+              {r['name'] for r in _q(DST, "SELECT name FROM sqlite_master WHERE type = 'table'")}
+    for t in [t for t in CONFIG + DATA if t not in present]:
+        print(f'  skip {t}: not on both databases yet')
+    CONFIG[:] = [t for t in CONFIG if t in present]
+    DATA[:] = [t for t in DATA if t in present]
 
     data = {}
     for t in CONFIG + DATA:

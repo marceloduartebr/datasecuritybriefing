@@ -3,6 +3,7 @@ import { authenticate } from './auth.js';
 import { getPost, listPosts, checkDedup, createPost, addKeys, editPost, changeStatus, reorder, channelQueue } from './posts.js';
 import { claim, complete } from './publications.js';
 import { list, summary, update, record, recordRejection, markNotified, sweep } from './issues.js';
+import { createRequest, listRequests, claimRequest, finishRequest } from './intake.js';
 import { startJob, finishJob } from './jobs.js';
 import { listCompetitors } from './competitors.js';
 
@@ -22,6 +23,10 @@ import { listCompetitors } from './competitors.js';
  *  POST  /publications                     claim {post_id, channel, lang}
  *  POST  /publications/:id/result          {status: published|failed|skipped, url, error, external_id, body, published_at}
  *                                          on a removal_pending row: {status: removed|removal_failed, error}
+ *  POST  /intake/requests                  {url, note} ad hoc link for the next intake run (X-23)
+ *  GET   /intake/requests?status=open,claimed
+ *  POST  /intake/requests/:id/claim        → claimed (a claim older than 2 h is taken over)
+ *  POST  /intake/requests/:id/result       {status: done, post_id} | {status: refused, reason}
  *  GET   /issues?status=&severity=&stage=&source=&kind=&post_id=&limit=
  *  GET   /issues/summary
  *  POST  /issues                           agent report {fingerprint, kind, severity, stage, summary, …}
@@ -117,6 +122,14 @@ async function dispatch({ route, db, url, body, id, session }) {
       return { body: { publication: await claim(db, body, session) }, status: 201 };
     case 'POST /publications/:id/result':
       return { body: await complete(db, id, body, session) };
+    case 'POST /intake/requests':
+      return { body: { request: await createRequest(db, body, session) }, status: 201 };
+    case 'GET /intake/requests':
+      return { body: { items: await listRequests(db, q) } };
+    case 'POST /intake/requests/:id/claim':
+      return { body: { request: await claimRequest(db, Number(url.pathname.split('/')[3]), session) } };
+    case 'POST /intake/requests/:id/result':
+      return { body: { request: await finishRequest(db, Number(url.pathname.split('/')[3]), body, session) } };
     case 'GET /issues':
       return { body: { items: await list(db, q) } };
     case 'GET /issues/summary':
