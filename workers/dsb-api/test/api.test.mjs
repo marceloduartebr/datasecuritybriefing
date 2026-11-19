@@ -394,3 +394,23 @@ test('X-23 ad hoc intake requests: create, dedup, single live request, claim, do
   const ref = await call('POST', `/intake/requests/${r2.body.request.id}/result`, { status: 'refused', reason: 'concorrente BigID: X — funding' }, { token: TOKENS.TOKEN_GROK });
   assert.equal(ref.body.request.status, 'refused');
 });
+
+test('X-16 /metrics: weekly curated by agent, published per channel, covers, backlog, timings', async () => {
+  const { call } = setup();
+  const a = await call('POST', '/posts', base({ source_url: 'https://m.example/1', slug: 'm1', image_source: 'generated', image_url: COVER }));
+  await call('POST', '/posts', base({ source_url: 'https://m.example/2', slug: 'm2' }), { token: TOKENS.TOKEN_GROK });
+  const id = a.body.post.id;
+  await call('POST', `/posts/${id}/status`, { to: 'approved', notes: 'ok' }, { internal: true });
+  const c = await call('POST', '/publications', { post_id: id, channel: 'blog' });
+  await call('POST', `/publications/${c.body.publication.id}/result`, { status: 'published', url: 'https://dsb.duarte.top/briefings/m1' });
+  const m = await call('GET', '/metrics?weeks=4');
+  assert.equal(m.status, 200);
+  const w = m.body.weeks[0];
+  assert.equal(w.curated.total, 2);
+  assert.equal(w.curated.claude, 1);
+  assert.equal(w.curated.grok, 1);
+  assert.equal(w.published.blog, 1);
+  assert.equal(w.covers.generated, 1);
+  assert.ok(w.hours_approve_to_blog_median >= 0);
+  assert.equal(m.body.backlog.new.total, 1);
+});
