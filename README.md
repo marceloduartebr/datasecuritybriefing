@@ -4,14 +4,14 @@ Blog estático (Astro) do arquivo de mercado. Fila LinkedIn continua no Notion �
 
 ## Deploy (Cloudflare Workers Builds)
 
-O site é o Worker **`datasecuritybriefing`** (Astro → `dist` + `worker/index.js` para `/api/push/*`), implantado por **Cloudflare Workers Builds** ligado ao GitHub — **não** é Cloudflare Pages clássico.
+O site é o Worker **`dsb`** (Astro → `dist` + `worker/index.js` para `/api/push/*`), implantado por **Cloudflare Workers Builds** ligado ao GitHub — **não** é Cloudflare Pages clássico.
 
 - Build: `npm run build`
 - Output: `dist` (assets do Worker)
 - Branch: `main`
 - Domínio: `https://dsb.duarte.top`
 
-Cada push em `main` dispara o check **Workers Builds: datasecuritybriefing**.
+Cada push em `main` dispara o check **Workers Builds: dsb**.
 
 ## Web Push
 
