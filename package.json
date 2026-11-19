@@ -14,8 +14,8 @@
     "artigo:remover": "node scripts/remover-artigo.mjs"
   },
   "dependencies": {
-    "astro": "^5.13.0",
-    "@astrojs/rss": "^4.0.12"
+    "@astrojs/rss": "^4.0.19",
+    "astro": "^7.4.13"
   },
   "devDependencies": {
     "http_ece": "^1.2.0",
