@@ -48,11 +48,12 @@ async function iconeEstatico(request, env) {
 }
 
 /** STG panel action: resolve/ignore an issue through dsb-api-stg, then back to the panel with a fresh sweep. */
-async function resolverIssue(request, env, url) {
-  const auth = await autorizarPainel(request, env);
-  if (!auth.ok || auth.via !== 'access') return json({ ok: false, erro: auth.erro || 'nao_autorizado' }, auth.status || 401);
+async function resolverIssue(request, env, url, authAdmin = null) {
+  const auth = authAdmin || (await autorizarPainel(request, env));
+  if (!auth.ok || (auth.via !== 'access' && auth.via !== 'admin')) return json({ ok: false, erro: auth.erro || 'nao_autorizado' }, auth.status || 401);
+  // dsb-admin checks Origin and CSRF on its own form before forwarding; direct posts must be same-origin.
   const origin = request.headers.get('Origin') || '';
-  if (origin !== `https://${url.host}`) return json({ ok: false, erro: 'origem' }, 403);
+  if (auth.via !== 'admin' && origin !== `https://${url.host}`) return json({ ok: false, erro: 'origem' }, 403);
   const ct = (request.headers.get('content-type') || '').toLowerCase();
   if (!ct.startsWith('application/x-www-form-urlencoded')) return json({ ok: false, erro: 'formato' }, 415);
   const body = await request.text();
@@ -71,6 +72,20 @@ async function resolverIssue(request, env, url) {
   }
   volta.hash = 'issues';
   return new Response(null, { status: 303, headers: { Location: volta.pathname + volta.search + volta.hash, 'Cache-Control': 'no-store' } });
+}
+
+/** dsb-admin's service-binding call: x-admin-token = ADMIN_TOKEN (24+ chars, constant-time compare). */
+async function autorizarAdmin(request, env) {
+  const want = env && env.ADMIN_TOKEN;
+  const got = request.headers.get('x-admin-token') || '';
+  if (typeof want !== 'string' || want.length < 24 || !got) return { ok: false };
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(got)), crypto.subtle.digest('SHA-256', enc.encode(want))]);
+  const x = new Uint8Array(a), y = new Uint8Array(b);
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  if (d !== 0) return { ok: false };
+  return { ok: true, via: 'admin', email: String(request.headers.get('x-actor') || 'dsb-admin').slice(0, 120) };
 }
 
 export async function tratar(request, env, ctx, deps = {}) {
@@ -104,11 +119,19 @@ export async function tratar(request, env, ctx, deps = {}) {
     const qs = q.toString();
     return new Response(null, { status: 301, headers: { Location: `/panel${qs ? `?${qs}` : ''}`, 'Cache-Control': 'no-store' } });
   }
-  if (path === '/panel') {
-    // STG: POST /panel resolves or ignores an issue (Access login, same-origin form, note required).
-    if (request.method === 'POST' && usesApi(env)) return resolverIssue(request, env, url);
+  // dsb-admin (X-16) renders this panel inside its Audit tab through a service binding: /embed/panel with the
+  // shared ADMIN_TOKEN and the signed-in e-mail in x-actor. It answers exactly as /panel.
+  const embed = path === '/embed/panel';
+  let authAdmin = null;
+  if (embed) {
+    authAdmin = await autorizarAdmin(request, env);
+    if (!authAdmin.ok) return json({ ok: false, erro: 'nao_autorizado' }, 401);
+  }
+  if (path === '/panel' || embed) {
+    // POST resolves or ignores an issue through dsb-api (Access login or dsb-admin, note required).
+    if (request.method === 'POST' && usesApi(env)) return resolverIssue(request, env, url, authAdmin);
     if (request.method !== 'GET') return json({ ok: false, erro: 'metodo' }, 405);
-    const auth = await autorizarPainel(request, env);
+    const auth = authAdmin || (await autorizarPainel(request, env));
     if (!auth.ok) {
       if (auth.status === 404) return json({ ok: false, erro: 'nao_encontrado' }, 404);
       return json({ ok: false, erro: auth.erro }, auth.status);

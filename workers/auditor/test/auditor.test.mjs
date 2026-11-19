@@ -460,3 +460,21 @@ test('ícones /pwa/dsba/*: públicos, content-type certo, cache; nada além de p
   const d = await tratar(new Request('https://dsba.duarte.top/pwa/dsba/icon-512.png'), env);
   assert.equal(d.status, 302);
 });
+
+test('X-16 /embed/panel: dsb-admin with ADMIN_TOKEN gets the panel; without it 401; resolve needs no Origin', async () => {
+  const kv = kvMem();
+  await kv.put('ultimo', JSON.stringify({
+    em: '2026-11-19T12:00:00Z', dataBrt: '2026-11-19', horaBrt: '09:15', slot: '09:15', ok: true, problemas: [], flags: {},
+    blog: { ok: true, total: 0, itens: [] }, push: { ok: true, health: 200 },
+    notion: { ativo: true, ok: true, novosHoje: { total: 0, aindaNovo: 0 }, semCapa: [], publicadosSemUrn: [], publicadosHoje: 0, aprovadosPorTipo: {}, fila: { total: 0 } },
+  }));
+  const ADMIN = 'admin-0000000000000000000000000000';
+  const env = { DSB_AUDITOR: kv, AUDITOR_TOKEN: TOKEN, ADMIN_TOKEN: ADMIN };
+  assert.equal((await tratar(new Request('https://a/embed/panel'), env)).status, 401);
+  assert.equal((await tratar(new Request('https://a/embed/panel', { headers: { 'x-admin-token': 'wrong-00000000000000000000000000' } }), env)).status, 401);
+  const r = await tratar(new Request('https://a/embed/panel', { headers: { 'x-admin-token': ADMIN, 'x-actor': 'm@x' } }), env);
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /<header class="topo">/);
+  // without ADMIN_TOKEN configured the embed route is closed
+  assert.equal((await tratar(new Request('https://a/embed/panel', { headers: { 'x-admin-token': ADMIN } }), { ...env, ADMIN_TOKEN: '' })).status, 401);
+});
