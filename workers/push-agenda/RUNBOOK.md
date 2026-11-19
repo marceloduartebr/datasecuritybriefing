@@ -1,8 +1,8 @@
-# Runbook — Web Push do DSB (`dsb-push-agenda`)
+# Runbook — Web Push do DSB (`dsb-push`)
 
 Em produção desde 07/11/2026. O disparo **principal** é por evento (após o site no ar); o cron é **fallback**. A rotina antiga do box (`push-dsb-novas-publica-es` / `scripts/push/apos-publicar.mjs` + `enviar.mjs`) permanece **pausada** — não religar sem reconciliar o dedupe por destinatário no Durable Object.
 
-Hostname do Worker: `https://dsb-push-agenda.marceloduarte.workers.dev` (rotas `/admin/*`). Não pendurar no domínio `dsb.duarte.top`.
+Hostname do Worker: `https://dsb-push.marceloduarte.workers.dev` (rotas `/admin/*`). Não pendurar no domínio `dsb.duarte.top`.
 
 ## O que este serviço faz
 
@@ -32,7 +32,7 @@ Fluxo:
 Segredos do repositório GitHub (só os **nomes**; valores nunca no git nem em issue):
 
 - `ADMIN_TOKEN` — mesmo token admin do Worker
-- `PUSH_AGENDA_URL` — base URL do Worker (`https://dsb-push-agenda.…workers.dev`)
+- `PUSH_AGENDA_URL` — base URL do Worker (`https://dsb-push.…workers.dev`)
 
 Desligar o disparo por evento (cron continua):
 
@@ -171,7 +171,7 @@ Ordem. Não pular.
    npx wrangler deploy --config workers/push-agenda/wrangler.jsonc
    ```
 
-   O primeiro deploy, feito sem `triggers`, criou o Worker `dsb-push-agenda` e o Durable Object. Não criou KV. Um deploy posterior deste arquivo, já com `triggers.crons`, grava a agenda e continua sem ligar `envio` nem `fanout`. `$URL` é o hostname que o comando imprime (`*.workers.dev`). Não usar `dsb.duarte.top`. Só fazer esse deploy depois de pausar a rotina antiga e confirmar que não há envio em curso.
+   O primeiro deploy, feito sem `triggers`, criou o Worker `dsb-push` e o Durable Object. Não criou KV. Um deploy posterior deste arquivo, já com `triggers.crons`, grava a agenda e continua sem ligar `envio` nem `fanout`. `$URL` é o hostname que o comando imprime (`*.workers.dev`). Não usar `dsb.duarte.top`. Só fazer esse deploy depois de pausar a rotina antiga e confirmar que não há envio em curso.
 4. Secrets, sem ecoar em log ou issue:
    - `wrangler secret put ADMIN_TOKEN --config workers/push-agenda/wrangler.jsonc`
    - `wrangler secret put VAPID_PUBLIC_KEY --config workers/push-agenda/wrangler.jsonc`

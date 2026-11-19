@@ -15,7 +15,7 @@ Cada push em `main` dispara o check **Workers Builds: datasecuritybriefing**.
 
 ## Web Push
 
-Envio em produção no Worker **`dsb-push-agenda`** (`workers/push-agenda/`).
+Envio em produção no Worker **`dsb-push`** (`workers/push-agenda/`).
 
 - **Disparo por evento (principal):** workflow `.github/workflows/push-evento.yml` após o deploy, se a variável do repo `EVENTO_PUSH` for `on`.
 - **Fallback:** cron do Worker nos dias úteis às 11:25 e 19:25 em `America/Sao_Paulo` (UTC `25 14,22 * * 1-5`).

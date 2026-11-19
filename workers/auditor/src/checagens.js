@@ -147,7 +147,7 @@ export async function checarPush(env) {
   let health = 0;
   let saude = null;
   try {
-    const h = await svc.fetch('https://dsb-push-agenda/health');
+    const h = await svc.fetch('https://dsb-push/health');
     health = h.status;
     saude = h.ok ? await lerJson(h) : null;
   } catch {
@@ -156,7 +156,7 @@ export async function checarPush(env) {
   const out = { ok: !!(saude && saude.ok), health, status: null };
   if (env.PUSH_ADMIN_TOKEN) {
     try {
-      const s = await svc.fetch('https://dsb-push-agenda/admin/status', { headers: { Authorization: `Bearer ${env.PUSH_ADMIN_TOKEN}` } });
+      const s = await svc.fetch('https://dsb-push/admin/status', { headers: { Authorization: `Bearer ${env.PUSH_ADMIN_TOKEN}` } });
       const j = s.ok ? await lerJson(s) : null;
       if (j) {
         const artigos = (j.artigos || []).slice(-10).map((a) => ({ slug: a.slug, status: a.status, entregas: a.entregas || {} }));

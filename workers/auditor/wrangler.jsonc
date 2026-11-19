@@ -1,8 +1,8 @@
-// Worker de auditoria do DSB (só leitura). Independente do site e do dsb-push-agenda.
+// Worker de auditoria do DSB (só leitura). Independente do site e do dsb-push.
 // - Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
 // - 1 Cron Trigger: "15,30,50 10-21 * * 1-5" (UTC). O código só roda nos 6 horários
 //   de Brasília (07:50, 08:15, 09:15, 09:50, 17:50, 18:15); os outros ticks saem sem rede.
-// - ALERTAS="on" (e ALERTA_OK_DIARIO="on"): problemas viram POST /admin/alerta no dsb-push-agenda
+// - ALERTAS="on" (e ALERTA_OK_DIARIO="on"): problemas viram POST /admin/alerta no dsb-push
 //   (Service Binding + secret ALERTA_TOKEN); a allowlist de 2 inscrições do Marcelo fica fixa lá.
 //   OK diário "tudo certo" só no slot 18:15 BRT, no máx. 1×/dia (KV alerta:ultimo).
 // - NOTION liga/desliga as consultas (só leitura) à fila. Token entra como secret NOTION_TOKEN.
@@ -42,7 +42,7 @@
   ],
   // Service Binding: GET /health, /admin/status (se PUSH_ADMIN_TOKEN existir) e POST /admin/alerta (só com ALERTAS=on).
   "services": [
-    { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" },
+    { "binding": "PUSH_AGENDA", "service": "dsb-push" },
     // FILA: a cada tick do cron, POST /interno/checar-novos no dsb-fila (avisos push da fila; secret FILA_INTERNO_TOKEN).
     { "binding": "FILA", "service": "dsb-fila" }
   ],
@@ -70,7 +70,7 @@
       "kv_namespaces": [],
       "services": [
         { "binding": "API", "service": "dsb-api-stg" },
-        { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" },
+        { "binding": "PUSH_AGENDA", "service": "dsb-push" },
         // Queue new-post alerts on STG: opening the panel calls /interno/checar-novos (secret FILA_INTERNO_TOKEN).
         { "binding": "FILA", "service": "dsb-admin-stg" }
       ],

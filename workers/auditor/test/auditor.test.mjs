@@ -11,7 +11,7 @@ import { autorizarPainel } from '../src/auth.js';
 import { validarAccessJwt, _resetJwksCache } from '../src/access.js';
 
 const TOKEN = 'x'.repeat(40);
-const PUSH_OK = { fetch: async () => new Response(JSON.stringify({ ok: true, servico: 'dsb-push-agenda' }), { status: 200 }) };
+const PUSH_OK = { fetch: async () => new Response(JSON.stringify({ ok: true, servico: 'dsb-push' }), { status: 200 }) };
 
 function kvMem() {
   const m = new Map();
@@ -91,7 +91,7 @@ test('alertas on: POST /admin/alerta com ALERTA_TOKEN, sem destino no corpo; nã
   const env = { ALERTAS: 'on', PUSH_AGENDA: svc, ALERTA_TOKEN: 'tok', DSB_AUDITOR: kv };
   const r = await enviarAlertas(env, R_PROB);
   assert.equal(r.enviado, true);
-  assert.equal(pedidos[0][0], 'https://dsb-push-agenda/admin/alerta');
+  assert.equal(pedidos[0][0], 'https://dsb-push/admin/alerta');
   assert.equal(pedidos[0][1].headers.Authorization, 'Bearer tok');
   const corpo = JSON.parse(pedidos[0][1].body);
   assert.deepEqual(Object.keys(corpo).sort(), ['texto', 'titulo']);
@@ -250,7 +250,7 @@ test('push: sem binding vira problema; binding só recebe GET /health sem token'
   const svc = { fetch: async (url, init) => { vistos.push([String(url), init]); return new Response('{"ok":true}', { status: 200 }); } };
   const r = await checarPush({ PUSH_AGENDA: svc });
   assert.equal(r.ok, true);
-  assert.deepEqual(vistos.map((v) => v[0]), ['https://dsb-push-agenda/health']);
+  assert.deepEqual(vistos.map((v) => v[0]), ['https://dsb-push/health']);
 });
 
 function b64url(buf) {
