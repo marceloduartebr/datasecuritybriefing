@@ -158,6 +158,32 @@ test('STG panel: issues get a resolve form; POST resolves with a note as the Acc
   assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/panel', { method: 'POST' }), {})).status, 405);
 });
 
+test('Panel issue list is read live: a resolved issue leaves at once; a second click on it is no new rejection', async () => {
+  const { env: base, call } = setup();
+  await call('POST', '/posts', { topic: 'Dup', type: 'incident', source_url: 'https://e.com/a' });
+  await call('POST', '/posts', { topic: 'Dup 2', type: 'incident', source_url: 'https://e.com/a?utm_source=x' }); // rejected → issue
+  const open = (await call('GET', '/issues?status=open')).items;
+  assert.equal(open.length, 1);
+  const id = open[0].id;
+  // The stored run (production: written only by the scheduled slots) still lists the issue.
+  const stored = { em: new Date().toISOString(), slot: '09:50', ok: true, problemas: [], alertas: [], flags: {}, notion: { ativo: true, ok: true, fonte: 'api', issues: open } };
+  const kv = { get: async (k) => (k === 'ultimo' ? stored : null), put: async () => {} };
+  const env = { ...base, DSB_AUDITOR: kv, ADMIN_TOKEN: 'a'.repeat(32) };
+  const resolve = () => tratar(new Request('https://dsb-auditor.duarte.top/embed/panel', {
+    method: 'POST', body: new URLSearchParams({ acao: 'issue', id, status: 'resolved', resolution: 'checked' }).toString(),
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-admin-token': 'a'.repeat(32), 'x-actor': 'marcelo@example.com' }
+  }), env);
+  const page = async () => (await tratar(new Request('https://dsb-auditor.duarte.top/embed/panel', { headers: { 'x-admin-token': 'a'.repeat(32), 'x-actor': 'marcelo@example.com' } }), env)).text();
+  assert.match(await page(), new RegExp(`#${id}\\b`));
+  assert.match(decodeURIComponent((await resolve()).headers.get('Location')), /ok=Issue/);
+  const after = await page();
+  assert.doesNotMatch(after, new RegExp(`#${id} `), 'the resolved issue is gone though the stored run still has it');
+  assert.match(after, /No open issues\./);
+  // A stale second click on the same outcome answers ok and opens no rejection issue.
+  assert.match(decodeURIComponent((await resolve()).headers.get('Location')), /ok=Issue/);
+  assert.equal((await call('GET', '/issues?status=open')).items.length, 0);
+});
+
 test('URLs are English everywhere: /panel and ?tab=views&window=; old /painel links redirect', async () => {
   const stg = { DATA_SOURCE: 'api', AMBIENTE: 'stg' };
   let r = await tratar(new Request('https://dsba-stg.duarte.top/painel?aba=leituras&janela=24h&sev=error'), stg);

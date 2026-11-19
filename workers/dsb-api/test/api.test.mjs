@@ -200,6 +200,11 @@ test('sweep opens, increments and auto-resolves; ignored stays closed; job error
   await call('PATCH', `/issues/${hj.body.items[0].id}`, { status: 'ignored', resolution: 'known instability' }, { internal: true });
   await call('POST', '/sweep', {});
   assert.equal((await call('GET', '/issues?stage=job&source=health')).body.items.length, 0, 'an ignored issue does not reopen');
+  const again = await call('PATCH', `/issues/${hj.body.items[0].id}`, { status: 'ignored', resolution: 'stale panel' }, { internal: true });
+  assert.equal(again.status, 200, 'the same outcome again is answered, not rejected');
+  assert.equal(again.body.issue.resolution, 'known instability', 'the first note stays');
+  const other = await call('PATCH', `/issues/${hj.body.items[0].id}`, { status: 'resolved', resolution: 'x' }, { internal: true });
+  assert.equal(other.body.error, 'issue_closed', 'a different outcome on a closed issue is still refused');
 });
 
 test('a job_failed issue resolved by a person does not reopen on the next sweep', async () => {

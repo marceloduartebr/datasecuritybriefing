@@ -146,6 +146,8 @@ export async function update(db, id, body, session) {
   if (FINAL.includes(to) && !note) throw new ApiError(422, 'note_required', 'Resolving or ignoring requires a note (resolution)');
   const current = await db.prepare('SELECT * FROM issues WHERE id = ?1').bind(id).first();
   if (!current) throw new ApiError(404, 'not_found', 'Issue not found');
+  // Same final outcome again (a second click, a stale panel): answer with the issue as it is, no rejection.
+  if (FINAL.includes(current.status) && current.status === to) return current;
   if (FINAL.includes(current.status)) throw new ApiError(409, 'issue_closed', `Issue is already ${current.status}`);
   const r = await db
     .prepare(
