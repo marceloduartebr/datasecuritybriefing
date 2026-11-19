@@ -33,7 +33,7 @@ async function lerCorpo(request) {
 export async function tratarPedido(request, env, agenda, deps = {}) {
   const path = new URL(request.url).pathname.replace(/\/$/, '') || '/';
   if (request.method === 'GET' && path === '/health') {
-    return json({ ok: true, servico: 'dsb-push-agenda' });
+    return json({ ok: true, servico: 'dsb-push' });
   }
   if (!path.startsWith('/admin/')) return json({ ok: false, erro: 'nao_encontrado' }, 404);
 

@@ -31,7 +31,7 @@
 // Traces ficam desligados: o span de fetch grava url.full (endpoint de push) e o de KV grava a chave.
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "dsb-push-agenda",
+  "name": "dsb-push",
   "main": "src/index.js",
   "compatibility_date": "2026-11-07",
   "workers_dev": true,
