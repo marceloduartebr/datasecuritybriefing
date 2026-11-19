@@ -1,6 +1,6 @@
 // Severidade de "item da fila sem capa" (Novo/Aprovado sem Image URL válida em covers.duarte.top).
-// A rotina "Capas DSB via chat do projeto" roda em dias úteis às ~09:30 (Brasília) e esgota as capas
-// pendentes; o publish das 10h aborta sem capa. Itens entram a qualquer hora e ficam sem capa
+// A rotina "Capas DSB via chat do projeto" roda às 08:00 (Brasília) e esgota as capas
+// pendentes; o blog das 08:30 pula post sem capa. Itens entram a qualquer hora e ficam sem capa
 // legitimamente até a próxima rodada. Por isso:
 // - ALERTA (amarelo, não dispara push nem estraga o "tudo certo"): padrão.
 // - PROBLEMA (vermelho, dispara alerta): só em dia útil, a partir de HORA_LIMITE_GERACAO, para item que
@@ -9,8 +9,8 @@
 import { OFFSET_BRT_MIN } from './constantes.js';
 import { emBrasilia } from './horario.js';
 
-export const HORA_INICIO_GERACAO = '09:30'; // início da rodada de capas (BRT)
-export const HORA_LIMITE_GERACAO = '09:50'; // depois disto, item antigo sem capa vira problema (BRT)
+export const HORA_INICIO_GERACAO = '08:00'; // início da rodada de capas (BRT)
+export const HORA_LIMITE_GERACAO = '08:15'; // depois disto, item antigo sem capa vira problema (BRT)
 /** Feriados (AAAA-MM-DD, BRT) em que a rodada não roda: sem capa fica só alerta. */
 export const FERIADOS = [];
 

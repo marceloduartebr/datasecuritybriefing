@@ -5,7 +5,7 @@ Worker de auditoria do DSB, **só leitura**. Substituirá as rotinas de aviso do
 Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
 
 - URL: `https://dsb-auditor.marceloduarte.workers.dev` (domínio: `https://dsb-auditor.duarte.top`)
-- Cron (1 trigger): `15,30,50 11-22 * * 1-5` UTC. O código só roda em 08:30, 09:50, 10:15, 11:15, 18:15 e 19:15 (Brasília); os outros ticks saem sem rede.
+- Cron (1 trigger): `15,30,50 10-21 * * 1-5` UTC. O código só roda em 07:50 (curadoria 07:00), 08:15 (capas 08:00), 09:15 (blog 08:30), 09:50 (LinkedIn 09:00), 17:50 (blog 17:00) e 18:15 (LinkedIn 17:30) de Brasília; os outros ticks saem sem rede.
 - KV próprio: `DSB_AUDITOR` (`ultimo`, `historico` com as 30 últimas). 2 gravações por execução.
 - Service Binding `PUSH_AGENDA` → `dsb-push-agenda`, só `GET /health` (e `/admin/status` se `PUSH_ADMIN_TOKEN` existir).
 
@@ -30,7 +30,7 @@ Orçamento: ≤ 45 subrequests externas por execução (Free = 50).
 
 ## Chaves
 
-- `ALERTAS` (var): `on` (ligado em 09/11/2026). Com `on`, uma execução com problemas chama `POST /admin/alerta` do `dsb-push-agenda` pelo Service Binding, com o secret `ALERTA_TOKEN`. Os destinos não saem do auditor: a allowlist (2 inscrições do Marcelo) fica fixa no `dsb-push-agenda`. O mesmo conjunto de problemas não se repete no mesmo dia (KV `alerta:ultimo`). `ALERTA_OK_DIARIO=on` manda um "tudo certo" às 19:15 (só nesse slot; no máx. 1×/dia pela mesma chave KV).
+- `ALERTAS` (var): `on` (ligado em 09/11/2026). Com `on`, uma execução com problemas chama `POST /admin/alerta` do `dsb-push-agenda` pelo Service Binding, com o secret `ALERTA_TOKEN`. Os destinos não saem do auditor: a allowlist (2 inscrições do Marcelo) fica fixa no `dsb-push-agenda`. O mesmo conjunto de problemas não se repete no mesmo dia (KV `alerta:ultimo`). `ALERTA_OK_DIARIO=on` manda um "tudo certo" às 18:15 (só nesse slot; no máx. 1×/dia pela mesma chave KV).
 - `NOTION` (var): `on`/`off`.
 - Secrets: `AUDITOR_TOKEN`, `NOTION_TOKEN`, `ALERTA_TOKEN`; opcionais `GITHUB_TOKEN`, `PUSH_ADMIN_TOKEN`.
 

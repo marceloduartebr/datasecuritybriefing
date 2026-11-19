@@ -22,8 +22,8 @@ test('scheduled: tick fora de slot dispara só a fila, sem auditoria/KV', async 
   const esperas = [];
   let chamadas = 0;
   const env = { FILA_INTERNO_TOKEN: 't', FILA: { fetch: async () => { chamadas++; return new Response('{}'); } } };
-  // 2026-11-10 11:15 UTC = 08:15 BRT (tick sem slot)
-  await worker.scheduled({ scheduledTime: Date.parse('2026-11-10T11:15:00Z') }, env, { waitUntil: (p) => esperas.push(p) });
+  // 2026-11-10 11:30 UTC = 08:30 BRT (tick sem slot)
+  await worker.scheduled({ scheduledTime: Date.parse('2026-11-10T11:30:00Z') }, env, { waitUntil: (p) => esperas.push(p) });
   await Promise.all(esperas);
   assert.equal(esperas.length, 1);
   assert.equal(chamadas, 1);
