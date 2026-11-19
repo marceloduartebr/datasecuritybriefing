@@ -9,7 +9,7 @@ import { SITE } from './constantes.js';
 export const HOST_ATALHO = 'dsba.duarte.top';
 export const HOST_PAINEL = 'dsb-auditor.duarte.top';
 import { dispararFilaPush } from './fila-push.js';
-import { usesApi, resolveIssue } from './fila-api.js';
+import { usesApi, resolveIssue, issuesAgora } from './fila-api.js';
 import { ERRO_EN } from './i18n.js';
 
 function json(obj, status = 200) {
@@ -147,6 +147,15 @@ export async function tratar(request, env, ctx, deps = {}) {
     if (env.RUN_ON_VIEW === 'on' && (!ultimo || url.searchParams.get('run') === '1' || Date.now() - Date.parse(ultimo.em) > 5 * 60_000)) {
       ultimo = await rodarAuditoria(env, { slot: 'view', ...deps });
       await dispararFilaPush(env); // STG stand-in for the cron tick: the queue's new-post alerts (needs the FILA binding)
+    }
+    // The checks run on their schedule, but the issue list is read live, so a resolved issue leaves at once.
+    if (usesApi(env) && ultimo && ultimo.notion && ultimo.notion.fonte === 'api' && ultimo.notion.ok) {
+      try {
+        const agora = await issuesAgora(env);
+        if (agora) ultimo = { ...ultimo, notion: { ...ultimo.notion, issues: agora } };
+      } catch {
+        /* keep the stored list */
+      }
     }
     const ultimoAlerta = await lerUltimoAlerta(env.DSB_AUDITOR);
     const flash = usesApi(env) && (url.searchParams.get('ok') || url.searchParams.get('err'))

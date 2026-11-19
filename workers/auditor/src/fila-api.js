@@ -27,6 +27,17 @@ async function api(env, method, path) {
 /** Start of the BRT day (UTC-3) for a YYYY-MM-DD date. */
 export const startOfBrtDay = (hoje) => `${hoje}T03:00:00.000Z`;
 
+const resumoIssue = (i) => ({
+  id: i.id, severity: i.severity, stage: i.stage, source: i.source, kind: i.kind, post_id: i.post_id,
+  summary: i.summary, suggested_action: i.suggested_action, occurrences: i.occurrences, last_seen_at: i.last_seen_at
+});
+
+/** Open issues read now (not from the last stored run), for the panel: resolving one shows at once. */
+export async function issuesAgora(env) {
+  if (!env.API || String(env.INTERNAL_TOKEN || '').length < 24) return null;
+  return ((await api(env, 'GET', '/issues?limit=200')).items || []).map(resumoIssue);
+}
+
 export async function checarFilaApi(env, hoje, checarCapa) {
   if (!env.API || String(env.INTERNAL_TOKEN || '').length < 24) return { ativo: true, fonte: 'api', ok: false, erro: 'api_not_configured' };
   let sweep, posts, issues;
@@ -65,10 +76,7 @@ export async function checarFilaApi(env, hoje, checarCapa) {
     // LinkedIn after the blog is a health check in dsb-api (linkedin_overdue), so it shows up in `issues`.
     publicadosSemUrn: [],
     sweep,
-    issues: issues.map((i) => ({
-      id: i.id, severity: i.severity, stage: i.stage, source: i.source, kind: i.kind, post_id: i.post_id,
-      summary: i.summary, suggested_action: i.suggested_action, occurrences: i.occurrences, last_seen_at: i.last_seen_at
-    }))
+    issues: issues.map(resumoIssue)
   };
 }
 
