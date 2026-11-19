@@ -203,7 +203,7 @@ function alertaHtml(ultimoAlerta, r) {
 function alertasHtml(r) {
   const a = r.alertas || [];
   if (!a.length) return '<p class="muted">Nenhum alerta na última execução.</p>';
-  return `<p class="muted">Item sem capa vira problema só depois das 09:50 de dia útil, se já estava na fila antes da rodada das 09:30.</p><ul class="lista">${a.map((x) => `<li class="warn">${esc(x)}</li>`).join('')}</ul>`;
+  return `<p class="muted">Item sem capa vira problema só depois das 08:15 de dia útil, se já estava na fila antes da rodada das 08:00.</p><ul class="lista">${a.map((x) => `<li class="warn">${esc(x)}</li>`).join('')}</ul>`;
 }
 
 function problemasHtml(r) {

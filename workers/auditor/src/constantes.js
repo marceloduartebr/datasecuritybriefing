@@ -7,7 +7,7 @@ export const NOTION_VERSAO = '2025-09-03';
 export const UA = 'DSB-Auditor/1.0';
 
 /** Horários de auditoria (America/Sao_Paulo, UTC−3 fixo, dias úteis). Cron: "15,30,50 11-22 * * 1-5". */
-export const SLOTS_BRT = ['08:30', '09:50', '10:15', '11:15', '18:15', '19:15'];
+export const SLOTS_BRT = ['07:50', '08:15', '09:15', '09:50', '17:50', '18:15'];
 export const CRON = '15,30,50 11-22 * * 1-5';
 export const OFFSET_BRT_MIN = -180;
 

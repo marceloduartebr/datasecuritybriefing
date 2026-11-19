@@ -57,10 +57,11 @@ function fakeFetch({ capaStatus = 200, esStatus = 200, notion = null, calls = []
 }
 
 test('slots: só os 6 horários em dias úteis', () => {
-  assert.equal(slotDoTick(Date.parse('2026-11-09T11:30:00Z')), '08:30');
+  assert.equal(slotDoTick(Date.parse('2026-11-09T10:50:00Z')), '07:50');
   assert.equal(slotDoTick(Date.parse('2026-11-09T12:50:00Z')), '09:50');
-  assert.equal(slotDoTick(Date.parse('2026-11-09T22:15:00Z')), '19:15');
-  assert.equal(slotDoTick(Date.parse('2026-11-09T11:15:00Z')), null);
+  assert.equal(slotDoTick(Date.parse('2026-11-09T12:15:00Z')), '09:15');
+  assert.equal(slotDoTick(Date.parse('2026-11-09T21:15:00Z')), '18:15');
+  assert.equal(slotDoTick(Date.parse('2026-11-09T11:30:00Z')), null);
   assert.equal(slotDoTick(Date.parse('2026-11-14T13:15:00Z')), null); // sábado
   assert.equal(emBrasilia(Date.parse('2026-11-10T01:00:00Z')).data, '2026-11-09');
 });
@@ -73,7 +74,7 @@ test('capa válida só em covers.duarte.top/covers', () => {
   assert.deepEqual(urlsIdiomas('s').en, 'https://dsb.duarte.top/en/briefings/s/');
 });
 
-const R_PROB = { problemas: ['Blog: x capa http'], slot: '11:15', horaBrt: '11:15', dataBrt: HOJE, blog: { total: 1 } };
+const R_PROB = { problemas: ['Blog: x capa http'], slot: '09:15', horaBrt: '09:15', dataBrt: HOJE, blog: { total: 1 } };
 
 test('alertas off por padrão: não chama o binding mesmo com problemas', async () => {
   let chamou = false;
@@ -94,23 +95,23 @@ test('alertas on: POST /admin/alerta com ALERTA_TOKEN, sem destino no corpo; nã
   assert.equal(pedidos[0][1].headers.Authorization, 'Bearer tok');
   const corpo = JSON.parse(pedidos[0][1].body);
   assert.deepEqual(Object.keys(corpo).sort(), ['texto', 'titulo']);
-  const r2 = await enviarAlertas(env, { ...R_PROB, slot: '18:15', horaBrt: '18:15' });
+  const r2 = await enviarAlertas(env, { ...R_PROB, slot: '17:50', horaBrt: '17:50' });
   assert.equal(r2.motivo, 'repetido');
   assert.equal(pedidos.length, 1);
 });
 
-test('montarAlerta: problema vira alerta; OK diário só às 19:15 com ALERTA_OK_DIARIO=on', () => {
+test('montarAlerta: problema vira alerta; OK diário só às 18:15 com ALERTA_OK_DIARIO=on', () => {
   assert.match(montarAlerta(R_PROB).titulo, /1 problem\(s\) at /);
-  const ok = { problemas: [], slot: '19:15', horaBrt: '19:15', blog: { total: 3 } };
+  const ok = { problemas: [], slot: '18:15', horaBrt: '18:15', blog: { total: 3 } };
   assert.equal(montarAlerta(ok), null);
   assert.equal(montarAlerta(ok, { ALERTA_OK_DIARIO: 'on' }).titulo, 'DSB: all clear today');
-  assert.equal(montarAlerta({ ...ok, slot: '18:15' }, { ALERTA_OK_DIARIO: 'on' }), null);
+  assert.equal(montarAlerta({ ...ok, slot: '17:50' }, { ALERTA_OK_DIARIO: 'on' }), null);
 });
 
 test('auditoria sem Notion: grava ultimo/historico e não chama Notion nem envia', async () => {
   const kv = kvMem();
   const calls = [];
-  const r = await rodarAuditoria({ DSB_AUDITOR: kv, PUSH_AGENDA: PUSH_OK }, { agora: AGORA, slot: '11:15', fetchImpl: fakeFetch({ calls }) });
+  const r = await rodarAuditoria({ DSB_AUDITOR: kv, PUSH_AGENDA: PUSH_OK }, { agora: AGORA, slot: '09:15', fetchImpl: fakeFetch({ calls }) });
   assert.equal(r.ok, true);
   assert.equal(r.blog.total, 1);
   assert.equal(r.blog.itens[0].capa.ok, true);
@@ -222,8 +223,8 @@ test('resumirPagina detecta URN', () => {
   assert.equal(p.temUrn, true);
 });
 
-test('calcularProblemas: curadoria vazia às 08:30', () => {
-  const p = calcularProblemas({ slot: '08:30', blog: { itens: [] }, push: { ok: true }, notion: { ativo: true, ok: true, semCapa: [], publicadosSemUrn: [], novosHoje: { total: 0 } } });
+test('calcularProblemas: curadoria vazia às 07:50', () => {
+  const p = calcularProblemas({ slot: '07:50', blog: { itens: [] }, push: { ok: true }, notion: { ativo: true, ok: true, semCapa: [], publicadosSemUrn: [], novosHoje: { total: 0 } } });
   assert.ok(p.some((x) => x.includes('Curadoria')));
 });
 

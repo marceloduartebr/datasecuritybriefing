@@ -18,7 +18,7 @@ export function calcularProblemas(r) {
   if (n.ativo && n.ok) {
     for (const c of n.semCapa) if ((c.severidade || 'problema') === 'problema') p.push(`Fila: sem capa — ${c.topic.slice(0, 60)}`);
     for (const u of n.publicadosSemUrn) p.push(`LinkedIn: Publicado sem URN — ${u.topic.slice(0, 60)}`);
-    if (r.slot === '08:30' && n.novosHoje.total === 0) p.push('Curadoria: nenhum item adicionado hoje até 08:30');
+    if (r.slot === '07:50' && n.novosHoje.total === 0) p.push('Curadoria: nenhum item adicionado hoje até 07:50');
     // STG (dsb-api): open issues with severity error/critical are problems.
     for (const i of n.issues || []) if (i.severity === 'error' || i.severity === 'critical') p.push(`Issue #${i.id} (${i.stage}): ${String(i.summary).slice(0, 80)}`);
   }
@@ -50,10 +50,10 @@ export function montarAlerta(r, env = {}) {
     if (n > 4) linhas.push(`• +${n - 4} more`);
     return { titulo: `DSB: ${n} problem(s) at ${r.horaBrt}`, texto: linhas.join('\n').slice(0, 400) };
   }
-  if (r.slot === '19:15' && env.ALERTA_OK_DIARIO === 'on') {
+  if (r.slot === '18:15' && env.ALERTA_OK_DIARIO === 'on') {
     const pub = r.blog ? r.blog.total : 0;
     const na = (r.alertas || []).length;
-    return { titulo: 'DSB: all clear today', texto: `${pub} briefing(s) on the blog; covers and pages OK.${na ? ` ${na} alert(s): missing covers waiting for the 09:30 round.` : ''}` };
+    return { titulo: 'DSB: all clear today', texto: `${pub} briefing(s) on the blog; covers and pages OK.${na ? ` ${na} alert(s): missing covers waiting for the 08:00 round.` : ''}` };
   }
   return null;
 }
