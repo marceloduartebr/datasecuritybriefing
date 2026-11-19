@@ -2,7 +2,7 @@
 // Sem adapter Astro Cloudflare: o main abaixo é o nosso, não o _worker.js gerado.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "datasecuritybriefing",
+  "name": "dsb",
   "main": "worker/index.js",
   "compatibility_date": "2026-11-04",
   // Only dsb.duarte.top serves production; preview URLs stay on for the stg branch preview.

@@ -22,10 +22,10 @@ Inscrição antiga sem `topicos` não recebe o tópico `edicao`. É o que `envia
 Fluxo:
 
 1. Push em `main` (conteúdo do blog).
-2. Cloudflare **Workers Builds** implanta o Worker do site `datasecuritybriefing`.
+2. Cloudflare **Workers Builds** implanta o Worker do site `dsb`.
 3. Workflow GitHub Actions `.github/workflows/push-evento.yml` (`push-evento`):
    - Se a variável do repositório `EVENTO_PUSH` **não** for exatamente `on`, o job encerra sem tick.
-   - Com `EVENTO_PUSH=on`, espera o check **Workers Builds: datasecuritybriefing** com sucesso e faz `POST /admin/tick` com corpo `{"origem":"evento"}` e `Authorization: Bearer <ADMIN_TOKEN>`.
+   - Com `EVENTO_PUSH=on`, espera o check **Workers Builds: dsb** com sucesso e faz `POST /admin/tick` com corpo `{"origem":"evento"}` e `Authorization: Bearer <ADMIN_TOKEN>`.
 4. `origem: evento` abre a **janela de 20 minutos** (igual ao cron) para retentar catálogo/`HEAD` enquanto o edge propaga.
 5. Travas `envio` + secret `PUSH_ENVIO=on` + `fanout=on` + cutoff continuam obrigatórias para fan-out.
 

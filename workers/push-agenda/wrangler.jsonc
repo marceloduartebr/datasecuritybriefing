@@ -1,5 +1,5 @@
 // Worker de agendamento Web Push do DSB. Independente do Worker do site
-// (wrangler.jsonc na raiz, nome "datasecuritybriefing").
+// (wrangler.jsonc na raiz, nome "dsb").
 //
 // ESTE ARQUIVO ATIVA SÓ A AGENDA. NÃO ATIVA ENVIO.
 // - triggers.crons é a fonte versionada do cron: "25 14,22 * * 1-5"

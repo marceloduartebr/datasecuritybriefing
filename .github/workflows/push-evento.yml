@@ -67,10 +67,10 @@ jobs:
         run: |
           set -euo pipefail
           DEADLINE=$((SECONDS + 900))
-          echo "Aguardando check Workers Builds: datasecuritybriefing em ${SHA}"
+          echo "Aguardando check Workers Builds: dsb em ${SHA}"
           while (( SECONDS < DEADLINE )); do
             STATE=$(gh api "repos/${REPO}/commits/${SHA}/check-runs" \
-              --jq '.check_runs[] | select(.name=="Workers Builds: datasecuritybriefing") | {status,conclusion}' \
+              --jq '.check_runs[] | select(.name=="Workers Builds: dsb") | {status,conclusion}' \
               | head -n 1 || true)
             echo "check: ${STATE:-nenhum}"
             if echo "${STATE}" | grep -q '"conclusion":"success"'; then
