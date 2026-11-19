@@ -68,7 +68,7 @@ const PHRASES = [
   [/(\d+) sem URN/g, '$1 without URN'],
   // problems and alerts (alertas.js)
   ['Blog: catálogo indisponível', 'Blog: catalog unavailable'],
-  ['Push: dsb-push-agenda sem /health', 'Push: dsb-push-agenda without /health'],
+  ['Push: dsb-push sem /health', 'Push: dsb-push without /health'],
   ['Action push-evento falhou', 'Action push-evento failed'],
   ['Capa: quadrado escuro atrás do escudo — ', 'Cover: dark square behind the shield — '],
   ['Fila: sem capa (aguarda a rodada de capas) — ', 'Queue: no cover (waiting for the cover round) — '],
