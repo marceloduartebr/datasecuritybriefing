@@ -1,17 +1,22 @@
-# STG sync: nightly full reload of dsb-staging (D1) from the Notion queue, until the cutover.
-# - Loader scripts come from the dsb-api branch (workers/dsb-api/load); blog content from main, so the load
-#   knows which PT/ES/EN briefing files exist.
-# - Notion: ~2 read requests per run. X publications are kept across reloads (write.py, KEEP_X).
-# - Everything created on STG (posts, issues, job runs) is replaced by the Notion state on each run.
-# - Secrets: STG_NOTION_TOKEN (Notion integration with read access to the queue), STG_D1_TOKEN (Cloudflare token
-#   with D1 edit on dsb-staging). STG_INTERNAL_TOKEN is unused: Cloudflare's bot protection answers 403 to GitHub
-#   runners on dsb-api-stg.duarte.top, so the sweep runs when the STG auditor panel opens (and after each job).
-name: STG sync (Notion → dsb-staging)
+# STG refresh: nightly full copy of production (D1 dsb-prod) into dsb-staging, D1 to D1 (X-24).
+# Notion is frozen since the cutover (2026-11-18), so STG mirrors production instead of reading Notion.
+# - The copy script comes from the dsb-api branch (workers/dsb-api/load/copy_prod.py). It only reads dsb-prod
+#   (SELECT, refused otherwise) and refuses to write to it; dsb-staging keeps its schema, views and health checks.
+# - Same ids as production (#160 is #160 on both). Everything created on STG during the day is replaced each night.
+# - Secret: STG_D1_TOKEN (Cloudflare token with D1 read on dsb-prod and D1 edit on dsb-staging; the production
+#   load already used it on dsb-prod).
+# - Manual run: Actions → this workflow → Run workflow; dry_run reads and counts without writing.
+name: STG refresh (dsb-prod → dsb-staging)
 
 on:
   schedule:
-    - cron: '23 2 * * *' # 23:23 BRT, after the evening publishing jobs
+    - cron: '23 2 * * *' # 23:23 BRT, after the evening publishing rounds
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Read and count only, write nothing
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,40 +26,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync:
+  refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Loader (dsb-api branch)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Copy script (dsb-api branch)
+        uses: actions/checkout@v4
         with:
           ref: dsb-api
           path: loader
           sparse-checkout: workers/dsb-api/load
 
-      - name: Blog content (main)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: main
-          path: blog
-          sparse-checkout: src/content
-
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Export the Notion queue
-        env:
-          NOTION_TOKEN: ${{ secrets.STG_NOTION_TOKEN }}
-        run: python3 loader/workers/dsb-api/load/export_notion.py
-
-      - name: Transform
-        env:
-          DSB_CONTENT: ${{ github.workspace }}/blog/src/content
-        run: python3 loader/workers/dsb-api/load/transform.py loader/workers/dsb-api/load/notion.json
-
-      - name: Write to dsb-staging
+      - name: Copy dsb-prod into dsb-staging
         env:
           CF_D1: ${{ secrets.STG_D1_TOKEN }}
-          JOB_NAME: notion-stg-sync
-        run: python3 loader/workers/dsb-api/load/write.py
+          JOB_NAME: prod-stg-refresh
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: python3 -I loader/workers/dsb-api/load/copy_prod.py
