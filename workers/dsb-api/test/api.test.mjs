@@ -135,6 +135,10 @@ test('blog-first flow: cover, single claim, published by the blog, derived chann
 
   const noCover = await call('POST', '/publications', { post_id: id, channel: 'blog' });
   assert.equal(noCover.body.error, 'missing_cover');
+  // X-11: a rejected claim is recorded against its post, one issue per post
+  const rejIssue = await call('GET', `/issues?kind=rejected_missing_cover`, null, { internal: true });
+  assert.equal(rejIssue.body.items[0].post_id, id);
+  assert.equal(rejIssue.body.items[0].fingerprint, `api:missing_cover:post:${id}`);
   assert.equal((await call('PATCH', `/posts/${id}`, { image_source: 'og', image_url: 'https://raw.githubusercontent.com/x.jpg' })).body.error, 'cover_host_invalid');
   await call('PATCH', `/posts/${id}`, { image_source: 'generated', image_url: COVER });
 

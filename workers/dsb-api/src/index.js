@@ -57,14 +57,33 @@ export async function handle(request, env) {
   } catch (e) {
     if (e instanceof ApiError) {
       let issue = null;
-      if (method !== 'GET' && e.status !== 404) issue = await recordRejection(db, { error: e, route, session, body, postId });
+      if (method !== 'GET' && e.status !== 404) {
+        const pid = postId ?? (await postOfRequest(db, parts, body));
+        issue = await recordRejection(db, { error: e, route, session, body, postId: pid });
+      }
       return json({ ok: false, error: e.code, message: e.message, ...e.extra, issue }, e.status);
     }
     const msg = String((e && e.message) || e).slice(0, 300);
-    const issue = await recordRejection(db, { error: new ApiError(500, 'internal_error', msg), route, session, body, postId });
+    const issue = await recordRejection(db, { error: new ApiError(500, 'internal_error', msg), route, session, body, postId: postId ?? (await postOfRequest(db, parts, body)) });
     console.log(JSON.stringify({ event: 'internal_error', route, msg }));
     return json({ ok: false, error: 'internal_error', message: msg, issue }, 500);
   }
+}
+
+/** The post a rejected write was about, so its issue groups per post (X-11): /posts/:id from the URL, a claim's
+ *  body.post_id, or the post of /publications/:id. Never throws. */
+async function postOfRequest(db, parts, body) {
+  try {
+    const n = body && Number(body.post_id);
+    if (Number.isInteger(n) && n > 0) return n;
+    if (parts[0] === 'publications' && /^\d+$/.test(parts[1] || '')) {
+      const r = await db.prepare('SELECT post_id FROM publications WHERE id = ?1').bind(Number(parts[1])).first();
+      return r ? r.post_id : null;
+    }
+  } catch {
+    /* fall through */
+  }
+  return null;
 }
 
 async function dispatch({ route, db, url, body, id, session }) {
