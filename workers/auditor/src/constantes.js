@@ -1,7 +1,7 @@
 /** Auditor DSB: só leitura. Nunca publica, nunca muda Notion, nunca faz fan-out de push. */
 export const SITE = 'https://dsb.duarte.top';
 export const CAPAS_HOST = 'covers.duarte.top';
-export const REPO = 'marceloduartebr/datasecuritybriefing';
+export const REPO = 'marceloduartebr/dsb';
 export const NOTION_DS = 'd69d8348-e339-459d-86a1-935e6ce7fded';
 export const NOTION_VERSAO = '2025-09-03';
 export const UA = 'DSB-Auditor/1.0';
