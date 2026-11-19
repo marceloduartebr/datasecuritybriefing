@@ -47,13 +47,15 @@
     { "binding": "API", "service": "dsb-api" },
     { "binding": "PUSH_AGENDA", "service": "dsb-push-agenda" },
     // FILA: a cada tick do cron, POST /interno/checar-novos no dsb-fila (avisos push da fila; secret FILA_INTERNO_TOKEN).
-    { "binding": "FILA", "service": "dsb-fila" }
+    { "binding": "FILA", "service": "dsb-admin" }
   ],
   "vars": {
     "DATA_SOURCE": "api",
     "ALERTAS": "on",
     "ALERTA_OK_DIARIO": "on",
     "NOTION": "off",
+    // X-16: the panel lives in DSB Admin; /panel, /painel and dsba.duarte.top redirect there.
+    "ADMIN_URL": "https://dsb-admin.duarte.top",
     "ACCESS_TEAM": "https://royal-lake-6796.cloudflareaccess.com",
     "ACCESS_AUD": "96689ab8700a02984d0f69327ef111ce08d4f26a8b625e87c90c0d530ec17379",
     // Aba Leituras do /painel (Web Analytics via GraphQL; secret CF_ANALYTICS_TOKEN = Account Analytics: Read).

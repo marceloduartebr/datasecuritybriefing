@@ -92,6 +92,13 @@ export async function tratar(request, env, ctx, deps = {}) {
   const url = new URL(request.url);
   // dsba.duarte.top é só um atalho: qualquer pedido vira 302 para o painel no host protegido pelo Access.
   // Nada é servido neste host (nem /painel, /status etc.).
+  // X-16: with ADMIN_URL set, the panel lives in DSB Admin (Audit and Views tabs); old addresses redirect there.
+  const admin = typeof env.ADMIN_URL === 'string' && /^https:\/\//.test(env.ADMIN_URL) ? env.ADMIN_URL.replace(/\/$/, '') : '';
+  if (admin && (url.hostname === HOST_ATALHO || /^\/(panel|painel)\/?$/.test(url.pathname))) {
+    const views = url.searchParams.get('tab') === 'views' || url.searchParams.get('aba') === 'leituras';
+    const w = url.searchParams.get('window') || url.searchParams.get('janela');
+    return new Response(null, { status: 302, headers: { Location: `${admin}/${views ? 'views' : 'audit'}${views && w ? `?window=${encodeURIComponent(w)}` : ''}`, 'Cache-Control': 'no-store' } });
+  }
   if (url.hostname === HOST_ATALHO) {
     return new Response(null, { status: 302, headers: { Location: `https://${HOST_PAINEL}/panel${url.search}`, 'Cache-Control': 'no-store' } });
   }

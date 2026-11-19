@@ -478,3 +478,14 @@ test('X-16 /embed/panel: dsb-admin with ADMIN_TOKEN gets the panel; without it 4
   // without ADMIN_TOKEN configured the embed route is closed
   assert.equal((await tratar(new Request('https://a/embed/panel', { headers: { 'x-admin-token': ADMIN } }), { ...env, ADMIN_TOKEN: '' })).status, 401);
 });
+
+test('X-16 with ADMIN_URL: /panel, /painel and dsba redirect to DSB Admin; /embed/panel and /health stay', async () => {
+  const env = { DSB_AUDITOR: kvMem(), ADMIN_URL: 'https://dsb-admin.duarte.top', ADMIN_TOKEN: 'admin-0000000000000000000000000000' };
+  const loc = async (u) => (await tratar(new Request(u), env)).headers.get('Location');
+  assert.equal(await loc('https://dsb-auditor.duarte.top/panel'), 'https://dsb-admin.duarte.top/audit');
+  assert.equal(await loc('https://dsb-auditor.duarte.top/panel?tab=views&window=30d'), 'https://dsb-admin.duarte.top/views?window=30d');
+  assert.equal(await loc('https://dsb-auditor.duarte.top/painel?aba=leituras'), 'https://dsb-admin.duarte.top/views');
+  assert.equal(await loc('https://dsba.duarte.top/'), 'https://dsb-admin.duarte.top/audit');
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/health'), env)).status, 200);
+  assert.equal((await tratar(new Request('https://dsb-auditor.duarte.top/embed/panel'), env)).status, 401);
+});
