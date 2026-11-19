@@ -7,7 +7,7 @@ Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
 - URL: `https://dsb-auditor.marceloduarte.workers.dev` (domínio: `https://dsb-auditor.duarte.top`)
 - Cron (1 trigger): `15,30,50 11-22 * * 1-5` UTC. O código só roda em 08:30, 09:50, 10:15, 11:15, 18:15 e 19:15 (Brasília); os outros ticks saem sem rede.
 - KV próprio: `DSB_AUDITOR` (`ultimo`, `historico` com as 30 últimas). 2 gravações por execução.
-- Service Binding `PUSH_AGENDA` → `dsb-push-agenda`, só `GET /health` (e `/admin/status` se `PUSH_ADMIN_TOKEN` existir).
+- Service Binding `PUSH_AGENDA` → `dsb-push`, só `GET /health` (e `/admin/status` se `PUSH_ADMIN_TOKEN` existir).
 
 ## Endpoints
 
@@ -23,14 +23,14 @@ Nunca publica, nunca grava no Notion, nunca faz fan-out de push.
 
 - Blog: catálogo `/push/catalogo.json`, briefings com prefixo de hoje (até 5): HEAD 200 em PT/ES/EN (`/…/briefings/<slug>/`) e capa do frontmatter (GitHub raw) com HEAD 200 em `covers.duarte.top/covers/`.
 - GitHub: últimos 5 commits de `main` (API; se 403, feed Atom público) e última execução do `push-evento`.
-- Push: `dsb-push-agenda` `/health`.
+- Push: `dsb-push` `/health`.
 - Notion (`NOTION=on`, secret `NOTION_TOKEN`, integração "DSB Auditor", API `2025-09-03`, data source `d69d8348-…`): itens adicionados hoje, Novo/Aprovado com capa inválida ou sem HEAD 200 (até 12), Publicado hoje sem `urn:li:` em Publish Notes. Só consultas `POST /query`.
 
 Orçamento: ≤ 45 subrequests externas por execução (Free = 50).
 
 ## Chaves
 
-- `ALERTAS` (var): `on` (ligado em 09/11/2026). Com `on`, uma execução com problemas chama `POST /admin/alerta` do `dsb-push-agenda` pelo Service Binding, com o secret `ALERTA_TOKEN`. Os destinos não saem do auditor: a allowlist (2 inscrições do Marcelo) fica fixa no `dsb-push-agenda`. O mesmo conjunto de problemas não se repete no mesmo dia (KV `alerta:ultimo`). `ALERTA_OK_DIARIO=on` manda um "tudo certo" às 19:15 (só nesse slot; no máx. 1×/dia pela mesma chave KV).
+- `ALERTAS` (var): `on` (ligado em 09/11/2026). Com `on`, uma execução com problemas chama `POST /admin/alerta` do `dsb-push` pelo Service Binding, com o secret `ALERTA_TOKEN`. Os destinos não saem do auditor: a allowlist (2 inscrições do Marcelo) fica fixa no `dsb-push`. O mesmo conjunto de problemas não se repete no mesmo dia (KV `alerta:ultimo`). `ALERTA_OK_DIARIO=on` manda um "tudo certo" às 19:15 (só nesse slot; no máx. 1×/dia pela mesma chave KV).
 - `NOTION` (var): `on`/`off`.
 - Secrets: `AUDITOR_TOKEN`, `NOTION_TOKEN`, `ALERTA_TOKEN`; opcionais `GITHUB_TOKEN`, `PUSH_ADMIN_TOKEN`.
 

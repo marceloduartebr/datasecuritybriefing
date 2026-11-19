@@ -7,7 +7,7 @@ export function calcularProblemas(r) {
     if (pg.pt !== 200 || pg.es !== 200 || pg.en !== 200) p.push(`Blog: ${i.slug} PT ${pg.pt} / ES ${pg.es} / EN ${pg.en}`);
     if (!i.capa.ok) p.push(`Blog: ${i.slug} capa ${i.capa.motivo || 'falhou'}`);
   }
-  if (r.push && !r.push.ok) p.push('Push: dsb-push-agenda sem /health');
+  if (r.push && !r.push.ok) p.push('Push: dsb-push sem /health');
   if (r.github && r.github.pushEvento && r.github.pushEvento.conclusao === 'failure') p.push(`Action push-evento falhou (${r.github.pushEvento.sha})`);
   for (const q of (r.quadrado && r.quadrado.positivas) || []) {
     p.push(`Capa: quadrado escuro atrás do escudo — ${q.origem === 'fila' ? (q.topic || q.id || '').slice(0, 60) : q.slug}`);
@@ -53,8 +53,8 @@ function assinatura(alerta) {
 }
 
 /**
- * Canal de alerta: POST /admin/alerta do dsb-push-agenda via Service Binding, com ALERTA_TOKEN.
- * Desligado por padrão (ALERTAS != 'on'). Destinos não saem daqui: a allowlist fica no dsb-push-agenda.
+ * Canal de alerta: POST /admin/alerta do dsb-push via Service Binding, com ALERTA_TOKEN.
+ * Desligado por padrão (ALERTAS != 'on'). Destinos não saem daqui: a allowlist fica no dsb-push.
  * Não repete o mesmo conjunto de problemas no mesmo dia (KV `alerta:ultimo`).
  */
 export async function enviarAlertas(env, r) {
@@ -75,7 +75,7 @@ export async function enviarAlertas(env, r) {
   }
   let res;
   try {
-    res = await env.PUSH_AGENDA.fetch('https://dsb-push-agenda/admin/alerta', {
+    res = await env.PUSH_AGENDA.fetch('https://dsb-push/admin/alerta', {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.ALERTA_TOKEN}`, 'content-type': 'application/json' },
       body: JSON.stringify(alerta),
