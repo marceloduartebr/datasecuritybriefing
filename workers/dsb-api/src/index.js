@@ -7,6 +7,7 @@ import { createRequest, listRequests, claimRequest, finishRequest } from './inta
 import { metrics } from './metrics.js';
 import { startJob, finishJob } from './jobs.js';
 import { listCompetitors } from './competitors.js';
+import { getPlan, savePlan, planRound, staleList, readPlan, publishNow } from './plan.js';
 
 /**
  * Routes (all require authentication except /health; see auth.js):
@@ -25,6 +26,11 @@ import { listCompetitors } from './competitors.js';
  *  POST  /publications/:id/result          {status: published|failed|skipped, url, error, external_id, body, published_at}
  *                                          on a removal_pending row: {status: removed|removal_failed, error}
  *  GET   /metrics?weeks=8                 read-only weekly throughput for the admin Metrics tab
+ *  GET   /plan                             publishing plan (caps per type and round, burst, stale days) + change log
+ *  PATCH /plan                             {plan, note} DSB Admin only (internal token)
+ *  GET   /plan/round?round=blog_morning    the posts this round publishes, in order, plus held and stale ones
+ *  GET   /plan/stale                       approved posts past the plan's business-day limit
+ *  POST  /plan/publish-now                 {post_id} DSB Admin only: marks the post high priority
  *  POST  /intake/requests                  {url, note} ad hoc link for the next intake run (X-23)
  *  GET   /intake/requests?status=open,claimed
  *  POST  /intake/requests/:id/claim        → claimed (a claim older than 2 h is taken over)
@@ -124,6 +130,18 @@ async function dispatch({ route, db, url, body, id, session }) {
       return { body: { publication: await claim(db, body, session) }, status: 201 };
     case 'POST /publications/:id/result':
       return { body: await complete(db, id, body, session) };
+    case 'GET /plan':
+      return { body: await getPlan(db) };
+    case 'PATCH /plan':
+      return { body: await savePlan(db, body, session) };
+    case 'GET /plan/round': {
+      const at = q.get('at') ? Date.parse(q.get('at')) : Date.now();
+      return { body: await planRound(db, q.get('round'), Number.isFinite(at) ? at : Date.now()) };
+    }
+    case 'GET /plan/stale':
+      return { body: { items: await staleList(db, (await readPlan(db)).plan) } };
+    case 'POST /plan/publish-now':
+      return { body: await publishNow(db, body, session) };
     case 'GET /metrics':
       return { body: await metrics(db, q) };
     case 'POST /intake/requests':
