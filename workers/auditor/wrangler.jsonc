@@ -7,7 +7,7 @@
 //   OK diário "tudo certo" só no slot 19:15 BRT, no máx. 1×/dia (KV alerta:ultimo).
 // - NOTION liga/desliga as consultas (só leitura) à fila. Token entra como secret NOTION_TOKEN.
 // - Secrets: AUDITOR_TOKEN (bearer de /status, /capas-faltando, /rodar, /painel), NOTION_TOKEN, ALERTA_TOKEN,
-//   FILA_INTERNO_TOKEN (gatilho dos avisos da fila no dsb-fila; ver src/fila-push.js),
+//   FILA_INTERNO_TOKEN (gatilho dos avisos da fila no dsb-admin; ver src/fila-push.js),
 //   CF_ANALYTICS_TOKEN (só leitura de Analytics; aba Leituras do /painel, cache KV leituras:v1 de 30 min).
 // - Vars ACCESS_TEAM + ACCESS_AUD: validam Cf-Access-Jwt-Assertion no /painel.
 //   ACCESS_TEAM = https://<time>.cloudflareaccess.com (issuer completo). ACCESS_AUD = AUD tag do app.
@@ -22,9 +22,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "routes": [
-    { "pattern": "dsb-auditor.duarte.top", "custom_domain": true },
-    // Atalho: dsba.duarte.top só responde 302 para https://dsb-auditor.duarte.top/painel (ver src/index.js).
-    { "pattern": "dsba.duarte.top", "custom_domain": true }
+    { "pattern": "dsb-auditor.duarte.top", "custom_domain": true }
   ],
   // Ícones do painel (public/pwa/dsba/*): servidos pelo Worker via binding ASSETS, fora do Access.
   // run_worker_first: o código decide tudo (redirect do dsba e rotas atuais ficam como estão).
@@ -40,8 +38,8 @@
   // Service Binding: GET /health, /admin/status (se PUSH_ADMIN_TOKEN existir) e POST /admin/alerta (só com ALERTAS=on).
   "services": [
     { "binding": "PUSH_AGENDA", "service": "dsb-push" },
-    // FILA: a cada tick do cron, POST /interno/checar-novos no dsb-fila (avisos push da fila; secret FILA_INTERNO_TOKEN).
-    { "binding": "FILA", "service": "dsb-fila" }
+    // FILA: a cada tick do cron, POST /interno/checar-novos no dsb-admin (avisos push da fila; secret FILA_INTERNO_TOKEN).
+    { "binding": "FILA", "service": "dsb-admin" }
   ],
   "vars": {
     "ALERTAS": "on",
