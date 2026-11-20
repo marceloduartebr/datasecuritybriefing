@@ -419,3 +419,21 @@ test('X-16 /metrics: weekly curated by agent, published per channel, covers, bac
   assert.ok(w.hours_approve_to_blog_median >= 0);
   assert.equal(m.body.backlog.new.total, 1);
 });
+
+test('X-16 /metrics: a post written from Marcelo\'s link request counts as You, whoever wrote it', async () => {
+  const { call } = setup();
+  const mine = await call('POST', '/intake/requests', { url: 'https://req.example/a' }, { internal: true });
+  const agents = await call('POST', '/intake/requests', { url: 'https://req.example/b' }, { token: TOKENS.TOKEN_GROK });
+  const pa = await call('POST', '/posts', base({ source_url: 'https://req.example/a', slug: 'ra' }), { token: TOKENS.TOKEN_GROK });
+  const pb = await call('POST', '/posts', base({ source_url: 'https://req.example/b', slug: 'rb' }));
+  for (const [r, p, t] of [[mine, pa, TOKENS.TOKEN_GROK], [agents, pb, undefined]]) {
+    const opt = t ? { token: t } : undefined;
+    await call('POST', `/intake/requests/${r.body.request.id}/claim`, {}, opt);
+    await call('POST', `/intake/requests/${r.body.request.id}/result`, { status: 'done', post_id: p.body.post.id }, opt);
+  }
+  const w = (await call('GET', '/metrics?weeks=1')).body.weeks[0];
+  assert.equal(w.curated.total, 2);
+  assert.equal(w.curated.user, 1);   // Grok wrote it, Marcelo asked for it
+  assert.equal(w.curated.grok, 0);
+  assert.equal(w.curated.claude, 1); // requested by an agent: stays the writer's
+});

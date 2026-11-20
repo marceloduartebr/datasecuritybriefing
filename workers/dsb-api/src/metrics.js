@@ -15,8 +15,12 @@ export async function metrics(db, q) {
   const rows = async (sql) => (await db.prepare(sql).all()).results || [];
 
   const [curated, published, closed, covers, timings, queue] = await Promise.all([
-    rows(`SELECT ${WEEK('added_at')} AS week, added_by, COUNT(*) AS n FROM posts
-          WHERE ${WEEK('added_at')} >= ${since} GROUP BY 1, 2`),
+    // A post written from a link Marcelo sent for review counts as his, whoever wrote it.
+    rows(`SELECT ${WEEK('p.added_at')} AS week,
+                 CASE WHEN EXISTS (SELECT 1 FROM intake_requests r WHERE r.post_id = p.id AND r.status = 'done'
+                                   AND r.requested_by NOT IN ('grok','claude')) THEN 'user' ELSE p.added_by END AS added_by,
+                 COUNT(*) AS n FROM posts p
+          WHERE ${WEEK('p.added_at')} >= ${since} GROUP BY 1, 2`),
     rows(`SELECT ${WEEK('published_at')} AS week, channel, COUNT(*) AS n FROM publications
           WHERE status IN ('published','removal_pending','removed') AND published_at IS NOT NULL
             AND (channel <> 'blog' OR lang = 'pt') AND ${WEEK('published_at')} >= ${since} GROUP BY 1, 2`),
@@ -48,7 +52,7 @@ export async function metrics(db, q) {
     }
     return out.get(w);
   };
-  for (const r of curated) { const w = wk(r.week); w.curated[r.added_by] = r.n; w.curated.total += r.n; }
+  for (const r of curated) { const w = wk(r.week); w.curated[r.added_by] = (w.curated[r.added_by] || 0) + r.n; w.curated.total += r.n; }
   for (const r of published) wk(r.week).published[r.channel] = r.n;
   for (const r of closed) wk(r.week)[r.to_status] = r.n;
   for (const r of covers) wk(r.week).covers[r.image_source] = r.n;
