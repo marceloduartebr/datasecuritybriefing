@@ -198,3 +198,34 @@ test('midday round: only during burst by default, always or off by setting; same
   r = (await call('GET', `/plan/round?round=blog_midday&at=${NOW}`)).body;
   assert.deepEqual(r.items.map((p) => p.id), [a, v], 'normal pace: 1 incident in queue order + 1 vulnerability');
 });
+
+test('health: approval_backlog retired (its open issue resolved); going_stale matches the plan rule', async () => {
+  const { call, post, env } = setup();
+  const day = 86400000;
+  const now = Date.now();
+  // one news post per age 0..14 days (limit 7 business days) + two incidents (limit 3)
+  const ages = {};
+  for (let d = 0; d <= 14; d++) ages[await post('news', new Date(now - d * day).toISOString())] = d;
+  const oldInc = await post('incident', new Date(now - 10 * day).toISOString());
+  const newInc = await post('incident', new Date(now).toISOString());
+  await call('POST', '/sweep', {});
+  const open = (await call('GET', '/issues?status=open')).body.items;
+  assert.equal(open.filter((i) => i.kind === 'approval_backlog').length, 0, 'no backlog issue any more');
+  const stale = new Set(open.filter((i) => i.kind === 'going_stale').map((i) => i.post_id));
+  for (const [id, d] of Object.entries(ages)) {
+    const expected = businessDaysSince(new Date(now - d * day).toISOString(), now) >= 7;
+    assert.equal(stale.has(Number(id)), expected, `news aged ${d} days`);
+  }
+  assert.ok(stale.has(oldInc));
+  assert.ok(!stale.has(newInc));
+  const one = open.find((i) => i.post_id === oldInc && i.kind === 'going_stale');
+  assert.equal(one.severity, 'warning');
+  assert.match(one.summary, /^Going stale \(\d+ business days, limit 3 for incident\): incident/);
+  // Publish now (high priority) takes it out of the check, as from the plan's stale list
+  await call('POST', '/plan/publish-now', { post_id: oldInc }, { internal: true });
+  await call('POST', '/sweep', {});
+  assert.equal((await call('GET', '/issues?status=open')).body.items.some((i) => i.kind === 'going_stale' && i.post_id === oldInc), false);
+  const checks = (await env.DB.prepare("SELECT name FROM health_checks WHERE enabled = 1").all()).results.map((r) => r.name);
+  assert.ok(checks.includes('going_stale') && !checks.includes('approval_backlog'));
+  assert.equal(checks.length, 15);
+});
