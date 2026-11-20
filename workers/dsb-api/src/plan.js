@@ -10,7 +10,10 @@ import { ApiError } from './http.js';
  */
 
 export const TYPES = ['incident', 'vulnerability', 'news'];
-export const BLOG_ROUNDS = ['blog_morning', 'blog_afternoon'];
+export const BLOG_ROUNDS = ['blog_morning', 'blog_midday', 'blog_afternoon'];
+/** When the midday round runs: only while burst is on (default), every day, or never. */
+export const MIDDAY_RUNS = ['burst', 'always', 'off'];
+const DEFAULT_MIDDAY = { caps: { incident: 1, vulnerability: 1, news: 0 }, reserve: { incident: 0, vulnerability: 0, news: 0 }, total: 2, runs: 'burst' };
 export const LINKEDIN_ROUNDS = ['linkedin_morning', 'linkedin_afternoon'];
 const ROUNDS = [...BLOG_ROUNDS, ...LINKEDIN_ROUNDS];
 const BRT_OFFSET_MS = -3 * 3600 * 1000;
@@ -26,7 +29,7 @@ export function validatePlan(p, now = Date.now()) {
   if (!p || typeof p !== 'object') bad('plan must be an object');
   const out = { rounds: {}, burst: {}, stale_business_days: {} };
   for (const r of ROUNDS) {
-    const src = (p.rounds || {})[r];
+    const src = (p.rounds || {})[r] || (r === 'blog_midday' ? DEFAULT_MIDDAY : null);
     if (!src) bad(`rounds.${r} is missing`);
     if (!intIn(src.total, 0, 10)) bad(`rounds.${r}.total must be a whole number from 0 to 10`);
     const round = { total: src.total };
@@ -42,6 +45,11 @@ export function validatePlan(p, now = Date.now()) {
         round.reserve[t] = k;
       }
     }
+    if (r === 'blog_midday') {
+      const runs = src.runs ?? 'burst';
+      if (!MIDDAY_RUNS.includes(runs)) bad(`rounds.blog_midday.runs must be one of ${MIDDAY_RUNS.join(', ')}`);
+      round.runs = runs;
+    }
     out.rounds[r] = round;
   }
   const b = p.burst || {};
@@ -52,11 +60,11 @@ export function validatePlan(p, now = Date.now()) {
   let until = null;
   if (b.on) {
     if (!types.length) bad('burst needs at least one type');
-    const u = Date.parse(b.until || '');
-    if (!Number.isFinite(u)) bad('burst.until must be a date and time');
-    if (u <= now) bad('burst.until must be in the future');
-    if (u - now > MAX_BURST_DAYS * 86400000) bad(`burst.until must be within ${MAX_BURST_DAYS} days`);
-    until = new Date(u).toISOString();
+    until = burstDay(b.until);
+    if (!until) bad('burst.until must be a date (YYYY-MM-DD)');
+    const today = brtDateString(now);
+    if (until < today) bad('burst.until must be today or later');
+    if (Date.parse(`${until}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`) > MAX_BURST_DAYS * 86400000) bad(`burst.until must be within ${MAX_BURST_DAYS} days`);
   }
   out.burst = { on: Boolean(b.on), until, types: types.length ? types : ['incident'], factor, freshest_first: b.freshest_first !== false };
   for (const t of TYPES) {
@@ -67,10 +75,31 @@ export function validatePlan(p, now = Date.now()) {
   return out;
 }
 
+/** Burst end as a Brasília calendar date: 'YYYY-MM-DD' as given, or an older ISO date-time read as its BRT date. */
+export function burstDay(v) {
+  const s = String(v || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return Number.isFinite(Date.parse(`${s}T00:00:00Z`)) ? s : null;
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? brtDateString(t) : null;
+}
+
+/** 'YYYY-MM-DD' of `ms` in Brasília time. */
+export function brtDateString(ms) {
+  return new Date(ms + BRT_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** Older stored plans: add the midday round (default, runs only during burst) and read the burst end as a date. */
+function normalize(plan) {
+  const p = { ...plan, rounds: { ...plan.rounds } };
+  if (!p.rounds.blog_midday) p.rounds.blog_midday = structuredClone(DEFAULT_MIDDAY);
+  if (p.burst) p.burst = { ...p.burst, until: p.burst.until ? burstDay(p.burst.until) : null };
+  return p;
+}
+
 export async function readPlan(db) {
   const r = await db.prepare('SELECT plan, updated_by, updated_at FROM publish_plan WHERE id = 1').first();
   if (!r) throw new ApiError(503, 'no_plan', 'The publishing plan is missing (migration 0007)');
-  return { plan: JSON.parse(r.plan), updated_by: r.updated_by, updated_at: r.updated_at };
+  return { plan: normalize(JSON.parse(r.plan)), updated_by: r.updated_by, updated_at: r.updated_at };
 }
 
 export async function getPlan(db, now = Date.now()) {
@@ -92,14 +121,16 @@ export async function savePlan(db, body, session, now = Date.now()) {
   return getPlan(db, now);
 }
 
-/** Caps and reserves in force at `now`: burst (while on and before `until`) multiplies the caps of its types and
- *  drops their reserve to 0. */
+/** Caps and reserves in force at `now`: burst (while on, through the end of its `until` day in Brasília) multiplies
+ *  the caps of its types and drops their reserve to 0. */
 export function effective(plan, now = Date.now()) {
   const b = plan.burst || {};
-  const active = Boolean(b.on && b.until && Date.parse(b.until) > now);
+  const day = b.until ? burstDay(b.until) : null;
+  const active = Boolean(b.on && day && brtDateString(now) <= day);
   const rounds = {};
   for (const [name, r] of Object.entries(plan.rounds)) {
     const e = { total: r.total };
+    if (r.runs) e.runs = r.runs;
     if (r.caps) {
       e.caps = { ...r.caps };
       e.reserve = { ...r.reserve };
@@ -114,7 +145,7 @@ export function effective(plan, now = Date.now()) {
     }
     rounds[name] = e;
   }
-  return { burst_active: active, burst_until: active ? b.until : null, burst_types: active ? b.types : [], freshest_first: active && b.freshest_first, rounds };
+  return { burst_active: active, burst_until: active ? day : null, burst_types: active ? b.types : [], freshest_first: active && b.freshest_first, rounds };
 }
 
 /** Calendar date in Brasília time (YYYY-MM-DD as a UTC midnight timestamp). */
@@ -161,7 +192,7 @@ export async function staleList(db, plan, now = Date.now()) {
 }
 
 /**
- * GET /plan/round?round=blog_morning|blog_afternoon|linkedin_morning|linkedin_afternoon
+ * GET /plan/round?round=blog_morning|blog_midday|blog_afternoon|linkedin_morning|linkedin_afternoon
  * → {round, effective, items: [...to publish, in order], held: [{…, reason}], stale: [...]}
  * Blog: high priority first (outside the type caps and the stale rule), then per type the first posts in queue
  * order (freshest event first for burst types when the plan says so), up to the cap and only while more than the
@@ -194,6 +225,12 @@ export async function planRound(db, round, now = Date.now()) {
     };
   }
 
+  if (round === 'blog_midday') {
+    const runs = rule.runs || 'burst';
+    if (runs === 'off' || (runs === 'burst' && !eff.burst_active)) {
+      return { ...base, items: [], held: [], stale: [], inactive: runs === 'off' ? 'The midday round is off in the plan' : 'The midday round runs only during burst mode' };
+    }
+  }
   const waiting = await approvedWaiting(db);
   const items = [];
   const held = [];

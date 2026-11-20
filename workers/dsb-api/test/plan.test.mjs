@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { handle } from '../src/index.js';
 import { createD1 } from './d1-sqlite.mjs';
-import { businessDaysSince, validatePlan, effective } from '../src/plan.js';
+import { businessDaysSince, validatePlan, effective, burstDay } from '../src/plan.js';
 
 const TOKENS = { INTERNAL_TOKEN: 'internal-000000000000000000000000', TOKEN_GROK: 'grok-00000000000000000000000000000', TOKEN_CLAUDE: 'claude-0000000000000000000000000000' };
 const COVER = 'https://covers.duarte.top/covers/20261120-test.jpg';
@@ -61,7 +61,7 @@ test('plan: starting plan from the migration; only DSB Admin changes it; every c
   assert.equal((await call('PATCH', '/plan', { plan }, { internal: true })).body.error, 'invalid_plan');
   plan.rounds.blog_morning.caps.incident = 2;
   plan.burst = { on: true, until: '2020-01-01T00:00:00Z', types: ['incident'], factor: 2 };
-  assert.match((await call('PATCH', '/plan', { plan }, { internal: true })).body.message, /future/);
+  assert.match((await call('PATCH', '/plan', { plan }, { internal: true })).body.message, /today or later/);
 });
 
 test('blog morning: caps per type in queue order; a post without a cover is held and the next one taken', async () => {
@@ -145,4 +145,56 @@ test('effective(): burst totals grow with the extra cap and stay within 10', () 
   const e = effective(p, Date.parse(NOW));
   assert.equal(e.rounds.blog_morning.caps.incident, 10);
   assert.equal(e.rounds.blog_morning.total, 10);
+});
+
+test('burst by day: through the end of that day in Brasília; an older date-time reads as its day', async () => {
+  assert.equal(burstDay('2026-11-22'), '2026-11-22');
+  assert.equal(burstDay('2026-11-22T12:21:00.000Z'), '2026-11-22', 'the plan Marcelo saved at 09:21 counts as all of Sunday');
+  assert.equal(burstDay('2026-11-23T01:30:00Z'), '2026-11-22', '22:30 BRT on Sunday is Sunday');
+  assert.equal(burstDay('soon'), null);
+  const { call, env } = setup();
+  // a plan stored before this change: ISO until, no midday round
+  const old = (await call('GET', '/plan')).body.plan;
+  delete old.rounds.blog_midday;
+  old.burst = { on: true, until: '2026-11-22T12:21:00.000Z', types: ['incident'], factor: 2, freshest_first: true };
+  await env.DB.prepare('UPDATE publish_plan SET plan = ?1').bind(JSON.stringify(old)).run();
+  const g = (await call('GET', '/plan')).body;
+  assert.equal(g.plan.burst.until, '2026-11-22');
+  assert.equal(g.plan.rounds.blog_midday.runs, 'burst', 'midday round added with its default');
+  const at = (t) => call('GET', `/plan/round?round=blog_morning&at=${t}`).then((r) => r.body.effective.burst_active);
+  assert.equal(await at('2026-11-23T02:59:00Z'), true, 'Sunday 23:59 BRT: still on');
+  assert.equal(await at('2026-11-23T03:00:00Z'), false, 'Monday 00:00 BRT: off');
+  const plan = g.plan;
+  plan.burst = { on: true, until: '2026-11-20', types: ['incident'], factor: 2 };
+  const saved = await call('PATCH', '/plan', { plan }, { internal: true });
+  assert.equal(saved.status, 200, 'today is a valid last day: ' + JSON.stringify(saved.body));
+  assert.equal(saved.body.plan.burst.until, '2026-11-20');
+});
+
+test('midday round: only during burst by default, always or off by setting; same picking rules', async () => {
+  const { call, post } = setup();
+  const a = await post('incident', '2026-11-19T10:00:00Z');
+  const b = await post('incident', '2026-11-19T11:00:00Z');
+  const v = await post('vulnerability', '2026-11-19T10:00:00Z');
+  const n = await post('news', '2026-11-19T10:00:00Z');
+  let r = (await call('GET', `/plan/round?round=blog_midday&at=${NOW}`)).body;
+  assert.deepEqual(r.items, []);
+  assert.match(r.inactive, /only during burst/);
+  const plan = (await call('GET', '/plan')).body.plan;
+  plan.burst = { on: true, until: '2026-11-22', types: ['incident'], factor: 2, freshest_first: true };
+  assert.equal((await call('PATCH', '/plan', { plan }, { internal: true })).status, 200);
+  r = (await call('GET', `/plan/round?round=blog_midday&at=${NOW}`)).body;
+  assert.equal(r.effective.caps.incident, 2);
+  assert.deepEqual(r.items.map((p) => p.id), [b, a, v], 'incidents freshest first, then the vulnerability; news cap 0');
+  assert.equal(r.held.find((h) => h.id === n).reason, 'cap');
+  plan.rounds.blog_midday.runs = 'off';
+  await call('PATCH', '/plan', { plan }, { internal: true });
+  assert.match((await call('GET', `/plan/round?round=blog_midday&at=${NOW}`)).body.inactive, /off/);
+  plan.rounds.blog_midday.runs = 'sometimes';
+  assert.equal((await call('PATCH', '/plan', { plan }, { internal: true })).body.error, 'invalid_plan');
+  plan.burst.on = false;
+  plan.rounds.blog_midday.runs = 'always';
+  await call('PATCH', '/plan', { plan }, { internal: true });
+  r = (await call('GET', `/plan/round?round=blog_midday&at=${NOW}`)).body;
+  assert.deepEqual(r.items.map((p) => p.id), [a, v], 'normal pace: 1 incident in queue order + 1 vulnerability');
 });
