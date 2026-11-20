@@ -1,12 +1,12 @@
-// Gatilho dos avisos push da fila (dsbq.duarte.top / Worker dsb-fila).
+// Gatilho dos avisos push da fila (DSB Admin, Worker dsb-admin).
 // Reaproveita o cron do auditor (sem cron novo; plano free tem 5): a cada tick chama
-// POST /interno/checar-novos no dsb-fila via Service Binding FILA, com o secret FILA_INTERNO_TOKEN.
-// Toda a lógica (Notion, dedupe, silêncio 22h–7h, flag FILA_PUSH, inscrições) fica no dsb-fila.
+// POST /interno/checar-novos no dsb-admin via Service Binding FILA, com o secret FILA_INTERNO_TOKEN.
+// Toda a lógica (Notion, dedupe, silêncio 22h–7h, flag FILA_PUSH, inscrições) fica no dsb-admin.
 // Isolado do resto: não lê/grava DSB_AUDITOR, não toca ALERTAS nem o painel; falha só gera log.
 export async function dispararFilaPush(env) {
   if (!env || !env.FILA || typeof env.FILA.fetch !== 'function' || !env.FILA_INTERNO_TOKEN) return { pulado: 'sem_binding' };
   try {
-    const r = await env.FILA.fetch('https://dsb-fila/interno/checar-novos', {
+    const r = await env.FILA.fetch('https://dsb-admin/interno/checar-novos', {
       method: 'POST',
       headers: { 'x-interno-token': String(env.FILA_INTERNO_TOKEN) },
     });

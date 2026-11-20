@@ -12,7 +12,7 @@ test('dispararFilaPush: POST interno com o token; erro vira log', async () => {
   let pedido;
   const env = { FILA_INTERNO_TOKEN: 'segredo', FILA: { fetch: async (u, i) => { pedido = { u, i }; return new Response('{"ok":true}'); } } };
   assert.deepEqual(await dispararFilaPush(env), { status: 200 });
-  assert.equal(pedido.u, 'https://dsb-fila/interno/checar-novos');
+  assert.equal(pedido.u, 'https://dsb-admin/interno/checar-novos');
   assert.equal(pedido.i.method, 'POST');
   assert.equal(pedido.i.headers['x-interno-token'], 'segredo');
   assert.deepEqual(await dispararFilaPush({ ...env, FILA: { fetch: async () => { throw new Error('rede'); } } }), { erro: true });

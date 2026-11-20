@@ -197,7 +197,7 @@ export default {
     return jsonErroEn(res);
   },
   async scheduled(controller, env, ctx) {
-    ctx.waitUntil(dispararFilaPush(env)); // avisos da fila (dsb-fila); isolado da auditoria
+    ctx.waitUntil(dispararFilaPush(env)); // avisos da fila (dsb-admin); isolado da auditoria
     const slot = slotDoTick(controller.scheduledTime);
     if (!slot) return; // tick fora dos horários: sai sem rede nem KV
     ctx.waitUntil(rodarAuditoria(env, { agora: new Date(controller.scheduledTime), slot }));
