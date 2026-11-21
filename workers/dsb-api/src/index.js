@@ -7,7 +7,7 @@ import { createRequest, listRequests, claimRequest, finishRequest } from './inta
 import { metrics } from './metrics.js';
 import { startJob, finishJob } from './jobs.js';
 import { listCompetitors } from './competitors.js';
-import { getPlan, savePlan, planRound, staleList, readPlan, publishNow } from './plan.js';
+import { getPlan, savePlan, planRound, planUpcoming, staleList, readPlan, publishNow } from './plan.js';
 
 /**
  * Routes (all require authentication except /health; see auth.js):
@@ -29,6 +29,7 @@ import { getPlan, savePlan, planRound, staleList, readPlan, publishNow } from '.
  *  GET   /plan                             publishing plan (caps per type and round, burst, stale days) + change log
  *  PATCH /plan                             {plan, note} DSB Admin only (internal token)
  *  GET   /plan/round?round=blog_morning    the posts this round publishes, in order, plus held and stale ones
+ *  GET   /plan/upcoming                    the next run of every round, in time order, each without the posts earlier ones take
  *  GET   /plan/stale                       approved posts past the plan's business-day limit
  *  POST  /plan/publish-now                 {post_id} DSB Admin only: marks the post high priority
  *  POST  /intake/requests                  {url, note} ad hoc link for the next intake run (X-23)
@@ -137,6 +138,10 @@ async function dispatch({ route, db, url, body, id, session }) {
     case 'GET /plan/round': {
       const at = q.get('at') ? Date.parse(q.get('at')) : Date.now();
       return { body: await planRound(db, q.get('round'), Number.isFinite(at) ? at : Date.now()) };
+    }
+    case 'GET /plan/upcoming': {
+      const at = q.get('at') ? Date.parse(q.get('at')) : Date.now();
+      return { body: await planUpcoming(db, Number.isFinite(at) ? at : Date.now()) };
     }
     case 'GET /plan/stale':
       return { body: { items: await staleList(db, (await readPlan(db)).plan) } };

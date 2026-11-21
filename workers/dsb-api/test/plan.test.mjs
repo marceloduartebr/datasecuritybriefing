@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { handle } from '../src/index.js';
 import { createD1 } from './d1-sqlite.mjs';
-import { businessDaysSince, validatePlan, effective, burstDay } from '../src/plan.js';
+import { businessDaysSince, validatePlan, effective, burstDay, brtDateString } from '../src/plan.js';
 
 const TOKENS = { INTERNAL_TOKEN: 'internal-000000000000000000000000', TOKEN_GROK: 'grok-00000000000000000000000000000', TOKEN_CLAUDE: 'claude-0000000000000000000000000000' };
 const COVER = 'https://covers.duarte.top/covers/20261120-test.jpg';
@@ -165,10 +165,11 @@ test('burst by day: through the end of that day in Brasília; an older date-time
   assert.equal(await at('2026-11-23T02:59:00Z'), true, 'Sunday 23:59 BRT: still on');
   assert.equal(await at('2026-11-23T03:00:00Z'), false, 'Monday 00:00 BRT: off');
   const plan = g.plan;
-  plan.burst = { on: true, until: '2026-11-20', types: ['incident'], factor: 2 };
+  const today = brtDateString(Date.now());
+  plan.burst = { on: true, until: today, types: ['incident'], factor: 2 };
   const saved = await call('PATCH', '/plan', { plan }, { internal: true });
   assert.equal(saved.status, 200, 'today is a valid last day: ' + JSON.stringify(saved.body));
-  assert.equal(saved.body.plan.burst.until, '2026-11-20');
+  assert.equal(saved.body.plan.burst.until, today);
 });
 
 test('midday round: only during burst by default, always or off by setting; same picking rules', async () => {
@@ -228,4 +229,33 @@ test('health: approval_backlog retired (its open issue resolved); going_stale ma
   const checks = (await env.DB.prepare("SELECT name FROM health_checks WHERE enabled = 1").all()).results.map((r) => r.name);
   assert.ok(checks.includes('going_stale') && !checks.includes('approval_backlog'));
   assert.equal(checks.length, 15);
+});
+
+test('upcoming: next run of every round in time order; a post taken earlier is not offered again; blog picks feed later LinkedIn rounds', async () => {
+  const { call, post } = setup();
+  const b0 = await post('news', '2026-11-18T10:00:00Z');
+  const c = await call('POST', '/publications', { post_id: b0, channel: 'blog', lang: 'pt' });
+  await call('POST', `/publications/${c.body.publication.id}/result`, { status: 'published', url: 'https://dsb.duarte.top/briefings/b0' });
+  const inc = [];
+  for (let i = 0; i < 5; i++) inc.push(await post('incident', `2026-11-19T1${i}:00:00Z`));
+  const v1 = await post('vulnerability', '2026-11-19T10:00:00Z');
+  const n1 = await post('news', '2026-11-19T10:00:00Z');
+  // Fri 20 Nov 09:52 BRT: the 08:30 and 09:00 rounds already ran, so they come back as Saturday's.
+  const u = (await call('GET', '/plan/upcoming?at=2026-11-20T12:52:00Z')).body;
+  assert.deepEqual(u.rounds.map((r) => [r.round, r.at]), [
+    ['blog_midday', '2026-11-20T15:30:00.000Z'],
+    ['blog_afternoon', '2026-11-20T20:00:00.000Z'],
+    ['linkedin_afternoon', '2026-11-20T20:30:00.000Z'],
+    ['blog_morning', '2026-11-21T11:30:00.000Z'],
+    ['linkedin_morning', '2026-11-21T12:00:00.000Z']
+  ]);
+  const [mid, aft, lAft, morn, lMorn] = u.rounds;
+  assert.ok(mid.inactive);
+  assert.deepEqual(ids(aft.items), [inc[0]]);                       // reserve 2 keeps the rest waiting
+  assert.deepEqual(ids(lAft.items), [b0, inc[0]]);                  // the 17:00 pick follows on LinkedIn
+  assert.deepEqual(ids(morn.items), [inc[1], inc[2], v1, n1]);       // inc[0] is not offered again
+  assert.deepEqual(ids(lMorn.items), [inc[1], inc[2], v1]);
+  assert.deepEqual(lMorn.held.map((h) => [h.id, h.reason]), [[n1, 'total']]);
+  // the single-round answer the publish tasks use is unchanged
+  assert.deepEqual(ids((await call('GET', '/plan/round?round=blog_morning&at=2026-11-21T11:30:00Z')).body.items), [inc[0], inc[1], v1, n1]);
 });

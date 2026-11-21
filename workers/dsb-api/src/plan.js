@@ -202,25 +202,34 @@ export async function staleList(db, plan, now = Date.now()) {
 export async function planRound(db, round, now = Date.now()) {
   if (!ROUNDS.includes(round)) throw new ApiError(422, 'invalid_round', `round must be one of ${ROUNDS.join(', ')}`);
   const { plan } = await readPlan(db);
+  if (LINKEDIN_ROUNDS.includes(round)) return pickRound(plan, round, { linkedin: await blogPublishedNoLinkedin(db) }, now);
+  return pickRound(plan, round, { waiting: await approvedWaiting(db) }, now);
+}
+
+async function blogPublishedNoLinkedin(db) {
+  const r = await db
+    .prepare(
+      `SELECT p.id, p.topic, p.type, p.country, p.priority, p.added_at, b.url AS blog_url, b.published_at AS blog_published_at
+       FROM posts p
+       JOIN publications b ON b.post_id = p.id AND b.channel = 'blog' AND b.lang = 'pt' AND b.status = 'published'
+       WHERE NOT EXISTS (SELECT 1 FROM publications c WHERE c.post_id = p.id AND c.channel = 'linkedin')
+       ORDER BY b.published_at`
+    )
+    .all();
+  return r.results || [];
+}
+
+/** One round against the given lists (no database access), as GET /plan/round answers it. */
+function pickRound(plan, round, { waiting = [], linkedin = [] }, now) {
   const eff = effective(plan, now);
   const rule = eff.rounds[round];
   const base = { round, effective: { burst_active: eff.burst_active, burst_until: eff.burst_until, ...rule } };
 
   if (LINKEDIN_ROUNDS.includes(round)) {
-    const r = await db
-      .prepare(
-        `SELECT p.id, p.topic, p.type, p.country, p.priority, p.added_at, b.url AS blog_url, b.published_at AS blog_published_at
-         FROM posts p
-         JOIN publications b ON b.post_id = p.id AND b.channel = 'blog' AND b.lang = 'pt' AND b.status = 'published'
-         WHERE NOT EXISTS (SELECT 1 FROM publications c WHERE c.post_id = p.id AND c.channel = 'linkedin')
-         ORDER BY b.published_at`
-      )
-      .all();
-    const rows = r.results || [];
     return {
       ...base,
-      items: rows.slice(0, rule.total).map((p) => brief(p, { blog_url: p.blog_url })),
-      held: rows.slice(rule.total).map((p) => brief(p, { reason: 'total' })),
+      items: linkedin.slice(0, rule.total).map((p) => brief(p, { blog_url: p.blog_url || null, ...(p.why ? { why: p.why } : {}) })),
+      held: linkedin.slice(rule.total).map((p) => brief(p, { reason: 'total' })),
       stale: []
     };
   }
@@ -231,7 +240,6 @@ export async function planRound(db, round, now = Date.now()) {
       return { ...base, items: [], held: [], stale: [], inactive: runs === 'off' ? 'The midday round is off in the plan' : 'The midday round runs only during burst mode' };
     }
   }
-  const waiting = await approvedWaiting(db);
   const items = [];
   const held = [];
   const stale = [];
@@ -271,8 +279,44 @@ export async function planRound(db, round, now = Date.now()) {
   return { ...base, items: out, held, stale };
 }
 
-/** POST /plan/publish-now {post_id}: DSB Admin marks a waiting post high priority, so the next blog round takes it
- *  ahead of the caps and the stale rule. */
+/** Scheduled time of each round, Brasília (the scheduled tasks). */
+export const ROUND_TIMES = { blog_morning: '08:30', linkedin_morning: '09:00', blog_midday: '12:30', blog_afternoon: '17:00', linkedin_afternoon: '17:30' };
+
+/** The next run of every round after `now`, in time order (one each). */
+export function nextRuns(now = Date.now()) {
+  const out = [];
+  for (const [round, hm] of Object.entries(ROUND_TIMES)) {
+    const [h, m] = hm.split(':').map(Number);
+    let at = brtDay(now) + (h * 60 + m) * 60000 - BRT_OFFSET_MS;
+    if (at <= now) at += 86400000;
+    out.push({ round, at });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/**
+ * GET /plan/upcoming → {rounds: [{round, at, items, held, stale, …}]}: the next run of every round, worked out in
+ * time order. A post an earlier round takes is not offered again; a blog pick becomes a LinkedIn candidate for the
+ * LinkedIn rounds after it (newest article last). Burst and stale ages are taken at each round's own time.
+ */
+export async function planUpcoming(db, now = Date.now()) {
+  const { plan } = await readPlan(db);
+  let waiting = await approvedWaiting(db);
+  let linkedin = await blogPublishedNoLinkedin(db);
+  const rounds = [];
+  for (const { round, at } of nextRuns(now)) {
+    const r = pickRound(plan, round, { waiting, linkedin }, at);
+    const taken = new Set(r.items.map((p) => p.id));
+    if (LINKEDIN_ROUNDS.includes(round)) linkedin = linkedin.filter((p) => !taken.has(p.id));
+    else {
+      linkedin = [...linkedin, ...waiting.filter((p) => taken.has(p.id)).map((p) => ({ ...p, blog_url: null, why: `after ${round}` }))];
+      waiting = waiting.filter((p) => !taken.has(p.id));
+    }
+    rounds.push({ ...r, at: new Date(at).toISOString() });
+  }
+  return { rounds, generated_at: new Date(now).toISOString() };
+}
+
 export async function publishNow(db, body, session) {
   if (session.via !== 'internal') throw new ApiError(403, 'plan_admin_only', 'Only DSB Admin can mark a post to publish now');
   const id = Number(body && body.post_id);
